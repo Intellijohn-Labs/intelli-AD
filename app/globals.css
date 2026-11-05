@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+/* Light-only theme: `dark:` variants only apply under a .dark class, which is never set. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Page accent, animated when the active publication changes. */
+@property --brand { syntax: "<color>"; inherits: true; initial-value: #1d4ed8; }
+@property --brand-accent { syntax: "<color>"; inherits: true; initial-value: #06b6d4; }
+:root { transition: --brand 0.6s ease, --brand-accent 0.6s ease; }
+
+@theme {
+  --color-navy-50: color-mix(in oklab, var(--brand) 6%, white);
+  --color-navy-100: color-mix(in oklab, var(--brand) 12%, white);
+  --color-navy-200: color-mix(in oklab, var(--brand) 26%, white);
+  --color-navy-300: color-mix(in oklab, var(--brand) 46%, white);
+  --color-navy-400: color-mix(in oklab, var(--brand) 72%, white);
+  --color-navy-500: var(--brand);
+  --color-navy-600: color-mix(in oklab, var(--brand) 86%, black);
+  --color-navy-700: color-mix(in oklab, var(--brand) 72%, black);
+  --color-navy-800: color-mix(in oklab, var(--brand) 55%, black);
+  --color-navy-900: color-mix(in oklab, var(--brand) 38%, black);
+  --color-navy-950: color-mix(in oklab, var(--brand) 24%, black);
+  --color-paper: #fafafa;
+  --color-paper-dark: #f4f4f5;
+  --color-ink: #09090b;
+  --color-edition: var(--brand);
+  --color-brand: var(--brand);
+  --color-brand-accent: var(--brand-accent);
+  --font-serif: "Playfair Display", "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: Inter, "Noto Sans Malayalam", Manjari, Gayathri, "Malayalam Sangam MN", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+}
+
+html { scroll-behavior: smooth; }
+html { color-scheme: light; }
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, .font-headline { font-family: var(--font-serif); letter-spacing: -0.02em; font-weight: 700; }
+
+:focus-visible { outline: 2px solid var(--color-navy-500); outline-offset: 2px; }
+
+.newsprint-texture {
+  background-color: #fafafa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #release-order, #release-order * { visibility: visible; }
+  #release-order { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
+}
+
+
+/* Print-column Malayalam typography for clippings, previews and the composer. */
+.font-clipping {
+  font-family: Manjari, Gayathri, "Noto Sans Malayalam", "Malayalam Sangam MN", Georgia, serif;
+  letter-spacing: normal;
+}
+
+/* Display serif for editorial headlines; UI stays in Inter. */
+h1, h2 { font-family: var(--font-serif); letter-spacing: -0.015em; }
+h3, h4 { font-family: var(--font-sans); letter-spacing: -0.01em; }
+
+/* Sheen sweep on primary CTAs (transform-only, GPU friendly). */
+.btn-sheen { position: relative; overflow: hidden; isolation: isolate; }
+.btn-sheen::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.35) 50%, transparent 65%);
+  transform: translateX(-130%); animation: sheen 3.4s ease-in-out infinite;
+}
+@keyframes sheen { 0%, 55% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+
+/* Paper grain for clippings. */
+.paper-grain {
+  background-color: #F9F8F5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ───────────── Dark mode (class strategy via next-themes) ─────────────
+   Instead of rewriting every component, the neutral scale is inverted and the
+   brand tints are re-derived for a dark surface. */
+html.dark { color-scheme: dark; }
+.dark {
+  --color-zinc-50: #1e293b;  --color-zinc-100: #243247; --color-zinc-200: #334155;
+  --color-zinc-300: #475569; --color-zinc-400: #64748b; --color-zinc-500: #94a3b8;
+  --color-zinc-600: #cbd5e1; --color-zinc-700: #e2e8f0; --color-zinc-800: #f1f5f9;
+  --color-zinc-900: #f8fafc; --color-zinc-950: #ffffff;
+  --color-navy-50: color-mix(in oklab, var(--brand) 16%, #0b1020);
+  --color-navy-100: color-mix(in oklab, var(--brand) 24%, #0b1020);
+  --color-navy-200: color-mix(in oklab, var(--brand) 38%, #0b1020);
+  --color-navy-300: color-mix(in oklab, var(--brand) 55%, #0b1020);
+  --color-navy-400: color-mix(in oklab, var(--brand) 78%, #0b1020);
+  --color-navy-700: color-mix(in oklab, var(--brand) 55%, white);
+  --color-navy-800: color-mix(in oklab, var(--brand) 38%, white);
+  --color-navy-900: color-mix(in oklab, var(--brand) 22%, white);
+  --color-navy-950: color-mix(in oklab, var(--brand) 12%, white);
+}
+.dark body { background: #0f172a; color: #f1f5f9; }
+/* Surfaces that were white become deep slate. */
+.dark .bg-white { background-color: #1e293b; }
+.dark [class*="bg-white/"] { background-color: rgb(30 41 59 / 0.9); }
+.dark .to-white { --tw-gradient-to: #1e293b; }
+.dark .border-white\/60 { border-color: rgb(255 255 255 / 0.1); }
+.dark input, .dark textarea, .dark select { color-scheme: dark; }
+/* Newspaper clippings and previews stay light paper in dark mode. */
+.dark .paper-grain, .dark .paper-grain * {
+  --color-zinc-50: #fafafa; --color-zinc-100: #f4f4f5; --color-zinc-200: #e4e4e7; --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa; --color-zinc-500: #71717a; --color-zinc-600: #52525b; --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a; --color-zinc-900: #18181b; --color-zinc-950: #09090b;
+  --color-navy-50: color-mix(in oklab, var(--brand) 6%, white);
+  --color-navy-600: color-mix(in oklab, var(--brand) 86%, black);
+  --color-navy-800: color-mix(in oklab, var(--brand) 55%, black);
+  --color-navy-900: color-mix(in oklab, var(--brand) 38%, black);
+}
+
+/* Animated hand-drawn underline for editorial headlines. */
+.sketch-underline { position: relative; display: inline-block; }
+.sketch-underline::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -0.12em; height: 0.14em; border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand), #6366f1); transform-origin: left; transform: scaleX(0) rotate(-0.6deg);
+  animation: sketch-in 0.9s 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes sketch-in { to { transform: scaleX(1) rotate(-0.6deg); } }
+
+/* Surface colour used to mix pastel tints; adapts to the theme. */
+:root { --surface: #ffffff; }
+.dark { --surface: #1e293b; }
+
+/* Live ad preview: newsprint in light mode, dark column in dark mode. */
+.preview-paper { background-color: #F9F8F5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.dark .preview-paper { background-image: none; }
