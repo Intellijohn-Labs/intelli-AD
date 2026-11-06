@@ -7,12 +7,12 @@ import type { AdType } from "@/lib/types";
 
 function Row({ label, sub, value, negative, strong, muted }: { label: string; sub?: string; value: number; negative?: boolean; strong?: boolean; muted?: boolean }) {
   return (
-    <div className={cn("flex items-start justify-between gap-4 py-1.5 text-sm", strong && "border-t-2 border-navy-800 pt-3 text-base font-bold", muted && "text-zinc-500")}>
+    <div className={cn("flex items-start justify-between gap-4 border-b border-dashed border-zinc-300 py-1.5 text-sm last:border-b-0", strong && "border-t-2 border-b-0 border-solid border-[#0F172A] pt-3 text-base font-bold dark:border-[#eaeaea]", muted && "text-zinc-500")}>
       <div>
         <p>{label}</p>
         {sub && <p className="text-xs font-normal text-zinc-500 dark:text-zinc-400">{sub}</p>}
       </div>
-      <p className={cn("tabular-nums", negative && "font-semibold text-emerald-700 dark:text-emerald-200")}>
+      <p className={cn("font-mono tracking-tight tabular-nums", negative && "font-semibold text-emerald-700 dark:text-emerald-200")}>
         {negative && value > 0 ? "−" : ""}
         {formatINR(value, { decimals: true })}
       </p>
@@ -44,8 +44,8 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
       <Row label={tr("GST ({pct}%)", { pct: GST_RATE * 100 })} value={t.gst} />
       <Row label={tr("Total payable")} value={t.total} strong />
       {showEditions && quote.lines.length > 0 && (
-        <details className="mt-3 rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-800/50">
-          <summary className="cursor-pointer font-semibold text-navy-800 dark:text-zinc-100">{tr("Per-edition breakdown")}</summary>
+        <details className="mt-3 rounded border border-dashed border-zinc-400 bg-white p-3 text-sm">
+          <summary className="cursor-pointer font-semibold text-[#0F172A] dark:text-zinc-100">{tr("Per-edition breakdown")}</summary>
           <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
             {quote.lines.map((l) => (
               <li key={l.editionId} className="flex justify-between gap-3 py-1.5">
@@ -53,7 +53,7 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
                   {l.newspaperName} – {l.editionName}
                   {l.discountPct > 0 && <span className="block text-xs text-zinc-900">{tr("{pct}% combo discount", { pct: l.discountPct })}</span>}
                 </span>
-                <span className="tabular-nums">{formatINR(l.net, { decimals: true })}</span>
+                <span className="font-mono tabular-nums">{formatINR(l.net, { decimals: true })}</span>
               </li>
             ))}
           </ul>

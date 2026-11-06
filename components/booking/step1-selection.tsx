@@ -62,10 +62,10 @@ export function Step1Selection() {
   };
 
   const total = Object.values(state.selection).reduce((a, ids) => a + ids.length, 0);
-  const cardBase = "relative cursor-pointer rounded-xl border p-4 transition-[border-color,background-color,box-shadow] duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500";
-  const cardMotion = { whileHover: { y: -3, scale: 1.015 }, whileTap: { scale: 0.98 }, transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] as const } };
+  const cardBase = "relative cursor-pointer rounded-md border p-4 transition-[border-color,background-color,box-shadow] duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500";
+  const cardMotion = {};
   const Tick = () => (
-    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 22 }} className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-current/90 text-white" aria-hidden="true">
+    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-sm bg-[#0F172A] text-white dark:bg-[#eaeaea] dark:text-[#0F172A]" aria-hidden="true">
       <Check className="h-3 w-3" />
     </motion.span>
   );
@@ -73,7 +73,7 @@ export function Step1Selection() {
   return (
     <div className="space-y-8">
       {state.templateTitle && (
-        <p className="rounded-lg border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/20 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
+        <p className="rounded border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/20 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
           {t("Template loaded: {title}. Pick your publications, then edit the text in the next step.", { title: state.templateTitle })}
         </p>
       )}
@@ -119,7 +119,7 @@ export function Step1Selection() {
           </h3>
           <div className="flex flex-wrap gap-2">
             <Input aria-label={t("Search paper or city…")} placeholder={t("Search paper or city…")} className="h-9 w-48" value={query} onChange={(e) => setQuery(e.target.value)} />
-            <div role="group" aria-label="Publication scope" className="flex rounded-lg border border-zinc-300 bg-white p-0.5 text-xs font-semibold">
+            <div role="group" aria-label="Publication scope" className="flex rounded border border-zinc-300 bg-white p-0.5 text-xs font-semibold">
               {(["all", "national", "regional"] as const).map((s) => (
                 <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)} className={cn("rounded-md px-2.5 py-1.5", scope === s ? "bg-navy-800 text-white" : "text-zinc-600 hover:bg-zinc-100")}>
                   {t(s === "all" ? "All" : s === "national" ? "National" : "Regional")}
@@ -137,7 +137,7 @@ export function Step1Selection() {
             const rate = startingRate(paper, state.adType);
             const suggestions = comboSuggestions(paper.id, selected);
             return (
-              <motion.div key={paper.id} whileHover={{ y: -2 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} className={cn("overflow-hidden rounded-xl border transition-shadow duration-300", selected.length ? "ring-2 ring-[var(--c)]" : "hover:ring-1 hover:ring-[var(--c)]")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: `color-mix(in srgb, ${brandFor(paper.id).primary} 6%, var(--surface))`, borderColor: `color-mix(in srgb, ${brandFor(paper.id).primary} ${selected.length ? 70 : 28}%, var(--surface))`, boxShadow: selected.length ? `0 0 22px color-mix(in srgb, ${brandFor(paper.id).primary} 25%, transparent)` : undefined }}>
+              <motion.div key={paper.id} className={cn("overflow-hidden rounded-md border transition-shadow duration-300", selected.length ? "ring-2 ring-[var(--c)]" : "hover:ring-1 hover:ring-[var(--c)]")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: `color-mix(in srgb, ${brandFor(paper.id).primary} 6%, var(--surface))`, borderColor: `color-mix(in srgb, ${brandFor(paper.id).primary} ${selected.length ? 70 : 28}%, var(--surface))`, boxShadow: selected.length ? `0 0 22px color-mix(in srgb, ${brandFor(paper.id).primary} 25%, transparent)` : undefined }}>
                 <button type="button" aria-expanded={isOpen} aria-controls={`panel-${paper.id}`} onClick={() => { setOpen(isOpen ? null : paper.id); if (!isOpen) setActive(paper.id); }} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
                   <span>
                     <span className="text-lg font-bold">{pn(paper)}</span>
@@ -159,7 +159,7 @@ export function Step1Selection() {
                     {suggestions.length > 0 && (
                       <div className="mb-3 flex flex-wrap gap-2">
                         {suggestions.map((s) => (
-                          <button key={s.groupId} type="button" onClick={() => setEditions(paper.id, [...new Set([...selected, ...s.missingEditionIds])])} className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 shadow-[0_0_14px_rgba(217,119,6,0.18)] hover:bg-amber-100 dark:bg-amber-500/20">
+                          <button key={s.groupId} type="button" onClick={() => setEditions(paper.id, [...new Set([...selected, ...s.missingEditionIds])])} className="inline-flex items-center gap-1.5 rounded border border-dashed border-zinc-500 bg-transparent px-3 py-1.5 font-mono text-xs font-semibold text-zinc-800 hover:bg-black/5 dark:bg-amber-500/20">
                             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> {t("Add all {group} editions for {pct}% off", { group: place(s.groupName), pct: s.discountPct })}
                             <span className="font-normal">(+{s.missingEditionIds.length})</span>
                           </button>
@@ -183,7 +183,7 @@ export function Step1Selection() {
                             {eds.map((e) => {
                               const on = selected.includes(e.id);
                               return (
-                                <label key={e.id} className={cn("cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-gradient-to-r from-navy-600 to-navy-500 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
+                                <label key={e.id} className={cn("cursor-pointer rounded border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
                                   <input type="checkbox" className="sr-only" checked={on} onChange={() => setEditions(paper.id, on ? selected.filter((id) => id !== e.id) : [...selected, e.id])} />
                                   {place(e.name)}
                                 </label>

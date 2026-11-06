@@ -1,4 +1,5 @@
 import type { AdType, Category, CategoryId, Template } from "@/lib/types";
+import { composeTender, TENDER_TEMPLATE_FIELDS } from "./tender";
 
 export const AD_TYPES: { id: AdType; label: string; short: string; description: string }[] = [
   {
@@ -120,18 +121,47 @@ export const categories: Category[] = [
   },
   {
     id: "obituary",
-    name: "Remembrance",
-    nameMl: "ചരമം & ഓർമ്മക്കുറിപ്പുകൾ",
-    badge: { en: "Marana Vartha · In Memoriam", ml: "മരണവാർത്ത · സ്മരണാഞ്ജലി" },
-    icon: "Flower2",
-    description: "Obituaries, condolence messages and anniversary remembrances.",
-    descriptionMl: "ചരമ അറിയിപ്പുകൾ, അനുശോചന സന്ദേശങ്ങൾ, ചരമവാർഷിക സ്മരണകൾ.",
+    name: "Obituary",
+    nameMl: "മരണവാർത്ത",
+    badge: { en: "Obituary / Marana Vartha", ml: "മരണവാർത്ത · നിര്യാതനായി" },
+    icon: "Flame",
+    description: "Death announcements with funeral schedule and family details.",
+    descriptionMl: "സംസ്കാര വിവരങ്ങളും കുടുംബാംഗങ്ങളുടെ വിവരങ്ങളും സഹിതമുള്ള മരണ അറിയിപ്പുകൾ.",
     rateMultiplier: 0.9,
     documents: [
       {
         id: "death-cert",
         label: "Death certificate",
         hint: "Optional. Speeds up approval for obituary display ads.",
+        required: false,
+      },
+    ],
+  },
+  {
+    id: "remembrance",
+    name: "Remembrance",
+    nameMl: "ചരമവാർഷികം & സ്മരണാഞ്ജലി",
+    badge: { en: "Death Anniversary / In Memoriam", ml: "ചരമവാർഷികം · സ്മരണാഞ്ജലി" },
+    icon: "Flower2",
+    description: "Death anniversaries, in-memoriam tributes and remembrance messages.",
+    descriptionMl: "ചരമവാർഷികങ്ങൾ, സ്മരണാഞ്ജലികൾ, അനുസ്മരണ സന്ദേശങ്ങൾ.",
+    rateMultiplier: 0.9,
+    documents: [],
+  },
+  {
+    id: "tender",
+    name: "Tender Notice",
+    nameMl: "ടെൻഡർ / ദർഘാസ്",
+    badge: { en: "Tender Notice / ദർഘാസ്", ml: "ദർഘാസ് പരസ്യം" },
+    icon: "Gavel",
+    description: "Works and supply tenders from departments, panchayats, co-operative banks and companies.",
+    descriptionMl: "വകുപ്പുകൾ, പഞ്ചായത്തുകൾ, സഹകരണ ബാങ്കുകൾ, കമ്പനികൾ എന്നിവയുടെ പ്രവൃത്തി / സാമഗ്രി ടെൻഡറുകൾ.",
+    rateMultiplier: 1.15,
+    documents: [
+      {
+        id: "tender-doc",
+        label: "Tender document / NIT copy",
+        hint: "Optional. Speeds up verification of the notice.",
         required: false,
       },
     ],
@@ -261,8 +291,18 @@ export const templates: Template[] = [
       "നിര്യാതനായി. [പേര്], [വയസ്സ്], [വീട്ടുപേര്], [സ്ഥലം]. സംസ്കാരം: [തീയതി], [സമയം], [സ്ഥലം]. ഭാര്യ: [പേര്]. മക്കൾ: [പേരുകൾ]. ഫോൺ: [നമ്പർ].",
   },
   {
-    id: "obituary-anniversary",
+    id: "obituary-christian",
     categoryId: "obituary",
+    title: "Obituary with religious header",
+    titleMl: "മതപരമായ ശീർഷകത്തോടെ മരണവാർത്ത",
+    description: "Demise notice with a Christian invocation, funeral service and family details",
+    descriptionMl: "ക്രൈസ്തവ ശീർഷകം, സംസ്കാര ശുശ്രൂഷ, കുടുംബ വിവരങ്ങൾ സഹിതമുള്ള മരണവാർത്ത.",
+    body:
+      "✝ കർത്താവിൽ നിദ്രപ്രാപിച്ചു. [പേര്] ([വയസ്സ്] വയസ്സ്), [വീട്ടുപേര്], [സ്ഥലം], [തീയതി]-ന് നിര്യാതയായി. സംസ്കാര ശുശ്രൂഷ [തീയതി] [സമയം]-ന് ഭവനത്തിൽ ആരംഭിച്ച് [പള്ളിയുടെ പേര്]-ൽ. ഭർത്താവ്: [പേര്]. മക്കൾ: [പേരുകൾ]. ഫോൺ: [നമ്പർ].",
+  },
+  {
+    id: "obituary-anniversary",
+    categoryId: "remembrance",
     title: "Death Anniversary / ഒന്നാം ചരമവാർഷികം",
     titleMl: "ഒന്നാം ചരമവാർഷികം / വാർഷിക സ്മരണാഞ്ജലി",
     description: "Memorial tribute with photo frame options (Garland/Lamp)",
@@ -279,6 +319,24 @@ export const templates: Template[] = [
     descriptionMl: "പുതിയ ഓഫീസ് വിലാസവും ബന്ധപ്പെടാനുള്ള വിവരങ്ങളും അറിയിക്കുന്നു.",
     body:
       "അറിയിപ്പ്: [സ്ഥാപനത്തിന്റെ പേര്]-ന്റെ ഓഫീസ് [പഴയ വിലാസം]-ൽ നിന്ന് [പുതിയ വിലാസം]-ലേക്ക് [തീയതി] മുതൽ മാറ്റിയിരിക്കുന്നു. ഫോൺ നമ്പരുകൾക്ക് മാറ്റമില്ല: [ഫോൺ നമ്പർ]. എല്ലാ ഇടപാടുകാരും സഹകരിക്കണമെന്ന് അഭ്യർത്ഥിക്കുന്നു.",
+  },
+  {
+    id: "tender-works",
+    categoryId: "tender",
+    title: "Works tender (Panchayat / Department)",
+    titleMl: "പ്രവൃത്തി ടെൻഡർ (പഞ്ചായത്ത് / വകുപ്പ്)",
+    description: "Sealed tenders for construction work with PAC, EMD and last date",
+    descriptionMl: "അടങ്കൽ തുക, നിരതദ്രവ്യം, അവസാന തീയതി സഹിതമുള്ള നിർമ്മാണ ടെൻഡർ.",
+    body: composeTender(TENDER_TEMPLATE_FIELDS["tender-works"]),
+  },
+  {
+    id: "tender-supply",
+    categoryId: "tender",
+    title: "Supply tender (Co-operative bank / Company)",
+    titleMl: "സാമഗ്രി വിതരണ ടെൻഡർ (സഹകരണ ബാങ്ക് / കമ്പനി)",
+    description: "Quotations invited for supply of materials with EMD and contact details",
+    descriptionMl: "നിരതദ്രവ്യവും ബന്ധപ്പെടേണ്ട വിവരങ്ങളും സഹിതമുള്ള സാമഗ്രി വിതരണ ദർഘാസ്.",
+    body: composeTender(TENDER_TEMPLATE_FIELDS["tender-supply"]),
   },
 ];
 

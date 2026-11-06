@@ -2,50 +2,83 @@
 
 import { motion } from "framer-motion";
 import { BadgePercent, Clock, ShieldCheck, Stamp } from "lucide-react";
+import { useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { AD_TYPES } from "@/data/categories";
 import { useI18n } from "@/context/language-context";
+import type { AdType } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { AdTicker } from "./ad-ticker";
 import { QuickBookingWidget } from "./quick-booking-widget";
 
 const badges = [
-  { icon: ShieldCheck, label: "Authorized Partner", tone: "bg-navy-50 text-navy-800 border-navy-200 shadow-[0_0_18px_color-mix(in_srgb,var(--brand)_28%,transparent)]" },
-  { icon: Clock, label: "Next-Day Print Cut-off", tone: "bg-amber-50 dark:bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-500/40 shadow-[0_0_18px_rgba(217,119,6,0.28)]" },
-  { icon: BadgePercent, label: "Save up to 20% on Multi-Edition", tone: "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-500/40 shadow-[0_0_18px_rgba(5,150,105,0.28)]" },
-  { icon: Stamp, label: "Verified RO", tone: "bg-rose-50 dark:bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-500/40 shadow-[0_0_18px_rgba(190,18,60,0.22)]" },
+  { icon: ShieldCheck, label: "Authorized Partner" },
+  { icon: Clock, label: "Next-Day Print Cut-off" },
+  { icon: BadgePercent, label: "Save up to 20% on Multi-Edition" },
+  { icon: Stamp, label: "Verified RO" },
 ];
 
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } } };
-const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const } } };
+const container = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
+const item = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3, ease: "easeOut" as const } } };
 
+/** Newspaper portal hero: editorial pitch on the left, the quick booking calculator on the right. */
 export function Hero() {
   const { t } = useI18n();
+  // The format tabs live in the pitch column but drive the calculator beside it.
+  const [adType, setAdType] = useState<AdType>("classified-text");
+
   return (
-    <motion.section variants={container} initial="hidden" animate="show" className="mx-auto grid max-w-[1500px] items-start gap-8 px-4 py-12 sm:px-6 sm:py-16 md:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:px-8">
-      <Card className="min-w-0 p-5 sm:p-6 lg:p-8">
-        <div className="flex flex-col">
-        <motion.p variants={item} className="order-1 mb-3 text-xs font-bold uppercase tracking-[0.2em] text-navy-600">{t("Newspaper advertising, simplified")}</motion.p>
-        <motion.h1 variants={item} className="order-2 text-4xl leading-[1.08] font-black text-zinc-950 sm:text-5xl lg:text-6xl">{t("Book Newspaper Ads Across Kerala in 4 Simple Steps")}</motion.h1>
-        <motion.p variants={item} className="order-3 mt-4 max-w-xl text-lg text-zinc-600">{t("Book Classified & Display ads in leading newspapers including Malayala Manorama and Mathrubhumi at the lowest rates.")}</motion.p>
-        <motion.div variants={item} className="order-4 mt-6 flex flex-wrap gap-3">
-          <ButtonLink href="/#rates" size="lg" shimmer>{t("Check Live Rates")}</ButtonLink>
-          <ButtonLink href="/book" size="lg" variant="secondary">{t("Book Advertisement")}</ButtonLink>
+    <motion.section variants={container} initial="hidden" animate="show" className="mx-auto grid max-w-[1280px] items-start gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:px-8">
+      <div className="min-w-0">
+        <motion.p variants={item} className="inline-flex rounded-full border border-slate-200 bg-white px-3.5 py-1 font-mono text-xs font-bold tracking-[0.2em] text-slate-700 uppercase shadow-2xs dark:border-[#2a2b30] dark:bg-[#1a1b1f] dark:text-[#d6d7db]">
+          {t("Advertising made simple")}
+        </motion.p>
+        <motion.h1 variants={item} className="mt-5 font-[family-name:var(--font-syne)] text-4xl leading-[1.04] font-black tracking-tight text-slate-900 md:text-5xl dark:text-[#f1f1f3]">
+          {t("Book Newspaper Ads Across Kerala in 4 Simple Steps")}
+        </motion.h1>
+        <motion.p variants={item} className="mt-4 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg dark:text-[#bdbec4]">
+          {t("Book Classified & Display ads in leading newspapers including Malayala Manorama and Mathrubhumi at the lowest rates.")}
+        </motion.p>
+
+        {/* Format tabs: one segmented control */}
+        <motion.div variants={item} role="radiogroup" aria-label="Ad format" className="mt-6 inline-flex max-w-full flex-wrap gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-2xs dark:border-[#2a2b30] dark:bg-[#1a1b1f]">
+          {AD_TYPES.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="radio"
+              aria-checked={adType === a.id}
+              onClick={() => setAdType(a.id)}
+              className={cn(
+                "rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-500",
+                adType === a.id ? "bg-slate-900 text-white shadow-sm dark:bg-[#eaeaea] dark:text-slate-900" : "text-slate-600 hover:text-slate-900 dark:text-[#bdbec4] dark:hover:text-white",
+              )}
+            >
+              {t(a.short)}
+            </button>
+          ))}
         </motion.div>
-        <ul className="order-6 mt-6 flex flex-wrap gap-2" aria-label="Trust badges">
-          {badges.map(({ icon: Icon, label, tone }) => (
-            <motion.li key={label} variants={item} className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${tone}`}>
-              <Icon className="h-4 w-4" aria-hidden="true" /> {t(label)}
+
+        <motion.div variants={item} className="mt-6 flex flex-wrap gap-3">
+          <ButtonLink href="/newspaper#rates" size="lg" className="rounded-xl">{t("Check Live Rates")}</ButtonLink>
+          <ButtonLink href="/book" size="lg" variant="secondary" className="rounded-xl">{t("Book Advertisement")}</ButtonLink>
+        </motion.div>
+
+        <ul className="mt-6 flex flex-wrap gap-2" aria-label="Trust badges">
+          {badges.map(({ icon: Icon, label }) => (
+            <motion.li key={label} variants={item} className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs dark:border-[#2a2b30] dark:bg-[#1a1b1f] dark:text-[#d6d7db]">
+              <Icon className="h-3.5 w-3.5 text-[#E11D48]" aria-hidden="true" /> {t(label)}
             </motion.li>
           ))}
         </ul>
-        {/* Right below the CTA buttons on mobile; below the trust badges from sm up. */}
-        <motion.div variants={item} className="order-5 mt-6 block w-full max-w-full sm:order-7 sm:mt-8">
+
+        <motion.div variants={item} className="mt-8 block w-full max-w-full">
           <AdTicker />
         </motion.div>
-        </div>
-      </Card>
+      </div>
+
       <motion.div variants={item}>
-        <QuickBookingWidget />
+        <QuickBookingWidget adType={adType} />
       </motion.div>
     </motion.section>
   );

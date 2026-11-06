@@ -42,11 +42,11 @@ export function TemplateCard({ tpl, index = 0 }: { tpl: Template; index?: number
   const estimate = calculateQuote({ adType: "classified-text", category: tpl.categoryId, selection: { [paper.id]: [flagship.id] }, text: tpl.body }).totals.total;
 
   return (
-    <Card accent={CATEGORY_COLOR[cat.id]} className="flex h-full flex-col p-5 sm:p-6 hover:-translate-y-1">
+    <Card accent={CATEGORY_COLOR[cat.id]} className="flex h-full flex-col p-5 sm:p-6">
       <Badge tone="slate" className="self-start">{tl(cat.name, cat.nameMl)}</Badge>
-      <h3 className="mt-3 text-lg font-bold text-navy-900">{tl(tpl.title, tpl.titleMl)}</h3>
+      <h3 className="mt-3 font-serif text-xl font-bold text-[#0F172A] dark:text-zinc-50">{tl(tpl.title, tpl.titleMl)}</h3>
       <p className="mt-1 text-sm text-zinc-600">{tl(tpl.description, tpl.descriptionMl)}</p>
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 border-t border-dashed border-zinc-400 pt-3 font-mono text-xs text-zinc-500">
         {t("Estimated in {paper} ({edition}):", { paper: pn(paper), edition: place(flagship.name) })}{" "}
         <span className="font-bold text-zinc-950">
           <AnimatedNumber value={estimate} format={(n) => formatINR(n)} />

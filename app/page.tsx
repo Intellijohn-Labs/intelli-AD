@@ -1,15 +1,6 @@
-import { ActiveRateCard } from "@/components/home/active-rate-card";
-import { Hero } from "@/components/home/hero";
-import { HowItWorks, PopularTemplates, Publications } from "@/components/home/sections";
+import { MediaHub } from "@/components/home/media-hub";
 
+/** Home: only the media picker, on the Canvas Cloud page background. Newspaper booking lives at /newspaper. */
 export default function HomePage() {
-  return (
-    <>
-      <Hero />
-      <ActiveRateCard />
-      <Publications />
-      <PopularTemplates />
-      <HowItWorks />
-    </>
-  );
+  return <MediaHub />;
 }

@@ -47,7 +47,7 @@ export function Step4Checkout() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-8 lg:grid-cols-[3fr_2fr]">
       <div className="space-y-6">
-        <section aria-labelledby="sum-h" className="rounded-xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/60">
+        <section aria-labelledby="sum-h" className="rounded-md border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/60">
           <h3 id="sum-h" className="mb-2 text-lg font-bold text-navy-900 dark:text-zinc-50">{t("Order summary")}</h3>
           <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Ad type")}</dt><dd className="font-semibold">{t(getAdType(state.adType).label)}</dd></div>
@@ -86,7 +86,7 @@ export function Step4Checkout() {
           <legend className="mb-2 text-lg font-bold text-navy-900 dark:text-zinc-50">{t("Payment method")}</legend>
           <div className="grid gap-2 sm:grid-cols-3">
             {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((m) => (
-              <label key={m} className={cn("cursor-pointer rounded-lg border px-3 py-3 text-sm font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", method === m ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-zinc-800")}>
+              <label key={m} className={cn("cursor-pointer rounded border px-3 py-3 text-sm font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", method === m ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-zinc-800")}>
                 <input type="radio" value={m} className="sr-only" {...register("paymentMethod")} />
                 {t(PAYMENT_LABEL[m])}
               </label>
@@ -96,7 +96,7 @@ export function Step4Checkout() {
         </fieldset>
       </div>
 
-      <aside className="lg:sticky lg:top-36 lg:self-start">
+      <aside className="lg:sticky lg:top-[152px] lg:self-start">
         <Card className="p-5 sm:p-6">
           <h3 className="mb-3 text-lg font-bold text-navy-900 dark:text-zinc-50">{t("Price breakdown")}</h3>
           <PriceBreakdown quote={quote} adType={state.adType} showEditions />

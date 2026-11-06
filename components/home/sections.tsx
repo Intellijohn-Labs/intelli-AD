@@ -33,7 +33,7 @@ export function Publications() {
           const isMl = n.language === "Malayalam";
           const active = n.id === activeId;
           return (
-            <motion.div key={n.id} whileHover={{ y: -4 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} className="h-full">
+            <motion.div key={n.id} className="h-full">
               <Card accent={brand.primary} className={cn("flex h-full flex-col justify-between p-4 hover:ring-2 hover:ring-[var(--c)]", active && "ring-2 ring-[var(--c)]")} style={{ backgroundColor: `color-mix(in srgb, ${brand.primary} 7%, var(--surface))`, borderLeftColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, borderRightColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, borderBottomColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, boxShadow: active ? `0 0 22px color-mix(in srgb, ${brand.primary} 25%, transparent)` : undefined }}>
                 <button type="button" onClick={() => setActive(n.id)} aria-pressed={active} className="text-left">
                   <span className={cn("flex h-11 items-center leading-tight font-bold", isMl ? "font-clipping text-xl" : "text-lg")} style={{ color: brand.primary }}>
@@ -103,7 +103,7 @@ export function HowItWorks() {
           <li key={s.title}>
             <Card className="h-full p-5 sm:p-6">
               <div className="mb-4 flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-navy-600 to-navy-500 text-lg font-bold text-white">{i + 1}</span>
+                <span className="flex h-10 w-10 items-center justify-center rounded bg-[#0F172A] font-mono text-lg font-bold text-white dark:bg-[#eaeaea] dark:text-[#0F172A]">{i + 1}</span>
                 <s.icon className="h-5 w-5 text-navy-500" aria-hidden="true" />
               </div>
               <h3 className="font-bold text-navy-900">{t(s.title)}</h3>

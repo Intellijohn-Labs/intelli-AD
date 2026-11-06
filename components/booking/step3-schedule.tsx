@@ -45,7 +45,7 @@ export function Step3Schedule() {
         <DatePicker value={state.releaseDate} onChange={(iso) => update({ releaseDate: iso })} now={now} earliest={earliest} max={max} isDisabled={(iso) => !isBookable(iso, paperIds, state.adType, now)} />
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-amber-300/80 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-500/20 p-4">
+          <div className="rounded-md border border-amber-300/80 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-500/20 p-4">
             <p className="flex items-center gap-2 text-sm font-bold text-zinc-900">
               <Clock className="h-4 w-4" aria-hidden="true" /> {t("Earliest print: {date}", { date: formatDate(earliest) })}
             </p>
@@ -59,7 +59,7 @@ export function Step3Schedule() {
           </div>
 
           {state.releaseDate ? (
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800/70">
+            <div className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800/70">
               <p className="mb-2 font-bold">{t("Cut-offs for {date}", { date: formatDate(state.releaseDate) })}</p>
               <ul className="divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 {cutoffs.map((c) => (

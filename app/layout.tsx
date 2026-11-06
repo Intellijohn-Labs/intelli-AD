@@ -1,14 +1,18 @@
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans, Syne } from "next/font/google";
 import type { ReactNode } from "react";
-import { ChromeOnly } from "@/components/layout/chrome-only";
+import { ChromeOnly, HideOnHome } from "@/components/layout/chrome-only";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { NewspaperMastheadBar } from "@/components/layout/newspaper-masthead-bar";
-import { NewspaperWatermark } from "@/components/ui/newspaper-watermark";
-import { ManoramaWatermarkBg } from "@/components/ui/manorama-watermark-bg";
 import { Providers } from "@/components/providers";
 import { T } from "@/context/language-context";
 import "./globals.css";
+
+/** Heavy geometric display face for the logo, headlines and calls to action. */
+const syne = Syne({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-syne", display: "swap" });
+/** Clean geometric sans for body copy and subtitles. */
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "IntelliAd | Smart Newspaper Ad Booking Across Kerala", template: "%s | IntelliAd" },
@@ -18,7 +22,7 @@ export const viewport: Viewport = { themeColor: "#000000", width: "device-width"
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${syne.variable} ${jakarta.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -30,17 +34,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="min-h-screen antialiased">
-        <ChromeOnly>
-          <NewspaperWatermark />
-          <ManoramaWatermarkBg />
-        </ChromeOnly>
         <Providers>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
             <T k="Skip to content" />
           </a>
           <ChromeOnly>
             <Header />
-            <NewspaperMastheadBar />
+            <HideOnHome><NewspaperMastheadBar /></HideOnHome>
           </ChromeOnly>
           <main id="main">{children}</main>
           <ChromeOnly><Footer /></ChromeOnly>

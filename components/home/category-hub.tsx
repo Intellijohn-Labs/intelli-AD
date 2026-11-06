@@ -12,7 +12,9 @@ import { TemplateCard } from "./template-card";
 
 /** Section headlines that differ from the category name. */
 const HEADLINES: Partial<Record<CategoryId, { en: string; ml: string }>> = {
-  obituary: { en: "🕊️ Remembrance / Obituary", ml: "🕊️ ചരമം / ഓർമ്മക്കുറിപ്പുകൾ" },
+  obituary: { en: "🕯️ Obituary / Marana Vartha", ml: "🕯️ മരണവാർത്ത" },
+  remembrance: { en: "🕊️ Remembrance / Death Anniversary", ml: "🕊️ ചരമവാർഷികം / സ്മരണാഞ്ജലി" },
+  tender: { en: "📜 Tender Notice / ദർഘാസ് പരസ്യം", ml: "📜 ടെൻഡർ / ദർഘാസ് പരസ്യം" },
 };
 
 export function CategoryHub() {
@@ -29,7 +31,7 @@ export function CategoryHub() {
             type="button"
             aria-pressed={active === c.id}
             onClick={() => setActive(c.id)}
-            className={cn("rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors", active === c.id ? "border-navy-600 bg-navy-600 text-white" : "border-zinc-300 bg-white text-zinc-700 hover:border-navy-400")}
+            className={cn("rounded border px-3.5 py-1.5 text-sm font-semibold transition-colors", active === c.id ? "border-navy-600 bg-navy-600 text-white" : "border-zinc-300 bg-white text-zinc-700 hover:border-navy-400")}
           >
             {c.nameMl ? tl(c.name, c.nameMl) : c.name}
           </button>

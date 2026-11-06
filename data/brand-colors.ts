@@ -37,5 +37,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   "public-notice": "#D97706",
   "name-change": "#4F46E5",
   obituary: "#475569",
+  remembrance: "#9A3412",
+  tender: "#0E7490",
   business: "#059669",
 };

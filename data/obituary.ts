@@ -26,6 +26,8 @@ export interface ObituaryFields {
   funeralPlace: string;
   /** Demise: bereaved family (spouse, children, in-laws). Anniversary: "remembered by" names. */
   family: string;
+  /** Demise notice: contact number(s) for the family. */
+  contact: string;
   milestone: string;
   /** Anniversary: date of remembrance. */
   remembranceDate: string;
@@ -91,6 +93,7 @@ export const DEFAULT_OBITUARY: ObituaryFields = {
   demiseDate: "", demiseTime: "",
   funeralDate: "", funeralTime: "", funeralPlace: "",
   family: "",
+  contact: "",
   milestone: "1",
   remembranceDate: "",
   tribute: "",
@@ -141,6 +144,7 @@ export function composeObituary(f: ObituaryFields): string {
   if (funeral) lines.push(`സംസ്കാരം: ${funeral}`);
   if (f.family.trim()) lines.push(f.family.trim());
   if (f.tribute.trim()) lines.push(f.tribute.trim());
+  if (f.contact.trim()) lines.push(`ഫോൺ: ${f.contact.trim()}`);
   return lines.join("\n");
 }
 
@@ -149,6 +153,7 @@ export interface ObituaryPreset {
   title: string;
   titleMl: string;
   description: string;
+  kind: ObituaryKind;
   /** Suggested ad type: the display box preset needs a photo. */
   adType: "classified-text" | "classified-display";
   build: (now: Date) => ObituaryFields;
@@ -161,6 +166,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
     title: "Standard demise notice",
     titleMl: "ലളിതമായ മരണവാർത്ത",
     description: "4–6 line classified text ad",
+    kind: "demise",
     adType: "classified-text",
     build: (now) => ({
       ...DEFAULT_OBITUARY,
@@ -169,6 +175,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
       demiseDate: iso(now), demiseTime: "06:30",
       funeralDate: iso(new Date(now.getTime() + 864e5)), funeralTime: "11:00", funeralPlace: "വീട്ടുവളപ്പിൽ",
       family: "ഭാര്യ: സരസ്വതി അമ്മ. മക്കൾ: രമേശ്, സുമ. മരുമക്കൾ: ദീപ, മധു.",
+      contact: "98xxx xxx04",
     }),
   },
   {
@@ -176,6 +183,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
     title: "Display box obituary with photo",
     titleMl: "ഫോട്ടോയോടുകൂടിയ അനുശോചനം",
     description: "Box ad with photo and funeral timetable",
+    kind: "demise",
     adType: "classified-display",
     build: (now) => ({
       ...DEFAULT_OBITUARY,
@@ -192,6 +200,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
     title: "First year remembrance",
     titleMl: "വാർഷിക സ്മരണാഞ്ജലി",
     description: "Memorial with tribute verse",
+    kind: "anniversary",
     adType: "classified-display",
     build: (now) => ({
       ...DEFAULT_OBITUARY,

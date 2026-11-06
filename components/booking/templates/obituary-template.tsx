@@ -1,17 +1,14 @@
 "use client";
 
 import { Flame } from "lucide-react";
-import type { ReactNode } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { BOX_SIZES, composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
-import { getNewspaper } from "@/data/newspapers";
 import { useBooking, type BookingState } from "@/lib/booking-store";
-import { measureText } from "@/lib/pricing";
-import { useBookingQuote } from "@/lib/use-quote";
-import { cn, formatINR } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { PreviewCaption } from "./preview-caption";
 
 const SERIF = { fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", serif' };
-const chip = "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-navy-500";
+const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-navy-500";
 
 /**
  * Composer for the obituary category: pick Marana Vartha (death notice) or Death Anniversary
@@ -20,9 +17,11 @@ const chip = "rounded-full border px-3 py-1.5 text-xs font-semibold transition-c
  */
 export function ObituaryComposer({ onText, onSize }: { onText: (text: string) => void; onSize: (columns: number, heightCm: number) => void }) {
   const { state, update } = useBooking();
-  const f = { ...DEFAULT_OBITUARY, ...state.obituary }; // merge keeps older saved drafts valid
+  // The category decides the notice type: Obituary = death notice, Remembrance = death anniversary.
+  const kind: ObituaryKind = state.categoryId === "remembrance" ? "anniversary" : "demise";
+  const f = { ...DEFAULT_OBITUARY, ...state.obituary, kind }; // merge keeps older saved drafts valid
   const isText = state.adType === "classified-text";
-  const anniv = f.kind === "anniversary";
+  const anniv = kind === "anniversary";
 
   const apply = (next: ObituaryFields) => {
     update({ obituary: next });
@@ -35,33 +34,18 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
     onChange: (e: { target: { value: string } }) => set({ [key]: e.target.value } as Partial<ObituaryFields>),
   });
 
-  const switchKind = (kind: ObituaryKind) => {
-    if (kind === f.kind) return;
-    // Keep the shared fields (name, place, family); anniversaries are memorial boxes, so suggest display.
-    apply({ ...f, kind });
-  };
-
   return (
-    <section aria-labelledby="obit-h" className="space-y-5 rounded-xl border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-slate-600 dark:bg-slate-800/40">
+    <section aria-labelledby="obit-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#2a2b30] dark:bg-slate-800/40">
       <div>
-        <h3 id="obit-h" className="font-bold text-zinc-900 dark:text-white">Marana Vartha / In Memoriam · മരണവാർത്ത &amp; സ്മരണാഞ്ജലി</h3>
+        <h3 id="obit-h" className="font-bold text-zinc-900 dark:text-white">{anniv ? "Death Anniversary / In Memoriam · ചരമവാർഷികം" : "Obituary · മരണവാർത്ത"}</h3>
         <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
       </div>
 
       <div role="group" aria-label="Quick drafts" className="flex flex-wrap gap-2">
-        {OBITUARY_PRESETS.map((p) => (
+        {OBITUARY_PRESETS.filter((p) => p.kind === kind).map((p) => (
           <button key={p.id} type="button" title={p.description} className={cn(chip, "border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-slate-900 dark:text-white")}
-            onClick={() => { apply(p.build(new Date())); if (p.adType !== state.adType && (p.adType === "classified-text" || isText)) update({ adType: p.adType }); }}>
+            onClick={() => { apply({ ...p.build(new Date()), kind }); if (p.adType !== state.adType && (p.adType === "classified-text" || isText)) update({ adType: p.adType }); }}>
             {p.titleMl} <span className="font-normal text-zinc-500">· {p.title}</span>
-          </button>
-        ))}
-      </div>
-
-      <div role="radiogroup" aria-label="Notice type" className="grid grid-cols-2 gap-2">
-        {([["demise", "മരണവാർത്ത", "Death notice"], ["anniversary", "ചരമവാർഷികം", "Death anniversary"]] as const).map(([k, ml, en]) => (
-          <button key={k} type="button" role="radio" aria-checked={f.kind === k} onClick={() => switchKind(k)}
-            className={cn("rounded-lg border px-3 py-2 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.kind === k ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-slate-900")}>
-            {ml}<span className="block text-xs font-normal text-zinc-500">{en}</span>
           </button>
         ))}
       </div>
@@ -119,13 +103,14 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
           <Field id="ob-fdate" label="Funeral date · സംസ്കാരം തീയതി"><Input id="ob-fdate" {...input("funeralDate", "date")} /></Field>
           <Field id="ob-ftime" label="Funeral time · സമയം"><Input id="ob-ftime" {...input("funeralTime", "time")} /></Field>
           <Field id="ob-fplace" label="Funeral / cremation place · സംസ്കാര സ്ഥലം" className="sm:col-span-2"><Input id="ob-fplace" {...input("funeralPlace")} /></Field>
-          <Field id="ob-family" label="Family / bereaved · ബന്ധുക്കൾ" hint="Spouse, children, in-laws · ഭാര്യ/ഭർത്താവ്, മക്കൾ, മരുമക്കൾ" className="sm:col-span-2">
+          <Field id="ob-family" label="Surviving family · ബന്ധുക്കൾ" hint="Spouse, children, in-laws · ഭാര്യ/ഭർത്താവ്, മക്കൾ, മരുമക്കൾ" className="sm:col-span-2">
             <Textarea id="ob-family" rows={2} className="font-clipping" value={f.family} onChange={(e) => set({ family: e.target.value })} />
           </Field>
+          <Field id="ob-contact" label="Contact number(s) · ഫോൺ" className="sm:col-span-2"><Input id="ob-contact" inputMode="tel" {...input("contact")} /></Field>
         </div>
       )}
 
-      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-slate-600">
+      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#2a2b30]">
         <legend className="text-sm font-bold">Photo &amp; box · ഫോട്ടോ</legend>
         {isText ? (
           <p className="text-xs text-zinc-600 dark:text-zinc-300">
@@ -145,7 +130,7 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
             <div role="radiogroup" aria-label="Frame accent" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {FRAME_ACCENTS.map((a) => (
                 <button key={a.id} type="button" role="radio" aria-checked={f.frameAccent === a.id} onClick={() => set({ frameAccent: a.id })}
-                  className={cn("rounded-lg border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-slate-900")}>
+                  className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-slate-900")}>
                   {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
                 </button>
               ))}
@@ -182,7 +167,7 @@ function garlandPoints(round: boolean, w: number, h: number, n: number) {
 }
 
 /** Garland: a ring of flowers around the portrait (black outlines, white petals, so it prints in mono). */
-function Garland({ round, w, h }: { round: boolean; w: number; h: number }) {
+export function Garland({ round, w, h }: { round: boolean; w: number; h: number }) {
   const pts = garlandPoints(round, w, h, round ? 14 : 18);
   return (
     <svg aria-hidden="true" viewBox={`0 0 ${w} ${h}`} className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
@@ -197,7 +182,7 @@ function Garland({ round, w, h }: { round: boolean; w: number; h: number }) {
 }
 
 /** Nilavilakku: Kerala brass lamp with a lit wick. White halo keeps it readable over the photo. */
-function Lamp() {
+export function Lamp() {
   return (
     <svg aria-hidden="true" viewBox="0 0 32 48" className="h-12 w-8" strokeLinejoin="round">
       <g stroke="#fff" strokeWidth="3" paintOrder="stroke" fill="#000">
@@ -237,7 +222,7 @@ function Frame({ url, round, accent }: { url?: string; round: boolean; accent: F
   const pad = accent === "garland" ? 12 : 4;
   return (
     <div className="relative shrink-0 overflow-visible" style={{ width: W + pad * 2, height: H + pad * 2, padding: pad }} aria-hidden={!url}>
-      <div className={cn("h-full w-full overflow-hidden border-2 border-black bg-zinc-100", round && "rounded-full")}>
+      <div className={cn("h-full w-full overflow-hidden border-2 border-[#0F172A] bg-zinc-100", round && "rounded-full")}>
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt="Portrait of the deceased" className="h-full w-full object-cover grayscale" />
@@ -255,14 +240,9 @@ function Frame({ url, round, accent }: { url?: string; round: boolean; accent: F
 
 /** Live Kerala-broadsheet preview of an obituary or remembrance, with line count and cost estimate. */
 export function ObituaryPreview({ state }: { state: BookingState }) {
-  const quote = useBookingQuote(state);
-  const paperId = Object.keys(state.selection).find((k) => state.selection[k].length);
-  const paper = getNewspaper(paperId);
-  const f = { ...DEFAULT_OBITUARY, ...state.obituary };
+  const f = { ...DEFAULT_OBITUARY, ...state.obituary, kind: state.categoryId === "remembrance" ? ("anniversary" as const) : ("demise" as const) };
   const anniv = f.kind === "anniversary";
   const isText = state.adType === "classified-text";
-  const cpl = paper?.rates.charsPerLine ?? 28;
-  const minLines = paper?.rates.textMinLines ?? 3;
 
   const all = state.text.split("\n").map((l) => l.trim()).filter(Boolean);
   const header = all[0];
@@ -270,28 +250,18 @@ export function ObituaryPreview({ state }: { state: BookingState }) {
   const footer = hasFooter ? all[all.length - 1] : null;
   const body = all.slice(1, hasFooter ? -1 : undefined);
 
-  const m = measureText(state.text, cpl);
   const showPhoto = !isText;
   const oneCol = !isText && state.display.columns === 1; // a single column is ~one photo wide, so the portrait sits top-centre
-  const area = state.display.columns * (paper?.rates.colWidthCm ?? 4) * (Number.isFinite(state.display.heightCm) ? state.display.heightCm : 0);
-  const extra = Math.max(0, m.lines - minLines);
-  const tier = extra === 0 ? "Base" : extra <= 3 ? "Standard" : "Extended";
-  let costLine: ReactNode;
-  if (isText) {
-    costLine = `${m.lines} lines · ${tier} tier (${minLines} base${extra ? ` + ${extra} extra at ${formatINR(quote.lines[0]?.rate ?? 0)}/line` : ""})`;
-  } else {
-    costLine = `${state.display.columns} col × ${state.display.heightCm} cm = ${area.toFixed(1)} cm²`;
-  }
 
   return (
     <figure aria-label="Obituary preview" className="mx-auto w-full" style={{ maxWidth: !isText && state.display.columns === 1 ? 240 : !isText && state.display.columns === 2 ? 340 : 384 }}>
       {/* paper-grain keeps the cutting light newsprint (and restores the light zinc scale inside it) in dark mode too */}
-      <div className="paper-grain border-2 border-black bg-[#faf8f5] p-4 text-zinc-950 shadow-sm" style={SERIF}>
+      <div className="paper-grain border-2 border-[#0F172A] bg-[#faf8f5] p-4 text-zinc-950 shadow-sm" style={SERIF}>
         {!header ? (
           <p className="py-6 text-center text-sm text-zinc-400 italic">Your notice appears here as you fill the form…</p>
         ) : (
           <>
-            <h4 className="flex items-center justify-center gap-2 border-b border-black pb-1.5 text-center text-lg leading-snug font-extrabold">
+            <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug font-extrabold">
               {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
               {header}
               {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
@@ -302,14 +272,11 @@ export function ObituaryPreview({ state }: { state: BookingState }) {
                 {body.map((p, i) => <p key={i} className={cn(anniv && i === body.length - 1 && "text-center font-semibold italic")}>{p}</p>)}
               </div>
             </div>
-            {footer && <p className="mt-2 border-t border-black pt-1 text-right text-[13px] font-bold italic">{footer}</p>}
+            {footer && <p className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic">{footer}</p>}
           </>
         )}
       </div>
-      <figcaption className="mt-2 space-y-0.5 text-center text-xs text-zinc-500">
-        <p>{m.chars} characters · {costLine}</p>
-        <p className="font-semibold text-zinc-900">Estimated cost: {formatINR(quote.totals.total)} <span className="font-normal text-zinc-500">incl. GST</span></p>
-      </figcaption>
+      <PreviewCaption state={state} />
     </figure>
   );
 }

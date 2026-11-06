@@ -1,9 +1,11 @@
 import { getTemplate } from "@/data/categories";
 import { DEFAULT_OBITUARY } from "@/data/obituary";
+import { DEFAULT_TENDER, TENDER_TEMPLATE_FIELDS } from "@/data/tender";
 import { getNewspaper } from "@/data/newspapers";
 import type { BookingState } from "./booking-store";
-import type { AdType } from "./types";
+import type { AdType, CategoryId } from "./types";
 
+const CATEGORY_IDS: CategoryId[] = ["matrimonial", "property", "recruitment", "public-notice", "name-change", "obituary", "remembrance", "tender", "business"];
 const AD_TYPES: AdType[] = ["classified-text", "classified-display", "commercial-display"];
 
 type Params = Record<string, string | string[] | undefined>;
@@ -14,6 +16,9 @@ export function buildInitialState(sp: Params): Partial<BookingState> {
   const out: Partial<BookingState> = {};
   const type = first(sp.type) as AdType | undefined;
   if (type && AD_TYPES.includes(type)) out.adType = type;
+
+  const category = first(sp.category) as CategoryId | undefined;
+  if (category && CATEGORY_IDS.includes(category)) out.categoryId = category;
 
   const paper = getNewspaper(first(sp.paper));
   if (paper) {
@@ -33,12 +38,15 @@ export function buildInitialState(sp: Params): Partial<BookingState> {
       out.adType = "classified-display";
       out.obituary = { ...DEFAULT_OBITUARY, kind: "anniversary", milestone: "1" };
     }
+    // Tender templates open with their structured fields so the composer and preview match the card.
+    if (TENDER_TEMPLATE_FIELDS[tpl.id]) out.tender = { ...DEFAULT_TENDER, ...TENDER_TEMPLATE_FIELDS[tpl.id] };
   }
   return out;
 }
 
-export function bookHref(params: { type?: AdType; paper?: string; eds?: string[]; template?: string }) {
+export function bookHref(params: { type?: AdType; category?: CategoryId; paper?: string; eds?: string[]; template?: string }) {
   const q = new URLSearchParams();
+  if (params.category) q.set("category", params.category);
   if (params.type) q.set("type", params.type);
   if (params.paper) q.set("paper", params.paper);
   if (params.eds?.length) q.set("eds", params.eds.join(","));

@@ -6,7 +6,7 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 import { cn } from "@/lib/utils";
 
 export const controlStyles =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-navy-500 focus:outline-2 focus:outline-navy-500/30 aria-[invalid=true]:border-red-500 dark:border-slate-600 dark:bg-[#0f172a] dark:text-white dark:placeholder:text-slate-500";
+  "w-full rounded border border-zinc-400 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-[#0F172A] focus:outline focus:outline-1 focus:outline-[#0F172A]/50 aria-[invalid=true]:border-red-600 dark:border-[#3a3b41] dark:bg-[#121316] dark:text-[#eaeaea] dark:placeholder:text-zinc-500 dark:focus:border-[#eaeaea] dark:focus:outline-[#eaeaea]/50";
 
 export function Field({
   id,
@@ -61,7 +61,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
 }
 
 export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(controlStyles, "pr-8", className)} {...props} />;
+  return <select className={cn(controlStyles, "select-chevron", className)} {...props} />;
 }
 
 /** Accessible on/off switch. */
@@ -79,7 +79,7 @@ export function Switch({
   id: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
+    <div className="flex items-center justify-between gap-4 rounded border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
       <div>
         <label htmlFor={id} className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
           {label}
@@ -93,11 +93,11 @@ export function Switch({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-black" : "bg-zinc-300",
+          "relative h-6 w-11 shrink-0 rounded transition-colors",
+          checked ? "bg-[#0F172A] dark:bg-[#eaeaea]" : "bg-zinc-300",
         )}
       >
-        <motion.span className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow" animate={{ x: checked ? 20 : 0 }} transition={{ type: "spring", stiffness: 600, damping: 28 }} />
+        <motion.span className="absolute top-0.5 left-0.5 h-5 w-5 rounded-sm bg-white shadow-sm dark:bg-[#0F172A]" animate={{ x: checked ? 20 : 0 }} transition={{ duration: 0.15, ease: "easeOut" }} />
       </button>
     </div>
   );

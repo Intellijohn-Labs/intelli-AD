@@ -28,11 +28,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <motion.div
               key={i.id}
               layout
-              initial={{ x: 80, opacity: 0, scale: 0.95 }}
-              animate={{ x: 0, opacity: 1, scale: 1 }}
+              initial={{ x: 24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
               exit={{ x: 60, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 420, damping: 30 }}
-              className="pointer-events-auto flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-3 text-sm font-medium text-white shadow-xl"
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="pointer-events-auto flex items-center gap-2 rounded bg-[#0F172A] px-4 py-3 text-sm font-medium text-white shadow-md dark:bg-[#eaeaea] dark:text-[#0F172A]"
             >
               <Check className="h-4 w-4" aria-hidden="true" /> {i.message}
             </motion.div>

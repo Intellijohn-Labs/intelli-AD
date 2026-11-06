@@ -38,9 +38,9 @@ export function NewspaperPreview({
 
   return (
     <figure aria-label="Newspaper column preview" className="mx-auto w-fit max-w-full">
-      <motion.div animate={controls} className="preview-paper paper-grain font-clipping relative border-2 border-dashed border-zinc-400 bg-[#faf8f5] px-4 pt-3 pb-5 text-zinc-950 shadow-md">
-        <div className="mb-2 border-y border-zinc-800 py-0.5 text-center">
-          <p className="text-sm font-bold">{paperName}</p>
+      <motion.div animate={controls} className="preview-paper paper-grain font-typeset relative border border-zinc-400/70 bg-[#faf8f5] px-4 pt-3 pb-5 text-zinc-950 shadow-sm outline outline-1 -outline-offset-[5px] outline-zinc-400/40">
+        <div className="mb-2 border-y-[3px] border-double border-zinc-800 py-1 text-center">
+          <p className="text-base font-bold tracking-tight">{paperName}</p>
           <p className="text-[10px] font-semibold uppercase">{t("Classifieds")} · {categoryName}</p>
         </div>
         <div className="relative p-3 text-[14px] leading-[1.65]" style={{ width: `min(100%, ${(charsPerLine * 0.68 + 1.5).toFixed(1)}em)` }}>
@@ -98,7 +98,7 @@ export function DisplayPreview({
   const scale = Math.min(maxW / w, 360 / h);
   return (
     <figure aria-label="Display ad size preview" className="mx-auto w-fit max-w-full">
-      <div className="newsprint-texture rounded-sm border border-zinc-400/70 p-4 shadow-[0_6px_20px_-8px_rgba(0,0,0,0.4)]">
+      <div className="newsprint-texture rounded-sm border border-zinc-400/70 p-4 shadow-sm">
         <div
           className="relative flex items-center justify-center overflow-hidden border-2 border-zinc-800 bg-white"
           style={{ width: w * scale, height: h * scale }}

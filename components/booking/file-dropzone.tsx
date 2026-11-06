@@ -8,6 +8,7 @@ import { FieldError } from "@/components/ui/field";
 import { useI18n } from "@/context/language-context";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
+const LOGO_ACCEPT = ".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml";
 
 export function FileDropzone({
   label,
@@ -17,6 +18,7 @@ export function FileDropzone({
   onChange,
   error,
   maxMb = 25,
+  logo = false,
 }: {
   label: string;
   hint?: string;
@@ -25,6 +27,8 @@ export function FileDropzone({
   onChange: (f: FileMeta | null) => void;
   error?: string;
   maxMb?: number;
+  /** Logo mode: accepts PNG, JPG or SVG (no PDF). */
+  logo?: boolean;
 }) {
   const { t } = useI18n();
   const id = useId();
@@ -33,8 +37,8 @@ export function FileDropzone({
 
   const accept = (file?: File) => {
     if (!file) return;
-    const okType = /\.(pdf|jpe?g|png)$/i.test(file.name);
-    if (!okType) return setLocalError(t("Only PDF, JPG or PNG files are supported."));
+    const okType = (logo ? /\.(jpe?g|png|svg)$/i : /\.(pdf|jpe?g|png)$/i).test(file.name);
+    if (!okType) return setLocalError(logo ? t("Only PNG, JPG or SVG logos are supported.") : t("Only PDF, JPG or PNG files are supported."));
     if (file.size > maxMb * 1024 * 1024) return setLocalError(t("File is larger than {mb} MB.", { mb: maxMb }));
     setLocalError(undefined);
     onChange({
@@ -52,7 +56,7 @@ export function FileDropzone({
         {label} {required ? <span className="text-edition">*</span> : <span className="font-normal text-zinc-500">{t("(optional)")}</span>}
       </p>
       {value ? (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-500/20 px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-500/20 px-3 py-2.5">
           <FileText className="h-5 w-5 text-emerald-700 dark:text-emerald-200" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{value.name}</p>
@@ -76,7 +80,7 @@ export function FileDropzone({
             accept(e.dataTransfer.files[0]);
           }}
           className={cn(
-            "flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed px-4 py-5 text-center transition-colors focus-within:outline-2 focus-within:outline-navy-500",
+            "flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed px-4 py-5 text-center transition-colors focus-within:outline-2 focus-within:outline-navy-500",
             dragging ? "border-navy-500 bg-navy-50" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-zinc-800/50",
             err && "border-red-400",
           )}
@@ -84,7 +88,7 @@ export function FileDropzone({
           <Upload className="h-5 w-5 text-navy-600" aria-hidden="true" />
           <span className="text-sm font-medium text-navy-800 dark:text-zinc-100">{t("Click to upload or drag a file here")}</span>
           <span className="text-xs text-zinc-500">{hint ?? t("PDF, JPG or PNG up to {mb} MB", { mb: maxMb })}</span>
-          <input id={id} type="file" accept={ACCEPT} className="sr-only" onChange={(e) => accept(e.target.files?.[0])} />
+          <input id={id} type="file" accept={logo ? LOGO_ACCEPT : ACCEPT} className="sr-only" onChange={(e) => accept(e.target.files?.[0])} />
         </label>
       )}
       <FieldError message={err} />

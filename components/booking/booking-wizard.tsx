@@ -17,6 +17,7 @@ import { getAdType, getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
 import { DisplayPreview, NewspaperPreview } from "./newspaper-preview";
 import { ObituaryPreview } from "./templates/obituary-template";
+import { TenderPreview } from "./templates/tender-template";
 import { PriceBreakdown } from "./price-breakdown";
 import { Confirmation } from "./confirmation";
 import { Step1Selection } from "./step1-selection";
@@ -46,8 +47,8 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
         const active = s.n === current;
         return (
           <li key={s.n} className="flex flex-1 items-center gap-2" aria-current={active ? "step" : undefined}>
-            <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left disabled:cursor-default", done && "hover:bg-navy-50")}>
-              <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold", done ? "border-navy-600 bg-navy-600 text-white" : active ? "border-navy-800 text-navy-800 dark:text-white" : "border-zinc-300 text-zinc-400")}>
+            <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left disabled:cursor-default", done && "hover:bg-navy-50")}>
+              <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded border-2 font-mono text-sm font-bold", done ? "border-navy-600 bg-navy-600 text-white" : active ? "border-navy-800 text-navy-800 dark:text-white" : "border-zinc-300 text-zinc-400")}>
                 {done ? <Check className="h-4 w-4" aria-hidden="true" /> : s.n}
               </span>
               <span className={cn("hidden text-sm font-semibold sm:block", active ? "text-navy-900 dark:text-white" : "text-zinc-500")}>{t(s.label)}</span>
@@ -68,8 +69,10 @@ function LivePreview({ state }: { state: BookingState }) {
   const isText = state.adType === "classified-text";
   return (
     <Card className="p-5 sm:p-6">
-      <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-zinc-500">{t("Live preview")}</h3>
-      {state.categoryId === "obituary" ? (
+      <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#3a3b41]">{t("Live preview")}</h3>
+      {state.categoryId === "tender" ? (
+        <TenderPreview state={state} />
+      ) : state.categoryId === "obituary" || state.categoryId === "remembrance" ? (
         <ObituaryPreview state={state} />
       ) : isText ? (
         <NewspaperPreview text={state.text} charsPerLine={paper?.rates.charsPerLine ?? 28} enhancements={state.enhancements} paperName={paper ? pn(paper) : "The Daily"} categoryName={category ? tl(category.name, category.nameMl) : "General"} minLines={paper?.rates.textMinLines ?? 3} />
@@ -88,20 +91,20 @@ function MiniSummary({ state }: { state: BookingState }) {
   const rule = paper.cutoffs[state.adType];
   return (
     <Card className="p-5 sm:p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>
-      <p className="mt-1 text-3xl font-bold tabular-nums text-navy-900"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></p>
+      <p className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>
+      <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#0F172A] dark:text-zinc-50"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></p>
       <p className="text-xs text-zinc-500">{t("incl. 18% GST")}</p>
-      <dl className="mt-4 space-y-1.5 border-t border-zinc-200 pt-4 text-sm">
+      <dl className="mt-4 space-y-1.5 border-t border-dashed border-zinc-400 pt-4 text-sm">
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Type")}</dt><dd className="font-medium">{t(getAdType(state.adType).short)}</dd></div>
         <div className="flex justify-between gap-3"><dt className="text-zinc-500">{t("Category")}</dt><dd className="text-right font-medium">{(() => { const c = getCategory(state.categoryId); return c ? tl(c.name, c.nameMl) : "—"; })()}</dd></div>
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Editions")}</dt><dd className="font-medium">{quote.editionCount}</dd></div>
       </dl>
       {quote.editionCount > 0 && (
-        <div className="mt-4 border-t border-zinc-200 pt-4">
+        <div className="mt-4 border-t border-dashed border-zinc-400 pt-4">
           <PriceBreakdown quote={quote} adType={state.adType} />
         </div>
       )}
-      <div className="mt-4 border-t border-zinc-200 pt-4 text-xs text-zinc-600">
+      <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
         <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p>
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
@@ -139,7 +142,7 @@ function Shell() {
       </Card>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <Card className={cn("p-5 sm:p-6 lg:p-8", showMini && "lg:col-span-8", !showMini && "lg:col-span-12")}>
-          <h2 className="mb-6 text-2xl font-bold text-navy-900">{state.step}. {t(STEPS[state.step - 1].title)}</h2>
+          <h2 className="mb-6 font-serif text-2xl font-bold text-[#0F172A] dark:text-zinc-50">{state.step}. {t(STEPS[state.step - 1].title)}</h2>
           <AnimatePresence mode="wait" custom={dir} initial={false}>
             <motion.div key={state.step} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }}>
               {stepEl}
@@ -147,7 +150,7 @@ function Shell() {
           </AnimatePresence>
         </Card>
         {showMini && (
-          <div className="space-y-6 lg:sticky lg:top-36 lg:col-span-4 lg:self-start">
+          <div className="space-y-6 lg:sticky lg:top-[152px] lg:col-span-4 lg:self-start">
             {(state.step >= 2 || state.text) && <LivePreview state={state} />}
             <MiniSummary state={state} />
           </div>

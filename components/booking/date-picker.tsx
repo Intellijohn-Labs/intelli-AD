@@ -41,7 +41,7 @@ export function DatePicker({
   const maxView = parseISODate(max);
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-800/70">
+    <div className="w-full max-w-sm rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-800/70">
       <div className="mb-2 flex items-center justify-between">
         <button type="button" onClick={() => shift(-1)} aria-label="Previous month" className="rounded-md p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700">
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -72,7 +72,7 @@ export function DatePicker({
               aria-label={new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(parseISODate(iso)) + (iso === earliest ? " (earliest available)" : "") + (disabled ? " (closed)" : "")}
               onClick={() => onChange(iso)}
               className={cn(
-                "relative aspect-square rounded-lg text-sm font-medium transition-colors",
+                "relative aspect-square rounded text-sm font-medium transition-colors",
                 selected ? "bg-navy-800 text-white" : disabled ? "text-zinc-300 line-through" : "hover:bg-navy-100 dark:hover:bg-zinc-700",
                 iso === earliest && !selected && "ring-2 ring-edition/70",
                 iso === todayISO && !selected && "font-bold text-navy-700",

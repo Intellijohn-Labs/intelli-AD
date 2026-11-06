@@ -12,6 +12,8 @@ export const dict: Record<string, Entry> = {
   Home: ["ഹോം"],
   Publications: ["പത്രങ്ങൾ"],
   "Categories & templates": ["വിഭാഗങ്ങളും ടെംപ്ലേറ്റുകളും"],
+  "Categories & Templates": ["വിഭാഗങ്ങളും ടെംപ്ലേറ്റുകളും"],
+  Newspaper: ["പത്രപ്പരസ്യം"],
   "Book an ad": ["പരസ്യം ബുക്ക് ചെയ്യുക"],
   "Skip to content": ["ഉള്ളടക്കത്തിലേക്ക് പോകുക", sentence],
   "Open menu": ["മെനു തുറക്കുക", null],

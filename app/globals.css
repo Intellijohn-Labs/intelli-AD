@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Page accent, animated when the active publication changes. */
-@property --brand { syntax: "<color>"; inherits: true; initial-value: #1d4ed8; }
+@property --brand { syntax: "<color>"; inherits: true; initial-value: #111827; }
 @property --brand-accent { syntax: "<color>"; inherits: true; initial-value: #06b6d4; }
 :root { transition: --brand 0.6s ease, --brand-accent 0.6s ease; }
 
@@ -22,7 +22,7 @@
   --color-navy-950: color-mix(in oklab, var(--brand) 24%, black);
   --color-paper: #fafafa;
   --color-paper-dark: #f4f4f5;
-  --color-ink: #09090b;
+  --color-ink: #0F172A;
   --color-edition: var(--brand);
   --color-brand: var(--brand);
   --color-brand-accent: var(--brand-accent);
@@ -34,8 +34,9 @@
 html { scroll-behavior: smooth; }
 html { color-scheme: light; }
 body {
-  background: #ffffff;
-  color: var(--color-ink);
+  /* Bright slate canvas with deep charcoal ink; black and red (#E11D48) carry the actions. */
+  background-color: #F8FAFC;
+  color: #0F172A;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -68,15 +69,6 @@ h1, h2, h3, .font-headline { font-family: var(--font-serif); letter-spacing: -0.
 h1, h2 { font-family: var(--font-serif); letter-spacing: -0.015em; }
 h3, h4 { font-family: var(--font-sans); letter-spacing: -0.01em; }
 
-/* Sheen sweep on primary CTAs (transform-only, GPU friendly). */
-.btn-sheen { position: relative; overflow: hidden; isolation: isolate; }
-.btn-sheen::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.35) 50%, transparent 65%);
-  transform: translateX(-130%); animation: sheen 3.4s ease-in-out infinite;
-}
-@keyframes sheen { 0%, 55% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
-
 /* Paper grain for clippings. */
 .paper-grain {
   background-color: #F9F8F5;
@@ -88,10 +80,11 @@ h3, h4 { font-family: var(--font-sans); letter-spacing: -0.01em; }
    brand tints are re-derived for a dark surface. */
 html.dark { color-scheme: dark; }
 .dark {
-  --color-zinc-50: #1e293b;  --color-zinc-100: #243247; --color-zinc-200: #334155;
-  --color-zinc-300: #475569; --color-zinc-400: #64748b; --color-zinc-500: #94a3b8;
-  --color-zinc-600: #cbd5e1; --color-zinc-700: #e2e8f0; --color-zinc-800: #f1f5f9;
-  --color-zinc-900: #f8fafc; --color-zinc-950: #ffffff;
+  /* Neutral archival charcoal (no blue cast): backgrounds → hairlines → paper-white type. */
+  --color-zinc-50: #1a1b1f;  --color-zinc-100: #202125; --color-zinc-200: #2a2b30;
+  --color-zinc-300: #3a3b41; --color-zinc-400: #64656c; --color-zinc-500: #9a9ba2;
+  --color-zinc-600: #bdbec4; --color-zinc-700: #d6d7db; --color-zinc-800: #e6e6e9;
+  --color-zinc-900: #f1f1f3; --color-zinc-950: #ffffff;
   --color-navy-50: color-mix(in oklab, var(--brand) 16%, #0b1020);
   --color-navy-100: color-mix(in oklab, var(--brand) 24%, #0b1020);
   --color-navy-200: color-mix(in oklab, var(--brand) 38%, #0b1020);
@@ -102,11 +95,11 @@ html.dark { color-scheme: dark; }
   --color-navy-900: color-mix(in oklab, var(--brand) 22%, white);
   --color-navy-950: color-mix(in oklab, var(--brand) 12%, white);
 }
-.dark body { background: #0f172a; color: #f1f5f9; }
+.dark body { background-color: #121316; background-image: none; color: #eaeaea; }
 /* Surfaces that were white become deep slate. */
-.dark .bg-white { background-color: #1e293b; }
-.dark [class*="bg-white/"] { background-color: rgb(30 41 59 / 0.9); }
-.dark .to-white { --tw-gradient-to: #1e293b; }
+.dark .bg-white { background-color: #1a1b1f; }
+.dark [class*="bg-white/"] { background-color: #1a1b1f; }
+.dark .to-white { --tw-gradient-to: #1a1b1f; }
 .dark .border-white\/60 { border-color: rgb(255 255 255 / 0.1); }
 .dark input, .dark textarea, .dark select { color-scheme: dark; }
 /* Newspaper clippings and previews stay light paper in dark mode. */
@@ -131,12 +124,114 @@ html.dark { color-scheme: dark; }
 
 /* Surface colour used to mix pastel tints; adapts to the theme. */
 :root { --surface: #ffffff; }
-.dark { --surface: #1e293b; }
+.dark { --surface: #1a1b1f; }
 
-/* Live ad preview: newsprint in light mode, dark column in dark mode. */
+/* Live ad preview: always newsprint, in both themes. */
 .preview-paper { background-color: #F9F8F5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .dark .preview-paper { background-image: none; }
 
 /* Hide scrollbars on horizontally scrolling tab strips (still scrollable by touch / wheel / drag). */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Editorial ruled dividers. */
+.rule-double { border-top: 3px double #111; }
+.dark .rule-double { border-top-color: #3a3b41; }
+
+/* Footer tide: slow horizontal drift of the layered waves (each layer sets its own duration/delay). */
+@keyframes wave { 0% { transform: translateX(0); } 100% { transform: translateX(-6%); } }
+.wave-layer { animation: wave 12s ease-in-out infinite alternate; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .wave-layer { animation: none !important; } }
+
+/* ───────────── Media-card illustrations: transform/opacity-only micro-animations ─────────────
+   --amp scales every motion; it eases up when the card (.group) is hovered. */
+@property --amp { syntax: "<number>"; inherits: true; initial-value: 1; }
+.art-root { --amp: 1; transition: --amp 0.35s ease-out; }
+.group:hover .art-root { --amp: 1.9; }
+.art-anim { transform-box: fill-box; transform-origin: center; animation-duration: 4s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; will-change: transform, opacity; }
+
+@keyframes art-float { 0%, 100% { transform: rotate(calc(-1deg * var(--amp))) translate3d(0, 0, 0); } 50% { transform: rotate(calc(1.5deg * var(--amp))) translate3d(0, calc(-3px * var(--amp)), 0); } }
+@keyframes art-draw { 0% { transform: scaleX(0); } 35%, 80% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+@keyframes art-click {
+  0%, 8% { transform: translate3d(calc(16px * var(--amp)), calc(14px * var(--amp)), 0) scale(1); opacity: 0; }
+  30% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+  42% { transform: translate3d(0, 0, 0) scale(0.9); opacity: 1; }
+  52% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+  88% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+}
+@keyframes art-tile { 0%, 100% { transform: translate3d(0, 0, 0); opacity: 1; } 50% { transform: translate3d(0, calc(-2px * var(--amp)), 0); opacity: 0.7; } }
+@keyframes art-ripple { 0% { transform: scale(0.7); opacity: 0; } 30% { opacity: 0.9; } 100% { transform: scale(calc(1 + 0.45 * var(--amp))); opacity: 0; } }
+@keyframes art-vibrate { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(calc(7deg * var(--amp))); } 75% { transform: rotate(calc(-7deg * var(--amp))); } }
+@keyframes art-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes art-clap { 0%, 55%, 100% { transform: rotate(-12deg); } 68% { transform: rotate(calc(-12deg * var(--amp) - 4deg)); } 78% { transform: rotate(0deg); } 86% { transform: rotate(-3deg); } 92% { transform: rotate(0deg); } }
+@keyframes art-halo { 0% { transform: scale(0.8); opacity: 0.55; } 100% { transform: scale(calc(1.3 + 0.4 * var(--amp))); opacity: 0; } }
+@keyframes art-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(calc(1 + 0.12 * var(--amp))); } }
+@keyframes art-scan { 0% { transform: translate3d(0, -120%, 0); } 100% { transform: translate3d(0, 520%, 0); } }
+@keyframes art-ring { 0% { transform: scale(0.3); opacity: 0.9; } 100% { transform: scale(calc(1.6 + 0.8 * var(--amp))); opacity: 0; } }
+@keyframes art-roll { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(calc(2px * var(--amp)), calc(-1.4px * var(--amp)), 0); } }
+@keyframes art-shine { 0% { transform: translate3d(-160%, 0, 0) skewX(-14deg); } 55%, 100% { transform: translate3d(360%, 0, 0) skewX(-14deg); } }
+@keyframes art-beam { 0%, 100% { opacity: 0.35; } 7% { opacity: 0.12; } 11% { opacity: 0.45; } 52% { opacity: 0.28; } 58% { opacity: 0.42; } }
+
+/* Static fallbacks: no looping motion when the user prefers reduced motion. */
+@media (prefers-reduced-motion: reduce) { .art-anim { animation: none !important; } .art-ring, .art-halo { display: none; } }
+
+/* ───────────── Editorial fountain-pen cursors ───────────── */
+/* Default: ink-black nib with a soft blue barrel. Hotspot is the nib tip (2 2). */
+html, body {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%230246f1' fill-opacity='0.15'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1' fill='%230246f1'/%3E%3C/svg%3E") 2 2, auto !important;
+}
+
+/* Interactive: a bolder, blue writing nib over buttons, cards, links and form fields. */
+a, button, [role="button"], input, select, textarea, .cursor-pointer {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%230246f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%230246f1' fill-opacity='0.3'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1.5' fill='%230246f1'/%3E%3C/svg%3E") 2 2, pointer !important;
+}
+
+/* ───────────── Newspaper booking surface ───────────── */
+/* Typeset Malayalam/English classified copy: a bookish serif, like a column of print. */
+.font-typeset { font-family: "Noto Serif Malayalam", "Noto Serif", Georgia, "Times New Roman", serif; letter-spacing: normal; }
+
+/* Native selects with a clean chevron instead of the OS arrow. */
+.select-chevron {
+  appearance: none; background-repeat: no-repeat; background-position: right 0.85rem center; background-size: 1rem; padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+.dark .select-chevron {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bdbec4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Ink-black range slider: slim track, round thumb with a white ring. */
+input[type="range"].range-ink { appearance: none; height: 1.5rem; background: transparent; cursor: pointer; }
+input[type="range"].range-ink::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, #111827 var(--fill, 0%), #e2e8f0 var(--fill, 0%)); }
+input[type="range"].range-ink::-moz-range-track { height: 6px; border-radius: 999px; background: #e2e8f0; }
+input[type="range"].range-ink::-moz-range-progress { height: 6px; border-radius: 999px; background: #111827; }
+input[type="range"].range-ink::-webkit-slider-thumb { appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 999px; background: #111827; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35); }
+input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; border-radius: 999px; background: #111827; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35); }
+.dark input[type="range"].range-ink::-webkit-slider-runnable-track { background: linear-gradient(to right, #eaeaea var(--fill, 0%), #3a3b41 var(--fill, 0%)); }
+.dark input[type="range"].range-ink::-moz-range-progress { background: #eaeaea; }
+.dark input[type="range"].range-ink::-moz-range-track { background: #3a3b41; }
+.dark input[type="range"].range-ink::-webkit-slider-thumb, .dark input[type="range"].range-ink::-moz-range-thumb { background: #eaeaea; border-color: #121316; }
+
+/* ───────────── Dark theme cursors: crisp white pen, luminous cyan accent ─────────────
+   `.dark` is set on <html> by next-themes; these out-rank the light rules above on specificity. */
+.dark,
+.dark body,
+html.dark,
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%2338bdf8' fill-opacity='0.3'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1' fill='%2338bdf8'/%3E%3C/svg%3E") 2 2, auto !important;
+}
+
+.dark a,
+.dark button,
+.dark [role="button"],
+.dark input,
+.dark select,
+.dark textarea,
+.dark .cursor-pointer,
+html.dark a,
+html.dark button,
+html[data-theme="dark"] a,
+html[data-theme="dark"] button {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%2338bdf8' fill-opacity='0.45'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1.5' fill='%23ffffff'/%3E%3C/svg%3E") 2 2, pointer !important;
+}

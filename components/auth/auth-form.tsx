@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 
 const OTP_LEN = 6;
 const RESEND_SECONDS = 30;
-const ring = "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50";
-const inputCls = cn("w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 aria-[invalid=true]:border-red-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white", ring);
-const primaryBtn = "flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all hover:bg-indigo-700 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-60";
+const ring = "focus:border-[#0F172A] focus:outline focus:outline-1 focus:outline-[#0F172A]/50 dark:focus:border-[#eaeaea]";
+const inputCls = cn("w-full rounded border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 aria-[invalid=true]:border-red-500 dark:border-[#3a3b41] dark:bg-[#121316] dark:text-white", ring);
+const primaryBtn = "flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#0F172A] text-sm font-semibold text-white transition-colors hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F172A] disabled:opacity-60 dark:bg-[#eaeaea] dark:text-[#0F172A] dark:hover:bg-white";
 /** Dev builds accept any 10-digit number, any OTP of 4+ digits and any email/password. */
 const DEV = process.env.NODE_ENV !== "production";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -75,7 +75,7 @@ function OtpInput({ value, onChange, error, disabled }: { value: string; onChang
             setAt(i, c);
             if (c && i < OTP_LEN - 1) refs.current[i + 1]?.focus();
           }}
-          className={cn("h-12 w-full min-w-0 rounded-lg border bg-white text-center text-xl font-bold text-zinc-900 shadow-sm transition dark:bg-slate-900 dark:text-white", ring, error ? "border-red-500" : d ? "border-indigo-500" : "border-zinc-300 dark:border-slate-600")}
+          className={cn("h-12 w-full min-w-0 rounded border bg-white text-center text-xl font-bold text-zinc-900 shadow-sm transition dark:bg-[#121316] dark:text-white", ring, error ? "border-red-500" : d ? "border-zinc-500" : "border-zinc-300 dark:border-[#3a3b41]")}
         />
       ))}
     </motion.div>
@@ -126,7 +126,7 @@ function PhoneFlow({ onDone, onError }: { onDone: (u: AuthUser) => void; onError
         <div>
           <label htmlFor="auth-phone" className="mb-1.5 block text-sm font-semibold text-zinc-800 dark:text-zinc-100">Mobile number</label>
           <div className="flex gap-2">
-            <span className="flex items-center rounded-lg border border-zinc-300 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700 dark:border-slate-600 dark:bg-slate-800 dark:text-zinc-200">+91</span>
+            <span className="flex items-center rounded border border-zinc-300 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700 dark:border-[#3a3b41] dark:bg-[#202125] dark:text-zinc-200">+91</span>
             <input
               id="auth-phone" type="tel" inputMode="numeric" autoComplete="tel-national" autoFocus
               placeholder="98765 43210" value={phone} aria-invalid={!!error} aria-describedby={error ? "auth-phone-err" : undefined}
@@ -145,7 +145,7 @@ function PhoneFlow({ onDone, onError }: { onDone: (u: AuthUser) => void; onError
 
   return (
     <div className="space-y-4">
-      <button type="button" onClick={() => { setStep("number"); setError(""); }} className="flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-indigo-700">
+      <button type="button" onClick={() => { setStep("number"); setError(""); }} className="flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-[#0F172A] dark:text-[#eaeaea]">
         <ArrowLeft className="h-3.5 w-3.5" /> Change number
       </button>
       <p className="text-sm text-zinc-600 dark:text-zinc-300">Enter the 6-digit code sent to <strong className="text-zinc-900 dark:text-white">+91 {phone}</strong></p>
@@ -154,11 +154,11 @@ function PhoneFlow({ onDone, onError }: { onDone: (u: AuthUser) => void; onError
       <button type="button" disabled={busy || otp.length < (DEV ? 4 : OTP_LEN)} onClick={() => void verify(otp)} className={primaryBtn}>Verify &amp; sign in</button>
       <div className="flex items-center justify-between text-sm">
         {busy ? (
-          <span className="flex items-center gap-2 text-indigo-700"><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</span>
+          <span className="flex items-center gap-2 text-[#0F172A] dark:text-[#eaeaea]"><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</span>
         ) : left > 0 ? (
           <span className="text-zinc-500">Resend OTP in <span className="font-semibold tabular-nums">0:{String(left).padStart(2, "0")}</span></span>
         ) : (
-          <button type="button" onClick={() => void sendOtp()} className="font-semibold text-indigo-700 hover:underline">Resend OTP</button>
+          <button type="button" onClick={() => void sendOtp()} className="font-semibold text-[#0F172A] dark:text-[#eaeaea] hover:underline">Resend OTP</button>
         )}
         <span className="text-xs text-zinc-400">Dev mode: any 4+ digit code works</span>
       </div>
@@ -206,7 +206,7 @@ function EmailFlow({ onDone }: { onDone: (u: AuthUser) => void }) {
       </button>
       <p className="text-center text-sm text-zinc-600 dark:text-zinc-300">
         {signup ? "Already have an account?" : "New to IntelliAd?"}{" "}
-        <button type="button" onClick={() => { setSignup((s) => !s); setErrs({}); }} className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
+        <button type="button" onClick={() => { setSignup((s) => !s); setErrs({}); }} className="font-semibold text-[#0F172A] underline-offset-2 hover:underline dark:text-[#eaeaea]">
           {signup ? "Sign in" : "Create one"}
         </button>
       </p>
@@ -238,21 +238,21 @@ export function AuthForm({ callbackUrl }: { callbackUrl?: string | null }) {
   return (
     <div className="space-y-5">
       {callbackUrl && !alert && (
-        <div role="status" className="flex items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-900">
+        <div role="status" className="flex items-start gap-2 rounded border border-dashed border-zinc-400 bg-transparent px-3 py-2 text-xs font-medium text-zinc-800">
           <Info className="mt-0.5 h-4 w-4 shrink-0" /> Please sign in to continue.
         </div>
       )}
       {alert && (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
+        <div role="alert" className="flex items-start gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {alert}
         </div>
       )}
 
-      <div role="tablist" aria-label="Sign-in method" className="relative grid grid-cols-2 rounded-lg bg-zinc-100 p-1 text-sm font-semibold dark:bg-slate-800">
+      <div role="tablist" aria-label="Sign-in method" className="relative grid grid-cols-2 rounded bg-zinc-100 p-1 text-sm font-semibold dark:bg-[#202125]">
         {([["phone", "Phone + OTP", Phone], ["email", "Email", Mail]] as const).map(([id, label, Icon]) => (
           <button key={id} role="tab" type="button" aria-selected={tab === id} onClick={() => setTab(id)}
-            className={cn("relative flex items-center justify-center gap-2 rounded-md py-2 transition-colors", tab === id ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-500 hover:text-zinc-800")}>
-            {tab === id && <motion.span layoutId="auth-tab" aria-hidden="true" className="absolute inset-0 rounded-md bg-white shadow dark:bg-slate-700" transition={{ type: "spring", stiffness: 450, damping: 34 }} />}
+            className={cn("relative flex items-center justify-center gap-2 rounded-md py-2 transition-colors", tab === id ? "text-[#0F172A] dark:text-[#eaeaea]" : "text-zinc-500 hover:text-zinc-800")}>
+            {tab === id && <motion.span layoutId="auth-tab" aria-hidden="true" className="absolute inset-0 rounded-md bg-white shadow-sm dark:bg-[#202125]" transition={{ type: "spring", stiffness: 450, damping: 34 }} />}
             <span className="relative flex items-center gap-2"><Icon className="h-4 w-4" />{label}</span>
           </button>
         ))}
@@ -265,21 +265,21 @@ export function AuthForm({ callbackUrl }: { callbackUrl?: string | null }) {
       </AnimatePresence>
 
       <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-        <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 rounded border-zinc-300 accent-indigo-600 focus-visible:outline-2 focus-visible:outline-indigo-500" />
+        <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 rounded border-zinc-300 accent-[#0F172A] focus-visible:outline-2 focus-visible:outline-zinc-500" />
         Remember me for 30 days
       </label>
 
       <div className="flex items-center gap-3 text-xs text-zinc-400" aria-hidden="true">
-        <span className="h-px flex-1 bg-zinc-200 dark:bg-slate-700" /> or <span className="h-px flex-1 bg-zinc-200 dark:bg-slate-700" />
+        <span className="h-px flex-1 bg-zinc-200 dark:bg-[#202125]" /> or <span className="h-px flex-1 bg-zinc-200 dark:bg-[#202125]" />
       </div>
 
       <button type="button" onClick={() => void google()} disabled={googleBusy}
-        className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 bg-white text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700">
+        className="flex h-11 w-full items-center justify-center gap-3 rounded border border-zinc-300 bg-white text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 disabled:opacity-60 dark:border-[#3a3b41] dark:bg-[#202125] dark:text-white dark:hover:bg-slate-700">
         {googleBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleG />} Continue with Google
       </button>
 
       <button type="button" onClick={() => done({ name: "Agency Partner", identifier: "demo@intelliad.in", method: "email" })}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-indigo-500 bg-indigo-50 text-sm font-semibold text-indigo-800 transition hover:bg-indigo-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300">
+        className="flex h-11 w-full items-center justify-center gap-2 rounded border border-dashed border-zinc-500 bg-transparent text-sm font-semibold  transition  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-500 text-zinc-800 hover:bg-black/5">
         <Zap className="h-4 w-4" /> Quick Demo Sign-In
       </button>
     </div>

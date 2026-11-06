@@ -67,7 +67,7 @@ function Clipping({ ad, index }: { ad: Ad; index: number }) {
       ) : (
         <Paperclip aria-hidden="true" className="absolute -top-3 right-6 h-6 w-6 rotate-12 text-zinc-500 dark:text-zinc-400" />
       )}
-      <div className="font-clipping">
+      <div className="font-typeset">
         <div className="flex items-center justify-between gap-2 border-y border-zinc-800 py-0.5 dark:border-zinc-300">
           <span className="text-sm leading-tight text-navy-800 dark:text-navy-400" style={paper.style}>{paper.label}</span>
           <span className="rounded-sm bg-zinc-900 px-1.5 py-px text-[10px] font-bold tracking-wider text-white uppercase dark:bg-zinc-100 dark:text-zinc-900">{ad.category}</span>

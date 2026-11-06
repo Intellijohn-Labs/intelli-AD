@@ -17,6 +17,7 @@ import { composeSchema, MAX_TEXT_CHARS, PLACEHOLDER_RE, requiredDocIds, type Com
 import { cn } from "@/lib/utils";
 import { FileDropzone } from "./file-dropzone";
 import { ObituaryComposer } from "./templates/obituary-template";
+import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
 
 const COLUMN_OPTIONS = [
@@ -33,7 +34,8 @@ export function Step2Compose() {
   const category = getCategory(state.categoryId);
   const docs = category?.documents ?? [];
   const isText = state.adType === "classified-text";
-  const isObituary = state.categoryId === "obituary";
+  const isObituary = state.categoryId === "obituary" || state.categoryId === "remembrance";
+  const isTender = state.categoryId === "tender";
   const paperIds = Object.keys(state.selection).filter((k) => state.selection[k].length);
   const paper = getNewspaper(paperIds[0]);
   const rates = paper?.rates;
@@ -89,6 +91,33 @@ export function Step2Compose() {
             <ObituaryComposer
               onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
               onSize={(c, h) => { setValue("columns", c, { shouldValidate: true }); setValue("heightCm", h, { shouldValidate: true }); }}
+            />
+          )}
+          {isTender && (
+            <TenderComposer
+              onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
+              onSize={(c, h) => { setValue("columns", c, { shouldValidate: true }); setValue("heightCm", h, { shouldValidate: true }); }}
+              logoSlot={
+                <Controller
+                  control={control}
+                  name="artwork"
+                  render={({ field }) => (
+                    <FileDropzone
+                      logo
+                      label="Organisation / department logo"
+                      required={!isText}
+                      hint="PNG, JPG or SVG · shown at the top of the notice · up to 25 MB"
+                      value={field.value}
+                      onChange={(f) => {
+                        field.onChange(f);
+                        // A logo makes this a display ad (billed by size), so move it off the per-line text rate.
+                        if (f && isText) update({ adType: "classified-display" });
+                      }}
+                      error={errors.artwork?.message}
+                    />
+                  )}
+                />
+              }
             />
           )}
           {isText ? (
@@ -151,7 +180,7 @@ export function Step2Compose() {
                 <legend className="mb-2 text-sm font-bold">{t("Ad size")}</legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {COLUMN_OPTIONS.map((o) => (
-                    <label key={o.n} className={cn("cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", v.columns === o.n ? "border-navy-600 bg-gradient-to-r from-navy-600 to-navy-500 text-white" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-zinc-800")}>
+                    <label key={o.n} className={cn("cursor-pointer rounded border px-3 py-2 text-center text-sm font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", v.columns === o.n ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-zinc-800")}>
                       <input type="radio" className="sr-only" checked={v.columns === o.n} onChange={() => setValue("columns", o.n, { shouldValidate: true })} />
                       {t(o.label)}
                     </label>
@@ -175,7 +204,7 @@ export function Step2Compose() {
                 <legend className="mb-2 text-sm font-bold">{t("Colour mode")}</legend>
                 <div className="grid grid-cols-2 gap-2">
                   {(["bw", "color"] as const).map((c) => (
-                    <label key={c} className={cn("cursor-pointer rounded-lg border px-3 py-2.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", v.colorMode === c ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-zinc-800")}>
+                    <label key={c} className={cn("cursor-pointer rounded border px-3 py-2.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", v.colorMode === c ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-zinc-800")}>
                       <input type="radio" className="sr-only" checked={v.colorMode === c} onChange={() => setValue("colorMode", c)} />
                       <span className="font-semibold">{c === "bw" ? t("Black & white") : t("Full colour")}</span>
                       <span className="block text-xs text-zinc-500">{c === "bw" ? t("Standard rate") : t("+{pct}% colour premium", { pct: rates?.colorPremiumPct ?? 40 })}</span>
@@ -184,18 +213,18 @@ export function Step2Compose() {
                 </div>
               </fieldset>
 
-              <Controller
+              {!isTender && <Controller
                 control={control}
                 name="artwork"
                 render={({ field }) => (
                   <FileDropzone label={isObituary ? t("Portrait photo / artwork") : t("Artwork")} required hint={t("PDF, JPG or PNG · print-ready at 300 dpi · up to 25 MB")} value={field.value} onChange={field.onChange} error={errors.artwork?.message} />
                 )}
-              />
+              />}
             </>
           )}
 
           {docs.length > 0 && (
-            <section aria-labelledby="docs-h" className="rounded-xl border border-amber-300/70 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-500/20 p-4">
+            <section aria-labelledby="docs-h" className="rounded-md border border-amber-300/70 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-500/20 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 id="docs-h" className="font-bold text-amber-950 dark:text-amber-200">
                   {t("Supporting documents — {category}", { category: tl(category?.name ?? "", category?.nameMl) })}

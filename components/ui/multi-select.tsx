@@ -71,7 +71,7 @@ export function MultiSelect({
         <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")} aria-hidden="true" />
       </button>
       {open && (
-        <div id={panelId} role="group" aria-label={label} className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-zinc-200 bg-white p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+        <div id={panelId} role="group" aria-label={label} className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-md border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
           <div className="flex justify-between px-2 pb-1 text-xs font-semibold">
             <button type="button" className="text-navy-700 hover:underline dark:text-navy-300" onClick={() => onChange(options.map((o) => o.value))}>
               {t("Select all")}

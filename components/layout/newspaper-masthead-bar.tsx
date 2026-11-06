@@ -36,65 +36,60 @@ export function NewspaperMastheadBar() {
   }, [activeId]);
 
   return (
-    <div className="sticky top-16 z-30 border-b border-zinc-200/90 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-2 sm:px-6 lg:px-8">
-        <span className="hidden shrink-0 text-[11px] font-bold tracking-[0.18em] text-zinc-500 uppercase lg:block">{t("Publication")}</span>
-        {/* Capsule track: the soft backdrop stays put while the tabs inside scroll under faded edges. */}
-        {/* NB: the app's dark mode inverts the zinc scale, so dark-mode colours here are explicit hex (real zinc-300/800/900…). */}
-        <div className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-100/80 px-2 py-1.5 backdrop-blur-md dark:border-[#27272a] dark:bg-[rgba(24,24,27,0.8)]">
-          <div
-            role="radiogroup"
-            aria-label="Select publication"
-            className="no-scrollbar -my-2 flex touch-pan-x snap-x snap-proximity items-center gap-2 overflow-x-auto px-1 py-2 overscroll-x-contain scroll-smooth [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_right,transparent,#000_24px,#000_calc(100%-24px),transparent)]"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {MASTHEADS.map(({ id, style }) => {
-              const paper = getNewspaper(id);
-              if (!paper) return null;
-              const active = id === activeId;
-              const brand = brandFor(id).primary;
-              return (
-                <button
-                  key={id}
-                  ref={(el) => {
-                    refs.current[id] = el;
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  aria-label={paper.name}
-                  title={paper.name}
-                  onClick={() => setActive(id)}
-                  className={cn(
-                    "relative flex shrink-0 snap-center items-center gap-2 rounded-xl whitespace-nowrap antialiased transition-all duration-200 ease-out will-change-transform focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-navy-500",
-                    active
-                      ? "z-10 -translate-y-0.5 scale-105 px-5 py-2.5 text-base font-bold text-[#09090b] dark:text-white"
-                      : "scale-100 px-4 py-2 text-sm font-semibold text-[#52525b] opacity-80 hover:bg-white/60 hover:text-[#09090b] hover:opacity-100 dark:text-[#d4d4d8] dark:hover:bg-[rgba(63,63,70,0.5)] dark:hover:text-white",
-                  )}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="activePublicationIndicator"
-                      aria-hidden="true"
-                      className="absolute inset-0 rounded-xl border border-transparent bg-[#ffffff] shadow-lg shadow-black/10 ring-1 ring-black/5 dark:border-[#3f3f46] dark:bg-[#27272a] dark:shadow-black/40 dark:ring-0"
-                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                    />
-                  )}
-                  {/* Miniature monogram (typographic, not the registered logo). Dark mode swaps the deep brand colour for a light tint of it. */}
-                  <span
+    <div id="publication-bar" className="sticky top-[68px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#2a2b30] dark:bg-[#121316]/95">
+      <div className="mx-auto flex max-w-[1500px] items-center gap-4 px-6 py-3 md:px-12">
+        <span className="hidden shrink-0 font-mono text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase lg:block">{t("Publication")}</span>
+        {/* Tactile publication chips: white pills; the chosen paper becomes a solid ink pill with a sliding highlight. */}
+        <div
+          role="radiogroup"
+          aria-label="Select publication"
+          className="no-scrollbar -my-1 flex min-w-0 flex-1 touch-pan-x snap-x snap-proximity items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_right,transparent,#000_16px,#000_calc(100%-16px),transparent)]"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {MASTHEADS.map(({ id, style }) => {
+            const paper = getNewspaper(id);
+            if (!paper) return null;
+            const active = id === activeId;
+            const brand = brandFor(id).primary;
+            return (
+              <button
+                key={id}
+                ref={(el) => {
+                  refs.current[id] = el;
+                }}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-label={paper.name}
+                title={paper.name}
+                onClick={() => setActive(id)}
+                className={cn(
+                  "relative flex shrink-0 snap-center items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm whitespace-nowrap antialiased transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500",
+                  active
+                    ? "border-transparent text-white dark:text-slate-900"
+                    : "border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-slate-400 dark:border-[#2a2b30] dark:bg-[#1a1b1f] dark:text-[#d6d7db] dark:hover:border-[#5c5d64]",
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="activePublicationIndicator"
                     aria-hidden="true"
-                    className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--b)] text-[13px] leading-none font-extrabold text-white dark:bg-[color-mix(in_srgb,var(--b)_40%,white)] dark:text-[#0f172a]"
-                    style={{ "--b": brand, ...style, fontWeight: 800, fontStyle: "normal", letterSpacing: 0, WebkitTextStroke: undefined } as CSSProperties}
-                  >
-                    {Array.from(paper.nameMl)[0]}
-                  </span>
-                  <span className="relative" style={{ ...style, fontWeight: active ? 800 : 600, letterSpacing: "normal", WebkitTextStroke: undefined }}>
-                    {paper.nameMl}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                    className="absolute inset-0 rounded-full bg-slate-900 shadow-sm ring-2 ring-slate-900/10 dark:bg-[#eaeaea] dark:ring-white/10"
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                  />
+                )}
+                {/* Mini masthead badge in the paper's own colour (typographic, not the registered logo) */}
+                <span
+                  aria-hidden="true"
+                  className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px] leading-none font-extrabold text-white ring-1 ring-white/30"
+                  style={{ background: brand, ...style, fontWeight: 800, fontStyle: "normal", letterSpacing: 0, WebkitTextStroke: undefined }}
+                >
+                  {Array.from(paper.nameMl)[0]}
+                </span>
+                <span className="relative" style={{ ...style, fontWeight: active ? 800 : 600, letterSpacing: "normal", WebkitTextStroke: undefined }}>{paper.nameMl}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

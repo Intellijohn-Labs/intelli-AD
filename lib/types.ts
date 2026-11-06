@@ -7,6 +7,8 @@ export type CategoryId =
   | "public-notice"
   | "name-change"
   | "obituary"
+  | "remembrance"
+  | "tender"
   | "business";
 
 export interface Enhancements {
