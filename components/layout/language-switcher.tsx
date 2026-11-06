@@ -12,7 +12,7 @@ const OPTIONS: { id: Lang; label: string; aria: string }[] = [
 export function LanguageSwitcher({ className }: { className?: string }) {
   const { lang, setLang } = useI18n();
   return (
-    <div role="group" aria-label="Language" className={cn("inline-flex items-center rounded-full bg-slate-100 p-1 text-xs font-semibold dark:bg-[#202125]", className)}>
+    <div role="group" aria-label="Language" className={cn("inline-flex items-center rounded-full bg-slate-100 p-1 text-xs font-semibold dark:bg-[#17284F]", className)}>
       {OPTIONS.map((o) => (
         <button
           key={o.id}
@@ -23,8 +23,8 @@ export function LanguageSwitcher({ className }: { className?: string }) {
           className={cn(
             "rounded-full transition-all",
             lang === o.id
-              ? "bg-white px-2.5 py-1 text-slate-900 shadow-xs dark:bg-[#2a2b30] dark:text-white"
-              : "px-2 py-1 text-slate-500 hover:text-slate-800 dark:text-[#9a9ba2] dark:hover:text-white",
+              ? "bg-white px-2.5 py-1 text-slate-900 shadow-xs dark:bg-[#1F2F57] dark:text-white"
+              : "px-2 py-1 text-slate-500 hover:text-slate-800 dark:text-[#E2E8F0] dark:hover:text-white",
           )}
         >
           {o.label}

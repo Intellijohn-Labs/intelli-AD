@@ -15,14 +15,19 @@ function hasSession(request: NextRequest) {
 }
 
 export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
-  if (pathname === "/login" || pathname.startsWith("/login/")) return NextResponse.next();
-  if (hasSession(request)) return NextResponse.next();
+  const { pathname } = request.nextUrl;
+  const signedIn = hasSession(request);
+  const onLogin = pathname === "/login" || pathname.startsWith("/login/");
 
+  // Already signed in: the login screen is pointless, so go straight to Home.
+  if (signedIn && onLogin) return NextResponse.redirect(new URL("/", request.url));
+  if (onLogin || signedIn) return NextResponse.next();
+
+  // Guests: everything else requires a session. Login always lands on Home afterwards, so no return path is kept.
   const url = request.nextUrl.clone();
   url.pathname = "/login";
   url.search = "";
-  if (pathname !== "/") url.searchParams.set("callbackUrl", pathname + search);
+  url.searchParams.set("auth", "required");
   return NextResponse.redirect(url);
 }
 

@@ -6,7 +6,7 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 import { cn } from "@/lib/utils";
 
 export const controlStyles =
-  "w-full rounded border border-zinc-400 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-[#0F172A] focus:outline focus:outline-1 focus:outline-[#0F172A]/50 aria-[invalid=true]:border-red-600 dark:border-[#3a3b41] dark:bg-[#121316] dark:text-[#eaeaea] dark:placeholder:text-zinc-500 dark:focus:border-[#eaeaea] dark:focus:outline-[#eaeaea]/50";
+  "w-full rounded border border-zinc-400 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-[#0F172A] focus:outline focus:outline-1 focus:outline-[#0F172A]/50 aria-[invalid=true]:border-red-600 dark:border-slate-700 dark:bg-[#0F1D3D] dark:text-[#FFFFFF] dark:placeholder:text-slate-300 dark:focus:border-[#38BDF8] dark:focus:outline-[#38BDF8]/40";
 
 export function Field({
   id,
@@ -27,13 +27,13 @@ export function Field({
 }) {
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-zinc-800 dark:text-[#FFFFFF]">
         {label}
         {required && <span className="ml-0.5 text-edition" aria-hidden="true">*</span>}
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+        <p id={`${id}-hint`} className="mt-1.5 text-xs text-zinc-500 dark:text-[#FAFAFA]">
           {hint}
         </p>
       )}
@@ -79,12 +79,12 @@ export function Switch({
   id: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/60">
+    <div className="flex items-center justify-between gap-4 rounded border border-zinc-200 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#0F1D3D]">
       <div>
-        <label htmlFor={id} className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+        <label htmlFor={id} className="text-sm font-semibold text-zinc-800 dark:text-[#FFFFFF]">
           {label}
         </label>
-        {description && <p className="text-xs text-zinc-500 dark:text-zinc-400">{description}</p>}
+        {description && <p className="text-xs text-zinc-500 dark:text-[#FAFAFA]">{description}</p>}
       </div>
       <button
         id={id}
@@ -94,7 +94,7 @@ export function Switch({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative h-6 w-11 shrink-0 rounded transition-colors",
-          checked ? "bg-[#0F172A] dark:bg-[#eaeaea]" : "bg-zinc-300",
+          checked ? "bg-[#0F172A] dark:bg-[#FFFFFF]" : "bg-zinc-300",
         )}
       >
         <motion.span className="absolute top-0.5 left-0.5 h-5 w-5 rounded-sm bg-white shadow-sm dark:bg-[#0F172A]" animate={{ x: checked ? 20 : 0 }} transition={{ duration: 0.15, ease: "easeOut" }} />

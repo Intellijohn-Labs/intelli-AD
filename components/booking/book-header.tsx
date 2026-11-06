@@ -17,7 +17,7 @@ export function BookHeader() {
         )}
       </h1>
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p className="font-sans text-base font-medium tracking-normal text-zinc-600 sm:text-lg dark:text-zinc-300">{t("Four quick steps. Live pricing updates as you go.")}</p>
+        <p className="font-sans text-base font-medium tracking-normal text-zinc-600 sm:text-lg dark:text-slate-200">{t("Four quick steps. Live pricing updates as you go.")}</p>
         <span className="inline-flex items-center gap-2 rounded-sm border border-dashed border-zinc-500 px-2.5 py-1 font-mono text-xs font-semibold text-zinc-700">
           <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
           {t("Live Pricing Engine")}

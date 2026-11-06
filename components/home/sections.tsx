@@ -103,7 +103,7 @@ export function HowItWorks() {
           <li key={s.title}>
             <Card className="h-full p-5 sm:p-6">
               <div className="mb-4 flex items-center justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded bg-[#0F172A] font-mono text-lg font-bold text-white dark:bg-[#eaeaea] dark:text-[#0F172A]">{i + 1}</span>
+                <span className="flex h-10 w-10 items-center justify-center rounded bg-[#0F172A] font-mono text-lg font-bold text-white dark:bg-[#FFFFFF] dark:text-[#0F172A]">{i + 1}</span>
                 <s.icon className="h-5 w-5 text-navy-500" aria-hidden="true" />
               </div>
               <h3 className="font-bold text-navy-900">{t(s.title)}</h3>

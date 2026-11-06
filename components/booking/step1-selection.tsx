@@ -65,7 +65,7 @@ export function Step1Selection() {
   const cardBase = "relative cursor-pointer rounded-md border p-4 transition-[border-color,background-color,box-shadow] duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500";
   const cardMotion = {};
   const Tick = () => (
-    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-sm bg-[#0F172A] text-white dark:bg-[#eaeaea] dark:text-[#0F172A]" aria-hidden="true">
+    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-sm bg-[#0F172A] text-white dark:bg-[#FFFFFF] dark:text-[#0F172A]" aria-hidden="true">
       <Check className="h-3 w-3" />
     </motion.span>
   );

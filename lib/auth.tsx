@@ -18,11 +18,6 @@ const REMEMBER_DAYS = 30;
 
 export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/");
 
-/** Only allow same-site relative callback targets (blocks open redirects). */
-export function safeCallback(url?: string | null) {
-  return url && url.startsWith("/") && !url.startsWith("//") && !url.startsWith("/login") ? url : "/";
-}
-
 function readSession(): AuthUser | null {
   try {
     const m = document.cookie.split("; ").find((c) => c.startsWith(`${SESSION_COOKIE}=`));
@@ -72,8 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Client-side guard (backs up proxy.ts, e.g. when the cookie expires mid-visit).
   useEffect(() => {
     if (ready && !user && !isPublicPath(pathname)) {
-      const cb = pathname === "/" ? "" : `?callbackUrl=${encodeURIComponent(pathname + window.location.search)}`;
-      router.replace(`/login${cb}`);
+      router.replace("/login?auth=required");
     }
   }, [ready, user, pathname, router]);
 

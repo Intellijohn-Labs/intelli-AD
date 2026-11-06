@@ -18,7 +18,15 @@ export const metadata: Metadata = {
   title: { default: "IntelliAd | Smart Newspaper Ad Booking Across Kerala", template: "%s | IntelliAd" },
   description: "Compare rates, compose and preview classified and display ads, and book across Kerala's and India's leading dailies with an instant Release Order.",
 };
-export const viewport: Viewport = { themeColor: "#000000", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = {
+  // Browser chrome follows the theme: soft paper in light mode, Deep Midnight Slate (not pure black) in dark.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F8FA" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B132B" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

@@ -19,7 +19,7 @@ const PAPERS = {
   kaumudi: { label: "കേരള കൗമുദി", style: { fontFamily: '"Noto Serif Malayalam", serif', fontWeight: 700, fontStyle: "italic" } as CSSProperties },
   deshabhimani: { label: "ദേശാഭിമാനി", style: { fontFamily: '"Anek Malayalam", sans-serif', fontWeight: 800 } as CSSProperties },
 };
-const TILTS = [-1.5, 1.2, -0.8, 1.6, -1.1, 0.9];
+const TILTS = [-1, 1, -0.8, 1.2, -1.2, 0.8];
 
 /** Sample classifieds (fictional names, numbers and addresses). */
 const ADS: Ad[] = [
@@ -58,25 +58,28 @@ function Clipping({ ad, index }: { ad: Ad; index: number }) {
   const lines = wrapText(ad.text, CPL);
   const paper = PAPERS[ad.paper];
   return (
+    // paper-grain keeps the slip warm newsprint with dark ink in BOTH themes (and restores the light colour scale inside it).
     <article
-      className="relative w-60 min-w-[240px] border border-dashed border-zinc-400 bg-[#faf8f5] p-3 pt-6 text-zinc-900 sm:w-[300px] sm:min-w-[300px] sm:p-4 sm:pt-6 shadow-[2px_4px_12px_rgba(0,0,0,0.08)] dark:border-slate-700 dark:bg-slate-900/90 dark:text-zinc-100"
+      className="paper-grain relative w-60 min-w-[240px] rounded-sm border border-dashed border-amber-900/30 bg-[#FFFDF7] p-3 pt-6 text-slate-900 shadow-md sm:w-[300px] sm:min-w-[300px] sm:p-4 sm:pt-6"
       style={{ transform: `rotate(${TILTS[index % TILTS.length]}deg)` }}
     >
       {index % 2 === 0 ? (
-        <span aria-hidden="true" className="absolute -top-2.5 left-1/2 h-5 w-14 -translate-x-1/2 -rotate-3 border border-amber-200/70 bg-amber-100/70 shadow-sm dark:border-amber-300/20 dark:bg-amber-200/20" />
+        /* yellow masking tape */
+        <span aria-hidden="true" className="absolute -top-3 left-1/2 h-6 w-16 -translate-x-1/2 -rotate-3 border border-yellow-400/70 bg-yellow-300/80 shadow-sm" />
       ) : (
-        <Paperclip aria-hidden="true" className="absolute -top-3 right-6 h-6 w-6 rotate-12 text-zinc-500 dark:text-zinc-400" />
+        /* steel paper clip */
+        <Paperclip aria-hidden="true" className="absolute -top-4 right-5 h-8 w-8 rotate-12 text-slate-500 drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]" strokeWidth={2.4} />
       )}
       <div className="font-typeset">
-        <div className="flex items-center justify-between gap-2 border-y border-zinc-800 py-0.5 dark:border-zinc-300">
-          <span className="text-sm leading-tight text-navy-800 dark:text-navy-400" style={paper.style}>{paper.label}</span>
-          <span className="rounded-sm bg-zinc-900 px-1.5 py-px text-[10px] font-bold tracking-wider text-white uppercase dark:bg-zinc-100 dark:text-zinc-900">{ad.category}</span>
+        <div className="flex items-center justify-between gap-2 border-y border-slate-800 py-1">
+          <span className="text-sm leading-tight font-bold text-[#0f172a]" style={paper.style}>{paper.label}</span>
+          <span className="border border-slate-700 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-800 uppercase">{ad.category}</span>
         </div>
-        <div className={cn("mt-2 p-2 text-xs leading-[1.65] break-words sm:text-sm", ad.boxed && "border-2 border-zinc-900 dark:border-zinc-200", ad.bold && "font-bold")}>
-          {/* CSS wraps the text to the card width; the badge below reports the billed line count at CPL chars/line. */}
+        <div className={cn("mt-2 p-2 text-xs leading-snug break-words text-slate-900 sm:text-sm", ad.boxed && "border-2 border-slate-900", ad.bold && "font-bold")}>
+          {/* CSS wraps the text to the card width; the footer below reports the billed line count at CPL chars/line. */}
           {ad.text}
         </div>
-        <p className="mt-2 border-t border-dotted border-zinc-400 pt-1 text-right text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">{lines.length} lines · {CPL} chars/line</p>
+        <p className="mt-3 border-t border-slate-300 pt-1 text-right font-mono text-[10px] text-slate-600">{lines.length} lines · {CPL} chars/line</p>
       </div>
     </article>
   );
@@ -120,7 +123,7 @@ export function AdTicker() {
         tabIndex={0}
         aria-label="Classified ad clippings. Scrolling pauses on hover, tap or focus."
         {...pointer} onFocus={() => set(true)} onBlur={() => set(false)}
-        className={cn("relative block w-0 max-w-full min-w-full touch-pan-y py-4 focus-visible:outline-2 focus-visible:outline-navy-500", reduce ? "overflow-x-auto" : "overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]")}
+        className={cn("relative block w-0 max-w-full min-w-full touch-pan-y py-4 focus-visible:outline-2 focus-visible:outline-navy-500", reduce ? "overflow-x-auto" : "overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_3%,black_97%,transparent)]")}
       >
         <motion.div ref={track} style={{ x: reduce ? 0 : x }} className="flex w-max items-start will-change-transform">
           {ADS.map((ad, i) => <div key={i} className="shrink-0 pr-3 sm:pr-4"><Clipping ad={ad} index={i} /></div>)}

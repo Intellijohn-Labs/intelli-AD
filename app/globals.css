@@ -35,7 +35,7 @@ html { scroll-behavior: smooth; }
 html { color-scheme: light; }
 body {
   /* Bright slate canvas with deep charcoal ink; black and red (#E11D48) carry the actions. */
-  background-color: #F8FAFC;
+  background-color: #F6F8FA;
   color: #0F172A;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -80,11 +80,11 @@ h3, h4 { font-family: var(--font-sans); letter-spacing: -0.01em; }
    brand tints are re-derived for a dark surface. */
 html.dark { color-scheme: dark; }
 .dark {
-  /* Neutral archival charcoal (no blue cast): backgrounds → hairlines → paper-white type. */
-  --color-zinc-50: #1a1b1f;  --color-zinc-100: #202125; --color-zinc-200: #2a2b30;
-  --color-zinc-300: #3a3b41; --color-zinc-400: #64656c; --color-zinc-500: #9a9ba2;
-  --color-zinc-600: #bdbec4; --color-zinc-700: #d6d7db; --color-zinc-800: #e6e6e9;
-  --color-zinc-900: #f1f1f3; --color-zinc-950: #ffffff;
+  /* Deep Midnight Slate surfaces with pure-white type: backgrounds → hairlines → bright text. */
+  --color-zinc-50: #132247;  --color-zinc-100: #17284F; --color-zinc-200: #1F2F57;
+  --color-zinc-300: #2B3D6B; --color-zinc-400: #CBD5E1; --color-zinc-500: #E2E8F0;
+  --color-zinc-600: #F1F5F9; --color-zinc-700: #FAFAFA; --color-zinc-800: #FFFFFF;
+  --color-zinc-900: #FFFFFF; --color-zinc-950: #FFFFFF;
   --color-navy-50: color-mix(in oklab, var(--brand) 16%, #0b1020);
   --color-navy-100: color-mix(in oklab, var(--brand) 24%, #0b1020);
   --color-navy-200: color-mix(in oklab, var(--brand) 38%, #0b1020);
@@ -95,11 +95,12 @@ html.dark { color-scheme: dark; }
   --color-navy-900: color-mix(in oklab, var(--brand) 22%, white);
   --color-navy-950: color-mix(in oklab, var(--brand) 12%, white);
 }
-.dark body { background-color: #121316; background-image: none; color: #eaeaea; }
+.dark body { background-color: #0B132B; background-image: none; color: #FFFFFF; }
+.dark :focus-visible { outline-color: #38BDF8; }
 /* Surfaces that were white become deep slate. */
-.dark .bg-white { background-color: #1a1b1f; }
-.dark [class*="bg-white/"] { background-color: #1a1b1f; }
-.dark .to-white { --tw-gradient-to: #1a1b1f; }
+.dark .bg-white { background-color: #132247; }
+.dark [class*="bg-white/"] { background-color: #132247; }
+.dark .to-white { --tw-gradient-to: #132247; }
 .dark .border-white\/60 { border-color: rgb(255 255 255 / 0.1); }
 .dark input, .dark textarea, .dark select { color-scheme: dark; }
 /* Newspaper clippings and previews stay light paper in dark mode. */
@@ -124,7 +125,7 @@ html.dark { color-scheme: dark; }
 
 /* Surface colour used to mix pastel tints; adapts to the theme. */
 :root { --surface: #ffffff; }
-.dark { --surface: #1a1b1f; }
+.dark { --surface: #132247; }
 
 /* Live ad preview: always newsprint, in both themes. */
 .preview-paper { background-color: #F9F8F5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
@@ -136,7 +137,7 @@ html.dark { color-scheme: dark; }
 
 /* Editorial ruled dividers. */
 .rule-double { border-top: 3px double #111; }
-.dark .rule-double { border-top-color: #3a3b41; }
+.dark .rule-double { border-top-color: #2B3D6B; }
 
 /* Footer tide: slow horizontal drift of the layered waves (each layer sets its own duration/delay). */
 @keyframes wave { 0% { transform: translateX(0); } 100% { transform: translateX(-6%); } }
@@ -207,10 +208,10 @@ input[type="range"].range-ink::-moz-range-track { height: 6px; border-radius: 99
 input[type="range"].range-ink::-moz-range-progress { height: 6px; border-radius: 999px; background: #111827; }
 input[type="range"].range-ink::-webkit-slider-thumb { appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 999px; background: #111827; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35); }
 input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; border-radius: 999px; background: #111827; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35); }
-.dark input[type="range"].range-ink::-webkit-slider-runnable-track { background: linear-gradient(to right, #eaeaea var(--fill, 0%), #3a3b41 var(--fill, 0%)); }
-.dark input[type="range"].range-ink::-moz-range-progress { background: #eaeaea; }
-.dark input[type="range"].range-ink::-moz-range-track { background: #3a3b41; }
-.dark input[type="range"].range-ink::-webkit-slider-thumb, .dark input[type="range"].range-ink::-moz-range-thumb { background: #eaeaea; border-color: #121316; }
+.dark input[type="range"].range-ink::-webkit-slider-runnable-track { background: linear-gradient(to right, #F8FAFC var(--fill, 0%), #2B3D6B var(--fill, 0%)); }
+.dark input[type="range"].range-ink::-moz-range-progress { background: #F8FAFC; }
+.dark input[type="range"].range-ink::-moz-range-track { background: #2B3D6B; }
+.dark input[type="range"].range-ink::-webkit-slider-thumb, .dark input[type="range"].range-ink::-moz-range-thumb { background: #F8FAFC; border-color: #0B132B; }
 
 /* ───────────── Dark theme cursors: crisp white pen, luminous cyan accent ─────────────
    `.dark` is set on <html> by next-themes; these out-rank the light rules above on specificity. */
@@ -235,3 +236,31 @@ html[data-theme="dark"] a,
 html[data-theme="dark"] button {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%2338bdf8' fill-opacity='0.45'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1.5' fill='%23ffffff'/%3E%3C/svg%3E") 2 2, pointer !important;
 }
+
+/* ───────────── Dark-mode typography: crisp, high-contrast white ─────────────
+   Base layer: sets the default for un-coloured text but loses to any explicit text-* class, so badges,
+   accents and gradient text keep their colour. The light "paper" surfaces (clippings, previews) are excluded. */
+@layer base {
+  .dark :where(h1, h2, h3, h4, h5, h6):not(.paper-grain *) { color: #ffffff; }
+  .dark :where(p, li, label, legend, dt, dd, th, td, figcaption):not(.paper-grain *) { color: #ffffff; }
+}
+/* Plain grey utility classes are brightened in dark mode (unlayered, so they win over the utilities). */
+.dark :not(.paper-grain *).text-slate-400, .dark :not(.paper-grain *).text-slate-500, .dark :not(.paper-grain *).text-slate-600,
+.dark :not(.paper-grain *).text-stone-500, .dark :not(.paper-grain *).text-stone-600 { color: #e2e8f0; }
+.dark :not(.paper-grain *).text-slate-700, .dark :not(.paper-grain *).text-slate-800, .dark :not(.paper-grain *).text-slate-900, .dark :not(.paper-grain *).text-slate-950,
+.dark :not(.paper-grain *).text-stone-700, .dark :not(.paper-grain *).text-stone-800, .dark :not(.paper-grain *).text-stone-900 { color: #ffffff; }
+.dark ::placeholder { color: #cbd5e1; opacity: 1; }
+.dark select option { color: #ffffff; background-color: #0f1d3d; }
+
+/* ───────────── Newspaper-format card illustrations (service-art) ───────────── */
+@keyframes art-hl-glow { 0%, 100% { opacity: 0.7; box-shadow: 0 0 0 rgba(250, 204, 21, 0); } 50% { opacity: 1; box-shadow: 0 0 12px rgba(250, 204, 21, 0.65); } }
+@keyframes art-pulse-ring { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes art-sweep { 0%, 30% { transform: translate3d(-130%, 0, 0) skewX(-18deg); } 70%, 100% { transform: translate3d(330%, 0, 0) skewX(-18deg); } }
+@keyframes art-flicker { 0%, 100% { transform: scale(1, 1) skewX(0deg); opacity: 1; } 18% { transform: scale(0.94, 1.1) skewX(3deg); } 36% { transform: scale(1.04, 0.92) skewX(-2deg); opacity: 0.9; } 58% { transform: scale(0.96, 1.08) skewX(2deg); } 80% { transform: scale(1.02, 0.96) skewX(-3deg); opacity: 0.95; } }
+@keyframes art-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.018); } }
+.art-hl { animation: art-hl-glow 3s ease-in-out infinite; }
+.art-ring2 { animation: art-pulse-ring 2.4s ease-out infinite; }
+.art-shim { animation: art-sweep 4.2s ease-in-out infinite; will-change: transform; }
+.flicker .lamp-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: art-flicker 1.7s ease-in-out infinite; }
+.art-breathe { animation: art-breathe 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .art-hl, .art-ring2, .art-shim, .flicker .lamp-flame, .art-breathe { animation: none !important; } .art-ring2 { display: none; } }

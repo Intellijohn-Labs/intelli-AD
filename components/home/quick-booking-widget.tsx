@@ -44,8 +44,8 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
     <Card className="p-5 sm:p-6 lg:p-8">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-[family-name:var(--font-jakarta)] text-xl font-extrabold tracking-tight text-slate-900 dark:text-[#f1f1f3]">{t("Quick booking")}</h2>
-          <p className="text-sm text-slate-600 dark:text-[#bdbec4]">{t("Get a starting rate in seconds.")}</p>
+          <h2 className="font-[family-name:var(--font-jakarta)] text-xl font-extrabold tracking-tight text-slate-900 dark:text-[#FFFFFF]">{t("Quick booking")}</h2>
+          <p className="text-sm text-slate-600 dark:text-[#FAFAFA]">{t("Get a starting rate in seconds.")}</p>
         </div>
         <span className="shrink-0 rounded-full bg-[#E11D48]/10 px-2.5 py-1 font-mono text-[10px] font-bold tracking-wider text-[#E11D48] uppercase">{t(getAdType(adType).short)}</span>
       </div>
@@ -62,7 +62,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
           </Select>
         </Field>
         <div>
-          <span className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-[#e6e6e9]">{t("Edition / city")}</span>
+          <span className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-[#FFFFFF]">{t("Edition / city")}</span>
           <MultiSelect
             label={t("Editions")}
             placeholder={t("Choose editions")}
@@ -74,9 +74,9 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
       </div>
 
       <div className="mt-5">
-        <label htmlFor="qb-size" className="mb-1 flex items-center justify-between text-sm font-semibold text-slate-800 dark:text-[#e6e6e9]">
+        <label htmlFor="qb-size" className="mb-1 flex items-center justify-between text-sm font-semibold text-slate-800 dark:text-[#FFFFFF]">
           <span>{isText ? t("Ad length") : t("Ad height")}</span>
-          <span className="rounded-full bg-slate-900 px-2.5 py-0.5 font-mono text-xs font-bold text-white tabular-nums dark:bg-[#eaeaea] dark:text-slate-900">{isText ? t("{n} lines", { n: lines }) : t("{n} cm", { n: height })}</span>
+          <span className="rounded-full bg-slate-900 px-2.5 py-0.5 font-mono text-xs font-bold text-white tabular-nums dark:bg-[#FFFFFF] dark:text-slate-900">{isText ? t("{n} lines", { n: lines }) : t("{n} cm", { n: height })}</span>
         </label>
         <input
           id="qb-size"
@@ -94,13 +94,13 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#2a2b30] dark:bg-[#202125]" aria-live="polite">
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#1F2F57] dark:bg-[#17284F]" aria-live="polite">
         {eds.length === 0 ? (
           <p className="text-sm text-zinc-600">{t("Select at least one edition to see an estimate.")}</p>
         ) : (
           <>
             <p className="font-mono text-xs font-bold uppercase tracking-wider text-slate-500">{t("Estimated total")}</p>
-            <p className="font-[family-name:var(--font-jakarta)] text-4xl font-black tracking-tight tabular-nums text-slate-900 dark:text-[#f1f1f3]">
+            <p className="font-[family-name:var(--font-jakarta)] text-4xl font-black tracking-tight tabular-nums text-slate-900 dark:text-[#FFFFFF]">
               <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> <span className="font-mono text-xs font-semibold text-slate-500">{t("incl. 18% GST")}</span>
             </p>
             <p className="mt-1 font-mono text-xs text-slate-500">

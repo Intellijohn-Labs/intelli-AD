@@ -33,14 +33,14 @@ export function AuthControl({ className }: { className?: string }) {
   return (
     <div ref={wrap} className={`relative ${className ?? ""}`}>
       <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={user.name} onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#3a3b41] dark:text-[#d6d7db] dark:hover:border-[#eaeaea] dark:hover:text-white">
+        className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#2B3D6B] dark:text-[#FFFFFF] dark:hover:border-[#FFFFFF] dark:hover:text-white">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E11D48]/10 text-[10px] font-bold text-[#E11D48]">{initials}</span>
         <span className="hidden max-w-[9rem] truncate lg:inline">{user.name}</span>
       </button>
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-            className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-[#3a3b41]">
+            className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-[#2B3D6B]">
             <div className="border-b border-zinc-100 px-4 py-3">
               <p className="truncate text-sm font-bold text-zinc-900">{user.name}</p>
               <p className="truncate text-xs text-zinc-500">{user.identifier}</p>

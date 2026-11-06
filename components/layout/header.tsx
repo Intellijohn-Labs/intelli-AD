@@ -28,11 +28,11 @@ export function Header() {
   const linkCls = (href: string) =>
     cn(
       "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-      isActive(href) ? "bg-slate-100 text-black dark:bg-white/10 dark:text-white" : "text-slate-700 hover:text-black dark:text-[#bdbec4] dark:hover:text-white",
+      isActive(href) ? "bg-slate-100 text-black dark:bg-white/10 dark:text-white" : "text-slate-700 hover:text-black dark:text-[#FAFAFA] dark:hover:text-white",
     );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#2a2b30] dark:bg-[#121316]/95">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
       <div className="mx-auto flex min-h-10 max-w-[1500px] items-center justify-between gap-4 px-6 py-3.5 md:px-12">
         <BrandLogo />
 
@@ -56,7 +56,7 @@ export function Header() {
           <ThemeToggle />
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 dark:text-[#d6d7db] dark:hover:bg-white/10"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 dark:text-[#FFFFFF] dark:hover:bg-white/10"
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? t("Close menu") : t("Open menu")}
@@ -68,13 +68,13 @@ export function Header() {
       </div>
 
       {open && (
-        <nav id="mobile-nav" aria-label="Mobile" className="flex flex-col gap-1 border-t border-slate-200 px-6 py-4 md:hidden dark:border-[#2a2b30]">
+        <nav id="mobile-nav" aria-label="Mobile" className="flex flex-col gap-1 border-t border-slate-200 px-6 py-4 md:hidden dark:border-[#1F2F57]">
           {links.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} aria-current={isActive(l.href) ? "page" : undefined} className={cn(linkCls(l.href), "py-2.5")}>
               {t(l.label)}
             </Link>
           ))}
-          <div className="mt-2 flex items-center justify-between rounded-2xl bg-slate-100 px-4 py-2.5 dark:bg-[#202125]">
+          <div className="mt-2 flex items-center justify-between rounded-2xl bg-slate-100 px-4 py-2.5 dark:bg-[#17284F]">
             <span className="text-xs font-semibold text-slate-500">{t("Language")}</span>
             <LanguageSwitcher />
           </div>

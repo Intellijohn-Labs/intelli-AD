@@ -54,7 +54,7 @@ export function Footer() {
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-16 w-full overflow-hidden leading-none sm:h-24 lg:h-28">
         <Wave className="fill-sky-400/20" style={{ animationDuration: "15s" }} d="M0,0 L1440,0 L1440,96 C1300,76 1160,72 1000,92 C840,112 700,116 540,94 C380,72 220,76 0,98 Z" />
         <Wave className="fill-blue-500/30" style={{ animationDuration: "11s", animationDirection: "alternate-reverse" }} d="M0,0 L1440,0 L1440,76 C1320,58 1180,56 1020,74 C860,92 700,96 540,76 C380,56 200,58 0,78 Z" />
-        <Wave className="fill-[#F8FAFC] dark:fill-[#121316]" style={{ animationDuration: "8s" }} d="M0,0 L1440,0 L1440,54 C1320,40 1180,38 1020,52 C860,66 700,68 540,52 C380,36 200,40 0,56 Z" />
+        <Wave className="fill-[#F6F8FA] dark:fill-[#0B132B]" style={{ animationDuration: "8s" }} d="M0,0 L1440,0 L1440,54 C1320,40 1180,38 1020,52 C860,66 700,68 540,52 C380,36 200,40 0,56 Z" />
       </div>
 
       <div className="relative">

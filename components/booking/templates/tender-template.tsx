@@ -28,10 +28,10 @@ export function TenderComposer({ logoSlot, onText, onSize }: { logoSlot: ReactNo
   const input = (key: keyof TenderFields) => ({ value: f[key] as string, onChange: (e: { target: { value: string } }) => set({ [key]: e.target.value } as Partial<TenderFields>) });
 
   return (
-    <section aria-labelledby="tender-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#2a2b30] dark:bg-slate-800/40">
+    <section aria-labelledby="tender-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#1F2F57] dark:bg-slate-800/40">
       <div>
         <h3 id="tender-h" className="font-bold text-zinc-900 dark:text-white">Tender Notice · ദർഘാസ് പരസ്യം</h3>
-        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
+        <p className="mt-1 text-xs text-zinc-600 dark:text-slate-200">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
       </div>
 
       <div className="space-y-2">
@@ -39,12 +39,12 @@ export function TenderComposer({ logoSlot, onText, onSize }: { logoSlot: ReactNo
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Logo shape">
           <span className="text-xs font-semibold text-zinc-600">Logo preview:</span>
           {(["square", "round"] as const).map((sh) => (
-            <button key={sh} type="button" aria-pressed={f.logoShape === sh} onClick={() => set({ logoShape: sh })} className={cn(chip, f.logoShape === sh ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-slate-900")}>
+            <button key={sh} type="button" aria-pressed={f.logoShape === sh} onClick={() => set({ logoShape: sh })} className={cn(chip, f.logoShape === sh ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
               {sh === "square" ? "Square" : "Circular"}
             </button>
           ))}
         </div>
-        <p className="text-xs text-zinc-600 dark:text-zinc-300">
+        <p className="text-xs text-zinc-600 dark:text-slate-200">
           {isText ? "Adding a logo moves the notice to Classified Display, billed by size (cm²) instead of by line." : "Billed as Classified Display, by size (cm²)."}
           {!isText && (
             <> <button type="button" className="font-semibold text-navy-700 underline" onClick={() => update({ adType: "classified-text" })}>Switch back to a text ad</button></>
@@ -68,10 +68,10 @@ export function TenderComposer({ logoSlot, onText, onSize }: { logoSlot: ReactNo
       </div>
 
       {!isText && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-300 pt-4 dark:border-[#2a2b30]" role="group" aria-label="Box size presets">
+        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]" role="group" aria-label="Box size presets">
           <span className="text-xs font-semibold text-zinc-600">Box size:</span>
           {BOX_SIZES.map((b) => (
-            <button key={b.label} type="button" onClick={() => onSize(b.columns, b.heightCm)} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-slate-900")}>{b.label}</button>
+            <button key={b.label} type="button" onClick={() => onSize(b.columns, b.heightCm)} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>{b.label}</button>
           ))}
         </div>
       )}

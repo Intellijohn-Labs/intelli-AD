@@ -35,15 +35,15 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
   });
 
   return (
-    <section aria-labelledby="obit-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#2a2b30] dark:bg-slate-800/40">
+    <section aria-labelledby="obit-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#1F2F57] dark:bg-slate-800/40">
       <div>
         <h3 id="obit-h" className="font-bold text-zinc-900 dark:text-white">{anniv ? "Death Anniversary / In Memoriam · ചരമവാർഷികം" : "Obituary · മരണവാർത്ത"}</h3>
-        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
+        <p className="mt-1 text-xs text-zinc-600 dark:text-slate-200">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
       </div>
 
       <div role="group" aria-label="Quick drafts" className="flex flex-wrap gap-2">
         {OBITUARY_PRESETS.filter((p) => p.kind === kind).map((p) => (
-          <button key={p.id} type="button" title={p.description} className={cn(chip, "border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-slate-900 dark:text-white")}
+          <button key={p.id} type="button" title={p.description} className={cn(chip, "border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-[#0F1D3D] dark:text-white")}
             onClick={() => { apply({ ...p.build(new Date()), kind }); if (p.adType !== state.adType && (p.adType === "classified-text" || isText)) update({ adType: p.adType }); }}>
             {p.titleMl} <span className="font-normal text-zinc-500">· {p.title}</span>
           </button>
@@ -65,7 +65,7 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
             <p className="mb-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-100">Tribute verse · സ്മരണാഞ്ജലി വരികൾ</p>
             <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Tribute presets">
               {TRIBUTES.map((t) => (
-                <button key={t.id} type="button" onClick={() => set({ tribute: tributeText(t.id, f.name) })} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-slate-900")}>{t.label}</button>
+                <button key={t.id} type="button" onClick={() => set({ tribute: tributeText(t.id, f.name) })} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>{t.label}</button>
               ))}
             </div>
             <Textarea id="ob-tribute" rows={3} aria-label="Tribute verse" className="font-clipping" value={f.tribute} onChange={(e) => set({ tribute: e.target.value })} />
@@ -110,19 +110,19 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
         </div>
       )}
 
-      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#2a2b30]">
+      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
         <legend className="text-sm font-bold">Photo &amp; box · ഫോട്ടോ</legend>
         {isText ? (
-          <p className="text-xs text-zinc-600 dark:text-zinc-300">
+          <p className="text-xs text-zinc-600 dark:text-slate-200">
             Photos are printed in Classified Display (box) ads.{" "}
             <button type="button" className="font-semibold text-navy-700 underline" onClick={() => update({ adType: "classified-display" })}>Switch to Classified Display</button>
           </p>
         ) : (
           <>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300">Upload the portrait in the Artwork box below; it appears in the preview.</p>
+            <p className="text-xs text-zinc-600 dark:text-slate-200">Upload the portrait in the Artwork box below; it appears in the preview.</p>
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Photo frame">
               {(["round", "rect"] as const).map((fr) => (
-                <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-slate-900")}>
+                <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
                   {fr === "round" ? "Circular frame" : "Rectangular frame"}
                 </button>
               ))}
@@ -130,7 +130,7 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
             <div role="radiogroup" aria-label="Frame accent" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {FRAME_ACCENTS.map((a) => (
                 <button key={a.id} type="button" role="radio" aria-checked={f.frameAccent === a.id} onClick={() => set({ frameAccent: a.id })}
-                  className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-slate-900")}>
+                  className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
                   {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
                 </button>
               ))}
@@ -138,7 +138,7 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Box size presets">
               <span className="text-xs font-semibold text-zinc-600">Box size:</span>
               {BOX_SIZES.map((b) => (
-                <button key={b.label} type="button" onClick={() => onSize(b.columns, b.heightCm)} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-slate-900")}>{b.label}</button>
+                <button key={b.label} type="button" onClick={() => onSize(b.columns, b.heightCm)} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>{b.label}</button>
               ))}
             </div>
           </>
@@ -186,13 +186,13 @@ export function Lamp() {
   return (
     <svg aria-hidden="true" viewBox="0 0 32 48" className="h-12 w-8" strokeLinejoin="round">
       <g stroke="#fff" strokeWidth="3" paintOrder="stroke" fill="#000">
-        <path d="M16 3c2.6 3 3.4 5.2 0 8.4-3.4-3.2-2.6-5.4 0-8.4z" />
+        <path className="lamp-flame" d="M16 3c2.6 3 3.4 5.2 0 8.4-3.4-3.2-2.6-5.4 0-8.4z" />
         <path d="M5 14h22l-3 5H8z" />
         <path d="M14.5 19h3v14h-3z" />
         <path d="M10 33h12l2 4H8z" />
         <path d="M5 37h22l3 8H2z" />
       </g>
-      <path d="M16 6c1.2 1.6 1.6 2.6 0 4.2-1.6-1.6-1.2-2.6 0-4.2z" fill="#fff" />
+      <path className="lamp-flame" d="M16 6c1.2 1.6 1.6 2.6 0 4.2-1.6-1.6-1.2-2.6 0-4.2z" fill="#fff" />
     </svg>
   );
 }

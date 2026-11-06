@@ -36,7 +36,7 @@ export function NewspaperMastheadBar() {
   }, [activeId]);
 
   return (
-    <div id="publication-bar" className="sticky top-[68px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#2a2b30] dark:bg-[#121316]/95">
+    <div id="publication-bar" className="sticky top-[68px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
       <div className="mx-auto flex max-w-[1500px] items-center gap-4 px-6 py-3 md:px-12">
         <span className="hidden shrink-0 font-mono text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase lg:block">{t("Publication")}</span>
         {/* Tactile publication chips: white pills; the chosen paper becomes a solid ink pill with a sliding highlight. */}
@@ -67,14 +67,14 @@ export function NewspaperMastheadBar() {
                   "relative flex shrink-0 snap-center items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm whitespace-nowrap antialiased transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500",
                   active
                     ? "border-transparent text-white dark:text-slate-900"
-                    : "border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-slate-400 dark:border-[#2a2b30] dark:bg-[#1a1b1f] dark:text-[#d6d7db] dark:hover:border-[#5c5d64]",
+                    : "border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-slate-400 dark:border-[#1F2F57] dark:bg-[#132247] dark:text-[#FFFFFF] dark:hover:border-[#5B6F9E]",
                 )}
               >
                 {active && (
                   <motion.span
                     layoutId="activePublicationIndicator"
                     aria-hidden="true"
-                    className="absolute inset-0 rounded-full bg-slate-900 shadow-sm ring-2 ring-slate-900/10 dark:bg-[#eaeaea] dark:ring-white/10"
+                    className="absolute inset-0 rounded-full bg-slate-900 shadow-sm ring-2 ring-slate-900/10 dark:bg-[#FFFFFF] dark:ring-white/10"
                     transition={{ duration: 0.22, ease: "easeOut" }}
                   />
                 )}

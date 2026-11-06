@@ -36,7 +36,7 @@ export function Confirmation({ receipt, onNew }: { receipt: ReceiptData; onNew: 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center">
         <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-600" aria-hidden="true" />
         <h2 className="mt-3 text-3xl font-bold text-navy-900 dark:text-zinc-50">{t("Booking confirmed")}</h2>
-        <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+        <p className="mt-1 text-zinc-600 dark:text-slate-200">
           {t("Your Release Order is ready. A copy was sent to {email}.", { email: receipt.contact.email })}
         </p>
       </motion.div>

@@ -7,10 +7,10 @@ import type { AdType } from "@/lib/types";
 
 function Row({ label, sub, value, negative, strong, muted }: { label: string; sub?: string; value: number; negative?: boolean; strong?: boolean; muted?: boolean }) {
   return (
-    <div className={cn("flex items-start justify-between gap-4 border-b border-dashed border-zinc-300 py-1.5 text-sm last:border-b-0", strong && "border-t-2 border-b-0 border-solid border-[#0F172A] pt-3 text-base font-bold dark:border-[#eaeaea]", muted && "text-zinc-500")}>
+    <div className={cn("flex items-start justify-between gap-4 border-b border-dashed border-zinc-300 py-1.5 text-sm last:border-b-0", strong && "border-t-2 border-b-0 border-solid border-[#0F172A] pt-3 text-base font-bold dark:border-[#FFFFFF]", muted && "text-zinc-500")}>
       <div>
         <p>{label}</p>
-        {sub && <p className="text-xs font-normal text-zinc-500 dark:text-zinc-400">{sub}</p>}
+        {sub && <p className="text-xs font-normal text-zinc-500 dark:text-slate-200">{sub}</p>}
       </div>
       <p className={cn("font-mono tracking-tight tabular-nums", negative && "font-semibold text-emerald-700 dark:text-emerald-200")}>
         {negative && value > 0 ? "−" : ""}

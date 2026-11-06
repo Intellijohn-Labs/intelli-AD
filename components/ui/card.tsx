@@ -10,7 +10,7 @@ export function Card({ className, accent, style, ...props }: HTMLAttributes<HTML
   return (
     <div
       className={cn(
-        "rounded-3xl border border-slate-200/80 bg-white text-slate-900 shadow-sm transition-all hover:shadow-md dark:border-[#2a2b30] dark:bg-[#1a1b1f] dark:text-[#eaeaea]",
+        "rounded-3xl border border-slate-200/80 bg-white text-slate-900 shadow-sm transition-all hover:shadow-md dark:border-slate-800/80 dark:bg-[#132247] dark:text-[#FFFFFF] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
         accent && "border-t-[3px]",
         className,
       )}
@@ -24,7 +24,7 @@ export function SectionHeading({ eyebrow, title, children, className }: { eyebro
   return (
     <div className={cn("max-w-2xl", className)}>
       {eyebrow && <p className="mb-2 font-mono text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p>}
-      <h2 className="font-[family-name:var(--font-jakarta)] text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl dark:text-[#f1f1f3]">{title}</h2>
+      <h2 className="font-[family-name:var(--font-jakarta)] text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl dark:text-[#FFFFFF]">{title}</h2>
       {children && <p className="mt-3 text-zinc-600">{children}</p>}
     </div>
   );

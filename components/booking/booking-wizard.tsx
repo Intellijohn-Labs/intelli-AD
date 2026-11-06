@@ -69,7 +69,7 @@ function LivePreview({ state }: { state: BookingState }) {
   const isText = state.adType === "classified-text";
   return (
     <Card className="p-5 sm:p-6">
-      <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#3a3b41]">{t("Live preview")}</h3>
+      <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#2B3D6B]">{t("Live preview")}</h3>
       {state.categoryId === "tender" ? (
         <TenderPreview state={state} />
       ) : state.categoryId === "obituary" || state.categoryId === "remembrance" ? (

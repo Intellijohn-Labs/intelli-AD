@@ -113,7 +113,7 @@ export function DisplayPreview({
           )}
         </div>
       </div>
-      <figcaption className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+      <figcaption className="mt-2 text-center text-xs text-zinc-500 dark:text-slate-200">
         {t("{c} col × {h} cm = {a} cm² · {mode}", { c: columns, h, a: (w * h).toFixed(1), mode: colorMode === "color" ? t("Full colour") : t("Black & white") })}
       </figcaption>
     </figure>
