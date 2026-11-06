@@ -38,7 +38,7 @@ export function NewspaperPreview({
 
   return (
     <figure aria-label="Newspaper column preview" className="mx-auto w-fit max-w-full">
-      <motion.div animate={controls} className="preview-paper font-clipping relative border-2 border-dashed border-zinc-400 px-4 pt-3 pb-5 text-zinc-900 shadow-md dark:border-slate-600 dark:bg-[#1e293b] dark:text-zinc-100">
+      <motion.div animate={controls} className="preview-paper paper-grain font-clipping relative border-2 border-dashed border-zinc-400 bg-[#faf8f5] px-4 pt-3 pb-5 text-zinc-950 shadow-md">
         <div className="mb-2 border-y border-zinc-800 py-0.5 text-center">
           <p className="text-sm font-bold">{paperName}</p>
           <p className="text-[10px] font-semibold uppercase">{t("Classifieds")} · {categoryName}</p>

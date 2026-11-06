@@ -122,6 +122,7 @@ export const categories: Category[] = [
     id: "obituary",
     name: "Remembrance",
     nameMl: "ചരമം & ഓർമ്മക്കുറിപ്പുകൾ",
+    badge: { en: "Marana Vartha · In Memoriam", ml: "മരണവാർത്ത · സ്മരണാഞ്ജലി" },
     icon: "Flower2",
     description: "Obituaries, condolence messages and anniversary remembrances.",
     descriptionMl: "ചരമ അറിയിപ്പുകൾ, അനുശോചന സന്ദേശങ്ങൾ, ചരമവാർഷിക സ്മരണകൾ.",
@@ -252,12 +253,22 @@ export const templates: Template[] = [
   {
     id: "obituary-condolence",
     categoryId: "obituary",
-    title: "Obituary notice",
-    titleMl: "ചരമ അറിയിപ്പ്",
-    description: "Respectful announcement with funeral details.",
-    descriptionMl: "സംസ്കാര വിവരങ്ങൾ സഹിതമുള്ള ആദരപൂർവമായ അറിയിപ്പ്.",
+    title: "Obituary / നിര്യാതനായി / നിര്യാതയായി",
+    titleMl: "മരണവാർത്ത (നിര്യാതനായി / നിര്യാതയായി)",
+    description: "Standard demise notice with funeral & family details",
+    descriptionMl: "സംസ്കാര, കുടുംബ വിവരങ്ങൾ സഹിതമുള്ള സാധാരണ മരണ അറിയിപ്പ്.",
     body:
-      "ചരമം: [പേര്] ([വയസ്സ്]), [വിലാസം], [തീയതി]-ന് നിര്യാതനായി. സംസ്കാരം [തീയതി] [സമയം]-ന് [സ്ഥലം]-ൽ. ഭാര്യ: [പേര്]. മക്കൾ: [പേരുകൾ]. ദുഃഖാർത്തരായ കുടുംബാംഗങ്ങൾ.",
+      "നിര്യാതനായി. [പേര്], [വയസ്സ്], [വീട്ടുപേര്], [സ്ഥലം]. സംസ്കാരം: [തീയതി], [സമയം], [സ്ഥലം]. ഭാര്യ: [പേര്]. മക്കൾ: [പേരുകൾ]. ഫോൺ: [നമ്പർ].",
+  },
+  {
+    id: "obituary-anniversary",
+    categoryId: "obituary",
+    title: "Death Anniversary / ഒന്നാം ചരമവാർഷികം",
+    titleMl: "ഒന്നാം ചരമവാർഷികം / വാർഷിക സ്മരണാഞ്ജലി",
+    description: "Memorial tribute with photo frame options (Garland/Lamp)",
+    descriptionMl: "ഫോട്ടോ ഫ്രെയിം ഓപ്ഷനുകളോടെ (പൂമാല/നിലവിളക്ക്) സ്മരണാഞ്ജലി.",
+    body:
+      "വാർഷിക സ്മരണാഞ്ജലി. ഞങ്ങളുടെ ഹൃദയങ്ങളിൽ മായാത്ത ഓർമ്മയായി എന്നും ജീവിക്കുന്ന പ്രിയപ്പെട്ട [പേര്]. സ്നേഹസ്മരണകളോടെ: [കുടുംബാംഗങ്ങൾ].",
   },
   {
     id: "business-notice",

@@ -16,6 +16,7 @@ import { cn, formatINR } from "@/lib/utils";
 import { getAdType, getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
 import { DisplayPreview, NewspaperPreview } from "./newspaper-preview";
+import { ObituaryPreview } from "./templates/obituary-template";
 import { PriceBreakdown } from "./price-breakdown";
 import { Confirmation } from "./confirmation";
 import { Step1Selection } from "./step1-selection";
@@ -68,7 +69,9 @@ function LivePreview({ state }: { state: BookingState }) {
   return (
     <Card className="p-5 sm:p-6">
       <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-zinc-500">{t("Live preview")}</h3>
-      {isText ? (
+      {state.categoryId === "obituary" ? (
+        <ObituaryPreview state={state} />
+      ) : isText ? (
         <NewspaperPreview text={state.text} charsPerLine={paper?.rates.charsPerLine ?? 28} enhancements={state.enhancements} paperName={paper ? pn(paper) : "The Daily"} categoryName={category ? tl(category.name, category.nameMl) : "General"} minLines={paper?.rates.textMinLines ?? 3} />
       ) : (
         <DisplayPreview columns={state.display.columns} heightCm={state.display.heightCm} colWidthCm={paper?.rates.colWidthCm ?? 4} colorMode={state.display.colorMode} imageUrl={state.artwork?.previewUrl} artworkName={state.artwork?.name} />

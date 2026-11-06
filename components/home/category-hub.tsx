@@ -10,6 +10,11 @@ import type { CategoryId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TemplateCard } from "./template-card";
 
+/** Section headlines that differ from the category name. */
+const HEADLINES: Partial<Record<CategoryId, { en: string; ml: string }>> = {
+  obituary: { en: "🕊️ Remembrance / Obituary", ml: "🕊️ ചരമം / ഓർമ്മക്കുറിപ്പുകൾ" },
+};
+
 export function CategoryHub() {
   const { t, tl } = useI18n();
   const [active, setActive] = useState<CategoryId | "all">("all");
@@ -38,7 +43,7 @@ export function CategoryHub() {
             <section key={cat.id} id={cat.id} aria-labelledby={`${cat.id}-h`} className="scroll-mt-36">
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <CategoryIcon name={cat.icon} className="h-6 w-6 text-navy-700" />
-                <h2 id={`${cat.id}-h`} className="text-2xl font-bold text-navy-900">{tl(cat.name, cat.nameMl)}</h2>
+                <h2 id={`${cat.id}-h`} className="text-2xl font-bold text-navy-900">{HEADLINES[cat.id] ? tl(HEADLINES[cat.id]!.en, HEADLINES[cat.id]!.ml) : tl(cat.name, cat.nameMl)}</h2>
                 {cat.documents.some((d) => d.required) && (
                   <Badge tone="amber"><FileCheck2 className="h-3 w-3" aria-hidden="true" /> {t("Needs")}: {cat.documents.filter((d) => d.required).map((d) => t(d.label)).join(" + ")}</Badge>
                 )}

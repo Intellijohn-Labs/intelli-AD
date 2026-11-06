@@ -16,6 +16,7 @@ import { ENHANCEMENT_PCT, measureText } from "@/lib/pricing";
 import { composeSchema, MAX_TEXT_CHARS, PLACEHOLDER_RE, requiredDocIds, type ComposeValues } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import { FileDropzone } from "./file-dropzone";
+import { ObituaryComposer } from "./templates/obituary-template";
 import { StepNav } from "./step-nav";
 
 const COLUMN_OPTIONS = [
@@ -32,6 +33,7 @@ export function Step2Compose() {
   const category = getCategory(state.categoryId);
   const docs = category?.documents ?? [];
   const isText = state.adType === "classified-text";
+  const isObituary = state.categoryId === "obituary";
   const paperIds = Object.keys(state.selection).filter((k) => state.selection[k].length);
   const paper = getNewspaper(paperIds[0]);
   const rates = paper?.rates;
@@ -83,6 +85,12 @@ export function Step2Compose() {
     <form onSubmit={handleSubmit(() => update({ step: 3 }))} noValidate>
       <div>
         <div className="space-y-6">
+          {isObituary && (
+            <ObituaryComposer
+              onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
+              onSize={(c, h) => { setValue("columns", c, { shouldValidate: true }); setValue("heightCm", h, { shouldValidate: true }); }}
+            />
+          )}
           {isText ? (
             <>
               <div>
@@ -180,7 +188,7 @@ export function Step2Compose() {
                 control={control}
                 name="artwork"
                 render={({ field }) => (
-                  <FileDropzone label={t("Artwork")} required hint={t("PDF, JPG or PNG · print-ready at 300 dpi · up to 25 MB")} value={field.value} onChange={field.onChange} error={errors.artwork?.message} />
+                  <FileDropzone label={isObituary ? t("Portrait photo / artwork") : t("Artwork")} required hint={t("PDF, JPG or PNG · print-ready at 300 dpi · up to 25 MB")} value={field.value} onChange={field.onChange} error={errors.artwork?.message} />
                 )}
               />
             </>

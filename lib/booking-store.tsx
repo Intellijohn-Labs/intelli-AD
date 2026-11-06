@@ -5,6 +5,7 @@ import type { AdType, CategoryId, DisplaySpec, Enhancements, FileMeta } from "./
 import type { Selection } from "./pricing";
 import { DEFAULT_DISPLAY, DEFAULT_ENHANCEMENTS } from "./pricing";
 import type { ReceiptData } from "./receipt";
+import type { ObituaryFields } from "@/data/obituary";
 
 export type Step = 1 | 2 | 3 | 4;
 
@@ -21,6 +22,8 @@ export interface BookingState {
   releaseDate: string | null;
   templateTitle: string | null;
   receipt: ReceiptData | null;
+  /** Obituary / death-anniversary composer fields (only used by the obituary category). */
+  obituary: ObituaryFields | null;
 }
 
 export const initialBookingState: BookingState = {
@@ -36,6 +39,7 @@ export const initialBookingState: BookingState = {
   releaseDate: null,
   templateTitle: null,
   receipt: null,
+  obituary: null,
 };
 
 const STORAGE_KEY = "intelliad.booking.v1";

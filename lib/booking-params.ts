@@ -1,4 +1,5 @@
 import { getTemplate } from "@/data/categories";
+import { DEFAULT_OBITUARY } from "@/data/obituary";
 import { getNewspaper } from "@/data/newspapers";
 import type { BookingState } from "./booking-store";
 import type { AdType } from "./types";
@@ -27,6 +28,11 @@ export function buildInitialState(sp: Params): Partial<BookingState> {
     out.categoryId = tpl.categoryId;
     out.text = tpl.body;
     out.templateTitle = tpl.title;
+    // The anniversary memorial is a photo box ad: open it in display mode with the memorial form (garland / lamp frames).
+    if (tpl.id === "obituary-anniversary") {
+      out.adType = "classified-display";
+      out.obituary = { ...DEFAULT_OBITUARY, kind: "anniversary", milestone: "1" };
+    }
   }
   return out;
 }
