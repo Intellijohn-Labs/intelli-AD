@@ -1,11 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePublication } from "@/lib/publication";
 import { useToast } from "@/components/ui/toast";
-import { Check } from "lucide-react";
+import { Check, Eye, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
@@ -15,9 +15,7 @@ import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
 import { getAdType, getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
-import { DisplayPreview, NewspaperPreview } from "./newspaper-preview";
-import { ObituaryPreview } from "./templates/obituary-template";
-import { TenderPreview } from "./templates/tender-template";
+import { AdRender } from "./ad-render";
 import { PriceBreakdown } from "./price-breakdown";
 import { Confirmation } from "./confirmation";
 import { Step1Selection } from "./step1-selection";
@@ -61,25 +59,78 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
   );
 }
 
+/** Sticky newsprint proof beside the form; editable in place, with the price recalculating under it. */
 function LivePreview({ state }: { state: BookingState }) {
-  const { t, tl, pn } = useI18n();
-  const category = getCategory(state.categoryId);
-  const paperId = Object.keys(state.selection).find((k) => state.selection[k].length);
-  const paper = getNewspaper(paperId) ?? undefined;
+  const quote = useBookingQuote(state);
   const isText = state.adType === "classified-text";
   return (
     <Card className="p-5 sm:p-6">
-      <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#2B3D6B]">{t("Live preview")}</h3>
-      {state.categoryId === "tender" ? (
-        <TenderPreview state={state} />
-      ) : state.categoryId === "obituary" || state.categoryId === "remembrance" ? (
-        <ObituaryPreview state={state} />
-      ) : isText ? (
-        <NewspaperPreview text={state.text} charsPerLine={paper?.rates.charsPerLine ?? 28} enhancements={state.enhancements} paperName={paper ? pn(paper) : "The Daily"} categoryName={category ? tl(category.name, category.nameMl) : "General"} minLines={paper?.rates.textMinLines ?? 3} />
-      ) : (
-        <DisplayPreview columns={state.display.columns} heightCm={state.display.heightCm} colWidthCm={paper?.rates.colWidthCm ?? 4} colorMode={state.display.colorMode} imageUrl={state.artwork?.previewUrl} artworkName={state.artwork?.name} />
-      )}
+      <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#2B3D6B]">LIVE NEWSPAPER PROOF / അച്ചടി പ്രിവ്യൂ</h3>
+      <AdRender state={state} editable />
+      <div className="mt-4 flex items-baseline justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-400/30 dark:bg-emerald-500/10" aria-live="polite">
+        <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{isText ? `${quote.metrics.lines} lines` : `${quote.metrics.areaCm2} cm²`} · estimated cost</span>
+        <span className="font-mono text-lg font-black tabular-nums text-emerald-700 dark:text-emerald-300"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
+      </div>
     </Card>
+  );
+}
+
+/**
+ * Phones: the proof box sits at the bottom of the page, so a sticky bar keeps the line count and live total in view
+ * and opens the proof in a slide-up sheet. The estimate pulses whenever the ad or its price changes.
+ */
+function MobileProofBar({ state }: { state: BookingState }) {
+  const quote = useBookingQuote(state);
+  const [open, setOpen] = useState(false);
+  const controls = useAnimationControls();
+  const first = useRef(true);
+  const isText = state.adType === "classified-text";
+  const size = isText ? `${quote.metrics.lines} ${quote.metrics.lines === 1 ? "line" : "lines"}` : `${quote.metrics.areaCm2} cm²`;
+
+  // Pulse the estimate so edits are visibly registered without scrolling down to the proof.
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    void controls.start({ scale: [1, 1.07, 1], transition: { duration: 0.45, ease: "easeOut" } });
+  }, [quote.totals.total, quote.metrics.lines, quote.metrics.areaCm2, controls]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden"; // keep the page still behind the sheet
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [open]);
+
+  return (
+    <div className="lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
+        <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
+          <motion.p animate={controls} className="min-w-0 truncate font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-white" aria-live="polite">
+            {size} · <span className="text-emerald-600 dark:text-emerald-400"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
+          </motion.p>
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/25 transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+            <Eye className="h-4 w-4" aria-hidden="true" /> Preview Ad / പ്രിവ്യൂ കാണുക
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div className="fixed inset-0 z-[60] flex items-end bg-slate-900/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+            <motion.div
+              role="dialog" aria-modal="true" aria-label="Live newspaper proof"
+              className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-3xl bg-[#F6F8FA] p-4 pb-8 shadow-2xl dark:bg-[#0B132B]"
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 38 }}
+            >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden="true" />
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close preview" className="absolute top-4 right-4 rounded-full p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
+              <LivePreview state={state} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -136,9 +187,9 @@ function Shell() {
   const showMini = state.step < 4;
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", showMini && (state.step >= 2 || state.text) && "pb-20 lg:pb-0")}>
       <Card className="p-3">
-        <Stepper current={state.step} onGo={(s) => update({ step: s })} />
+        <Stepper current={state.step} onGo={(s) => update({ step: s, returnToCheckout: false })} />
       </Card>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <Card className={cn("p-5 sm:p-6 lg:p-8", showMini && "lg:col-span-8", !showMini && "lg:col-span-12")}>
@@ -156,6 +207,7 @@ function Shell() {
           </div>
         )}
       </div>
+      {showMini && (state.step >= 2 || state.text) && <MobileProofBar state={state} />}
     </div>
   );
 }

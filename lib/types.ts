@@ -21,6 +21,8 @@ export type ColorMode = "bw" | "color";
 
 export interface DisplaySpec {
   columns: number;
+  /** Explicit ad width in cm. When set it overrides columns × column width for pricing. */
+  widthCm?: number;
   heightCm: number;
   colorMode: ColorMode;
 }

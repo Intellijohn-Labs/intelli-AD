@@ -16,9 +16,24 @@ export interface TenderFields {
   website: string;
   /** How the uploaded logo is cropped in the preview. */
   logoShape: "square" | "round";
+  /** Structured item blocks (schedule of items / works) printed as a ruled table. */
+  items: TenderItem[];
+  /** Authorised signatory block. */
+  signatory: string;
+  designation: string;
+  /** Reserve a seal / stamp zone beside the signature. */
+  seal: boolean;
+  /** Where the seal sits relative to the signature (click it in the proof to cycle). */
+  sealPos: "left" | "center" | "right";
 }
 
-export const DEFAULT_TENDER: TenderFields = { org: "", ref: "", description: "", pac: "", emd: "", fee: "", lastDate: "", lastTime: "", contact: "", website: "", logoShape: "square" };
+export interface TenderItem {
+  name: string;
+  qty: string;
+  amount: string;
+}
+
+export const DEFAULT_TENDER: TenderFields = { org: "", ref: "", description: "", pac: "", emd: "", fee: "", lastDate: "", lastTime: "", contact: "", website: "", logoShape: "square", items: [], signatory: "", designation: "", seal: true, sealPos: "left" };
 
 /** "15-11-2026, ഉച്ചയ്ക്ക് 3:00" or a [തീയതി] placeholder. */
 export function fmtTenderDeadline(f: Pick<TenderFields, "lastDate" | "lastTime">) {
@@ -33,9 +48,15 @@ export function composeTender(f: TenderFields): string {
   if (f.pac.trim()) lines.push(`അടങ്കൽ തുക (PAC): ${money(f.pac)}`);
   if (f.emd.trim()) lines.push(`നിരതദ്രവ്യം (EMD): ${money(f.emd)}`);
   if (f.fee.trim()) lines.push(`ദർഘാസ് ഫോറത്തിന്റെ വില: ${money(f.fee)}`);
+  const items = f.items.filter((i) => i.name.trim());
+  if (items.length) {
+    lines.push("ഇനങ്ങൾ:");
+    items.forEach((i, n) => lines.push(`${n + 1}. ${i.name.trim()}${i.qty.trim() ? ` – ${i.qty.trim()}` : ""}${i.amount.trim() ? ` – ${money(i.amount)}` : ""}`));
+  }
   lines.push(`അവസാന തീയതിയും സമയവും: ${fmtTenderDeadline(f)}`);
   const contact = [f.contact.trim(), f.website.trim()].filter(Boolean).join(", ");
   lines.push(`വിശദവിവരങ്ങൾക്ക്: ${contact || "[ഫോൺ / വെബ്സൈറ്റ്]"}`);
+  if (f.signatory.trim()) lines.push(`${f.signatory.trim()}${f.designation.trim() ? `, ${f.designation.trim()}` : ""}`);
   return lines.join("\n");
 }
 
@@ -59,7 +80,7 @@ export const TENDER_TEMPLATE_FIELDS: Record<string, TenderFields> = {
     lastDate: "", lastTime: "15:00",
     contact: "[ഓഫീസ് ഫോൺ]",
     website: "[വെബ്സൈറ്റ്]",
-    logoShape: "square",
+    logoShape: "square", items: [], signatory: "", designation: "", seal: true, sealPos: "left",
   },
   "tender-supply": {
     org: "[സഹകരണ ബാങ്ക് / വകുപ്പിന്റെ പേര്]",
@@ -69,6 +90,6 @@ export const TENDER_TEMPLATE_FIELDS: Record<string, TenderFields> = {
     lastDate: "", lastTime: "13:00",
     contact: "[ഫോൺ]",
     website: "[ഇ-മെയിൽ / വെബ്സൈറ്റ്]",
-    logoShape: "round",
+    logoShape: "round", items: [], signatory: "", designation: "", seal: true, sealPos: "left",
   },
 };

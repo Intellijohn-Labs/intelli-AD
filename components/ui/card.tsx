@@ -10,7 +10,7 @@ export function Card({ className, accent, style, ...props }: HTMLAttributes<HTML
   return (
     <div
       className={cn(
-        "rounded-3xl border border-slate-200/80 bg-white text-slate-900 shadow-sm transition-all hover:shadow-md dark:border-slate-800/80 dark:bg-[#132247] dark:text-[#FFFFFF] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
+        "rounded-3xl border border-slate-200/80 bg-white text-slate-900 shadow-[0_10px_30px_-14px_rgba(37,99,235,0.18)] transition-all hover:shadow-[0_14px_36px_-14px_rgba(37,99,235,0.28)] dark:border-slate-800/80 dark:bg-[#132247] dark:text-[#FFFFFF] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
         accent && "border-t-[3px]",
         className,
       )}

@@ -1,19 +1,23 @@
 "use client";
 
 import { ArrowRight, Calculator, ChevronDown, Clock, MapPin, Newspaper } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition } from "@/lib/pricing";
 import { usePublication } from "@/lib/publication";
 import { bookHref } from "@/lib/booking-params";
 import { cn } from "@/lib/utils";
 import type { AdType, CategoryId } from "@/lib/types";
-import { ClassifiedDisplayArt, ClassifiedTextArt, CommercialArt, PremiumArt, RemembranceArt, TenderArt } from "./service-art";
 
 interface Service {
   id: string;
-  art: ReactNode;
+  /** 3D card artwork in public/images/cards. */
+  image: { src: string; alt: string };
+  /** Physical hover motion for the artwork (literal classes so Tailwind can see them). */
+  motion: string;
+  /** Focal point of the close-up crop. */
+  focus: string;
   artBg: string;
   tag: string;
   tagTone: string;
@@ -26,12 +30,12 @@ interface Service {
 }
 
 const SERVICES: Service[] = [
-  { id: "classified-text", art: <ClassifiedTextArt />, artBg: "from-amber-50 via-amber-50/70 to-white dark:from-amber-500/15 dark:via-amber-500/10 dark:to-transparent", tag: "Cost-Effective", tagTone: "bg-amber-500 text-white", kicker: "അക്ഷര പരസ്യങ്ങൾ", title: "Classified Text Ads", description: "Matrimonial, Property, Job alerts, Rental notices billed per line.", cta: "Book Now", type: "classified-text" },
-  { id: "classified-display", art: <ClassifiedDisplayArt />, artBg: "from-blue-50 via-blue-50/70 to-white dark:from-blue-500/15 dark:via-blue-500/10 dark:to-transparent", tag: "High Visibility", tagTone: "bg-blue-600 text-white", kicker: "ബോക്സ് പരസ്യങ്ങൾ", title: "Classified Display", description: "Boxed obituary, recruitment notices, and business cards billed per sq.cm.", cta: "Book Now", type: "classified-display" },
-  { id: "tender", art: <TenderArt />, artBg: "from-slate-100 via-slate-100/70 to-white dark:from-slate-400/15 dark:via-slate-400/10 dark:to-transparent", tag: "Official & Legal", tagTone: "bg-slate-700 text-white", kicker: "ദർഘാസ് & പൊതു അറിയിപ്പുകൾ", title: "Tender / Public Notices", description: "PWD, Panchayat, Bank, Court notices, and Gazette format ads.", cta: "Book Now", type: "classified-text", category: "tender" },
-  { id: "remembrance", art: <RemembranceArt />, artBg: "from-stone-100 via-stone-100/70 to-white dark:from-stone-400/15 dark:via-stone-400/10 dark:to-transparent", tag: "Tribute", tagTone: "bg-stone-600 text-white", kicker: "ചരമവാർഷികം & സ്മരണാഞ്ജലി", title: "Obituary & Remembrance", description: "Demise announcements and annual memorial tributes with photo frames.", cta: "Book Now", type: "classified-text", category: "obituary" },
-  { id: "premium", art: <PremiumArt />, artBg: "from-rose-50 via-orange-50/70 to-white dark:from-rose-500/15 dark:via-orange-500/10 dark:to-transparent", tag: "Maximum Reach", tagTone: "bg-rose-600 text-white", kicker: "മുൻപേജ് പരസ്യങ്ങൾ", title: "Premium Display & Jackets", description: "Front page solus, ear panels, half page, and full broadsheet jackets.", cta: "Enquire / Book", type: "commercial-display" },
-  { id: "commercial", art: <CommercialArt />, artBg: "from-rose-50 via-fuchsia-50/60 to-white dark:from-rose-500/15 dark:via-fuchsia-500/10 dark:to-transparent", tag: "Brand Building", tagTone: "bg-fuchsia-600 text-white", kicker: "വാണിജ്യ പരസ്യങ്ങൾ", title: "Commercial Display", description: "Showroom launches, retail discounts, and festival offers across regional editions.", cta: "Book Now", type: "commercial-display", category: "business" },
+  { id: "classified-text", image: { src: "/images/cards/classified-text.png", alt: "Classified Text Ads" }, motion: "motion-safe:group-hover:scale-110 motion-safe:group-hover:rotate-1 motion-safe:group-hover:-translate-y-1 transition-transform duration-500", focus: "50% 45%", artBg: "from-yellow-100 via-amber-50 to-white dark:from-yellow-500/20 dark:via-amber-500/10 dark:to-transparent", tag: "Cost-Effective", tagTone: "bg-amber-500 text-white", kicker: "അക്ഷര പരസ്യങ്ങൾ", title: "Classified Text Ads", description: "Matrimonial, Property, Job alerts, Rental notices billed per line.", cta: "Book Now", type: "classified-text" },
+  { id: "classified-display", image: { src: "/images/cards/classified-display.png", alt: "Classified Display" }, motion: "motion-safe:group-hover:scale-108 motion-safe:group-hover:-translate-y-1.5 transition-transform duration-500", focus: "50% 50%", artBg: "from-sky-100 via-blue-50 to-white dark:from-sky-500/20 dark:via-blue-500/10 dark:to-transparent", tag: "High Visibility", tagTone: "bg-blue-600 text-white", kicker: "ബോക്സ് പരസ്യങ്ങൾ", title: "Classified Display", description: "Boxed obituary, recruitment notices, and business cards billed per sq.cm.", cta: "Book Now", type: "classified-display" },
+  { id: "tender", image: { src: "/images/cards/tender-notice.png", alt: "Tender Notices" }, motion: "motion-safe:group-hover:scale-110 motion-safe:group-hover:-rotate-[1deg] motion-safe:group-hover:-translate-y-1 transition-transform duration-500", focus: "50% 45%", artBg: "from-slate-200 via-slate-100 to-white dark:from-slate-400/20 dark:via-slate-400/10 dark:to-transparent", tag: "Official & Legal", tagTone: "bg-slate-700 text-white", kicker: "ദർഘാസ് & പൊതു അറിയിപ്പുകൾ", title: "Tender / Public Notices", description: "PWD, Panchayat, Bank, Court notices as simple line ads or boxed display ads.", cta: "Book Now", type: "classified-display", category: "tender" },
+  { id: "remembrance", image: { src: "/images/cards/obituary.png", alt: "Obituary & Remembrance" }, motion: "motion-safe:group-hover:scale-108 motion-safe:group-hover:-translate-y-1 transition-all duration-700", focus: "50% 40%", artBg: "from-indigo-200 via-violet-100 to-indigo-50 dark:from-indigo-500/30 dark:via-violet-500/15 dark:to-transparent", tag: "Tribute", tagTone: "bg-stone-600 text-white", kicker: "ചരമവാർഷികം & സ്മരണാഞ്ജലി", title: "Obituary & Remembrance", description: "Demise notices and memorials as simple line ads or photo-frame display ads.", cta: "Book Now", type: "classified-display", category: "obituary" },
+  { id: "premium", image: { src: "/images/cards/jackets.png", alt: "Premium Display & Jackets" }, motion: "motion-safe:group-hover:scale-110 motion-safe:group-hover:rotate-1 transition-transform duration-500", focus: "45% 50%", artBg: "from-orange-100 via-amber-50 to-white dark:from-orange-500/20 dark:via-rose-500/10 dark:to-transparent", tag: "Maximum Reach", tagTone: "bg-rose-600 text-white", kicker: "മുൻപേജ് പരസ്യങ്ങൾ", title: "Premium Display & Jackets", description: "Front page solus, ear panels, half page, and full broadsheet jackets.", cta: "Enquire / Book", type: "commercial-display" },
+  { id: "commercial", image: { src: "/images/cards/commercial-display.png", alt: "Commercial Display" }, motion: "motion-safe:group-hover:scale-112 motion-safe:group-hover:-rotate-2 motion-safe:group-hover:-translate-y-2 motion-safe:group-hover:animate-[card-wiggle_0.7s_ease-in-out_1] transition-transform duration-300 ease-out", focus: "50% 50%", artBg: "from-fuchsia-100 via-pink-50 to-white dark:from-fuchsia-500/20 dark:via-pink-500/10 dark:to-transparent", tag: "Brand Building", tagTone: "bg-fuchsia-600 text-white", kicker: "വാണിജ്യ പരസ്യങ്ങൾ", title: "Commercial Display", description: "Showroom launches, retail discounts, and festival offers across regional editions.", cta: "Book Now", type: "commercial-display", category: "business" },
 ];
 
 const STATS = [
@@ -89,8 +93,23 @@ export function ServicesHub() {
                 <span className={cn("inline-block rounded-full px-3 py-1 font-mono text-[10px] font-bold tracking-widest uppercase", s.tagTone)}>{t(s.tag)}</span>
 
                 {/* Soft-gradient paper canvas with an inner hairline */}
-                <div aria-hidden="true" className={cn("relative mt-4 flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-br p-5 dark:border-slate-700/60", s.artBg)}>
-                  <div className="relative flex h-full w-full items-center justify-center transition-transform duration-200 group-hover:scale-105">{s.art}</div>
+                {/* Tinted canvas: close-up 3D artwork that fades into a soft shadow at the edges */}
+                <div className="relative mt-4 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all duration-500 ease-out group-hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] dark:border-slate-800 dark:bg-slate-900/40 dark:group-hover:shadow-[0_12px_24px_rgba(0,0,0,0.4)]">
+                  <div aria-hidden="true" className={cn("absolute inset-0 bg-gradient-to-br", s.artBg)} />
+                  <div className="relative flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl">
+                    <div aria-hidden="true" className="absolute inset-x-10 bottom-1 h-5 rounded-full bg-black/15 blur-xl dark:bg-black/40" />
+                    <div className={cn("relative h-full w-full will-change-transform", s.motion)}>
+                      <Image
+                        src={s.image.src}
+                        alt={s.image.alt}
+                        fill
+                        priority={i < 3}
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        style={{ objectPosition: s.focus }}
+                        className="scale-[1.12] -translate-y-1 object-cover saturate-110 contrast-105 transition-transform duration-500 ease-out [mask-image:radial-gradient(ellipse_at_center,#000_62%,transparent_100%)] dark:brightness-110 group-hover:scale-[1.2]"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <p className="mt-5 text-sm leading-relaxed font-medium text-slate-900 dark:text-white" style={{ fontFamily: '"Noto Sans Malayalam", Manjari, sans-serif' }}>{s.kicker}</p>

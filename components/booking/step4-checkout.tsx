@@ -15,7 +15,9 @@ import { createReceipt, PAYMENT_LABEL, type PaymentMethod } from "@/lib/receipt"
 import { useBookingQuote } from "@/lib/use-quote";
 import { checkoutSchema, type CheckoutValues } from "@/lib/validation";
 import { cn, formatDate, formatINR } from "@/lib/utils";
+import { applySpacing } from "@/lib/paragraphs";
 import { PriceBreakdown } from "./price-breakdown";
+import { ProofCard } from "./proof-card";
 
 export function Step4Checkout() {
   const { state, update } = useBooking();
@@ -47,6 +49,7 @@ export function Step4Checkout() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-8 lg:grid-cols-[3fr_2fr]">
       <div className="space-y-6">
+        <ProofCard state={state} onEdit={() => update({ step: 2, returnToCheckout: true })} />
         <section aria-labelledby="sum-h" className="rounded-md border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-700 dark:bg-zinc-800/60">
           <h3 id="sum-h" className="mb-2 text-lg font-bold text-navy-900 dark:text-zinc-50">{t("Order summary")}</h3>
           <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
@@ -55,7 +58,7 @@ export function Step4Checkout() {
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Release date")}</dt><dd className="font-semibold">{state.releaseDate && formatDate(state.releaseDate)}</dd></div>
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Editions")}</dt><dd className="font-semibold">{papers.map((p) => `${pn(getNewspaper(p)!)} (${state.selection[p].length})`).join(", ")}</dd></div>
           </dl>
-          {state.adType === "classified-text" && <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-zinc-300 bg-paper p-3 font-clipping text-sm text-zinc-900">{state.text.trim()}</pre>}
+          {(state.adType === "classified-text" || (!state.artwork && !!state.text.trim())) && <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-zinc-300 bg-paper p-3 font-clipping text-sm text-zinc-900">{applySpacing(state.text, state.paragraphSpacing).trim()}</pre>}
         </section>
 
         <section aria-labelledby="contact-h" className="space-y-4">

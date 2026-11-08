@@ -3,6 +3,21 @@
 export type ObituaryKind = "demise" | "anniversary";
 export type Gender = "m" | "f";
 export type FrameAccent = "none" | "garland" | "lamp" | "candle";
+export type FrameStyle = "traditional" | "christian" | "minimal";
+export type HeadingStyle = "classic" | "bold" | "elegant" | "script";
+
+export const FRAME_STYLES: { id: FrameStyle; ml: string; en: string }[] = [
+  { id: "traditional", ml: "പരമ്പരാഗതം", en: "Traditional floral" },
+  { id: "christian", ml: "ക്രിസ്ത്യൻ", en: "Christian cross" },
+  { id: "minimal", ml: "ലളിതം", en: "Minimal rule" },
+];
+
+export const HEADING_STYLES: { id: HeadingStyle; label: string; family: string; weight: number; spacing?: string }[] = [
+  { id: "classic", label: "ക്ലാസിക്", family: '"Noto Serif Malayalam", serif', weight: 800 },
+  { id: "bold", label: "ബോൾഡ്", family: '"Anek Malayalam", "Noto Sans Malayalam", sans-serif', weight: 800 },
+  { id: "elegant", label: "എലഗന്റ്", family: '"Noto Serif Malayalam", serif', weight: 600, spacing: "0.04em" },
+  { id: "script", label: "ലിപി", family: '"Chilanka", "Manjari", cursive', weight: 400 },
+];
 
 export const FRAME_ACCENTS: { id: FrameAccent; ml: string; en: string }[] = [
   { id: "garland", ml: "പൂമാല", en: "Garland frame" },
@@ -35,6 +50,14 @@ export interface ObituaryFields {
   photoFrame: "round" | "rect";
   /** Ornament around the portrait: none (plain frame), garland, nilavilakku lamp, or memorial candle. */
   frameAccent: FrameAccent;
+  /** Border around the whole notice: floral (traditional), cross (christian) or a thin rule (minimal). */
+  frameStyle: FrameStyle;
+  /** Malayalam typeface used for the heading. */
+  headingStyle: HeadingStyle;
+  /** Prayer / tribute line printed under the details. */
+  prayer: string;
+  /** Portrait crop: zoom (1–3) and focus point (0–100 %). */
+  photoCrop: { zoom: number; x: number; y: number };
 }
 
 export interface Prefix {
@@ -99,6 +122,10 @@ export const DEFAULT_OBITUARY: ObituaryFields = {
   tribute: "",
   photoFrame: "round",
   frameAccent: "garland",
+  frameStyle: "traditional",
+  headingStyle: "classic",
+  prayer: "",
+  photoCrop: { zoom: 1, x: 50, y: 50 },
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -126,7 +153,8 @@ export function composeObituary(f: ObituaryFields): string {
     lines.push(who + ".");
     if (f.remembranceDate) lines.push(`സ്മരണ തീയതി: ${fmtDate(f.remembranceDate)}`);
     if (f.tribute.trim()) lines.push(f.tribute.trim());
-    lines.push(`ഓർമ്മകളോടെ: ${f.family.trim() || "കുടുംബാംഗങ്ങൾ"}`);
+    if (f.prayer.trim()) lines.push(f.prayer.trim());
+    lines.push(`ഓർമ്മകളോടെ: ${f.family.trim().replace(/\s*\n\s*/g, ", ") || "കുടുംബാംഗങ്ങൾ"}`);
     return lines.join("\n");
   }
 
@@ -144,6 +172,7 @@ export function composeObituary(f: ObituaryFields): string {
   if (funeral) lines.push(`സംസ്കാരം: ${funeral}`);
   if (f.family.trim()) lines.push(f.family.trim());
   if (f.tribute.trim()) lines.push(f.tribute.trim());
+  if (f.prayer.trim()) lines.push(f.prayer.trim());
   if (f.contact.trim()) lines.push(`ഫോൺ: ${f.contact.trim()}`);
   return lines.join("\n");
 }
@@ -192,7 +221,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
       demiseDate: iso(now), demiseTime: "21:15",
       funeralDate: iso(new Date(now.getTime() + 2 * 864e5)), funeralTime: "15:00", funeralPlace: "ഭവനത്തിൽ ശുശ്രൂഷ, തുടർന്ന് സെന്റ് ജോർജ് പള്ളിയിൽ",
       family: "ഭർത്താവ്: പരേതനായ ജോസഫ് പി.ജെ. മക്കൾ: സിബി, ഷീബ, ജിജോ. മരുമക്കൾ: ലിജി, തോമസ്, ആൻസി.",
-      photoFrame: "rect", frameAccent: "none",
+      photoFrame: "rect", frameAccent: "none", frameStyle: "christian",
     }),
   },
   {

@@ -1,11 +1,14 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Building2, User } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { AgencyForm } from "@/components/agency/agency-form";
 import { AuthForm } from "@/components/auth/auth-form";
-import { useAuth } from "@/lib/auth";
+import { homeFor, useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 /** Faint Malayalam broadsheet: columns of headline + body text in ink, like a printed front page. */
 const HEADLINES = ["കേരളത്തിലെ വാർത്തകൾ", "പത്രപരസ്യം ബുക്ക് ചെയ്യാം", "ഇന്നത്തെ പ്രധാന വാർത്തകൾ", "ക്ലാസിഫൈഡ് പരസ്യങ്ങൾ", "മലയാള മനോരമ മാതൃഭൂമി"];
@@ -26,16 +29,33 @@ function Broadsheet() {
   );
 }
 
+type Tab = "user" | "agency";
+
+const TABS: { id: Tab; label: string; icon: typeof User }[] = [
+  { id: "user", label: "Individual / Customer", icon: User },
+  { id: "agency", label: "Akshaya & Agency Partner", icon: Building2 },
+];
+
 export function LoginView() {
   const { user, ready } = useAuth();
   const router = useRouter();
-  const notice = useSearchParams().get("auth") === "required";
+  const params = useSearchParams();
+  const notice = params.get("auth") === "required";
+  const [tab, setTab] = useState<Tab>(params.get("tab") === "agency" ? "agency" : "user");
 
-  // Already signed in (e.g. opened /login directly): go straight Home.
+  const pick = (t: Tab) => {
+    setTab(t);
+    window.history.replaceState(null, "", `/login?tab=${t}`); // keeps the link shareable without a server round-trip
+  };
+
+  // Already signed in: partners go to their dashboard, customers Home (unless they came to switch to the partner tab).
   useEffect(() => {
-    if (ready && user) router.replace("/");
-  }, [ready, user, router]);
+    if (!ready || !user) return;
+    if (user.is_agency) router.replace(homeFor(user));
+    else if (tab !== "agency") router.replace("/");
+  }, [ready, user, tab, router]);
 
+  const agency = tab === "agency";
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8FAFC] px-4 py-10 dark:bg-[#0B132B]">
       <Broadsheet />
@@ -53,10 +73,32 @@ export function LoginView() {
           <p className="mt-3 border-t-2 border-[#0F172A] pt-2 font-mono text-xs font-medium tracking-wide text-zinc-700 uppercase dark:border-[#2B3D6B] dark:text-slate-200">Kerala&apos;s Premier Newspaper Ad Booking Platform</p>
         </div>
 
-        <div className="mx-auto w-full max-w-md rounded-md border-2 border-[#0F172A] bg-[#ffffff] p-8 dark:border-[#2B3D6B] dark:bg-[#132247]">
-          <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">Sign in to continue</h2>
-          <p className="mt-1 mb-5 text-sm text-zinc-600 dark:text-slate-200">Manage your newspaper releases &amp; track live ad proofs.</p>
-          <AuthForm notice={notice} />
+        <div className="mx-auto w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+          <div role="tablist" aria-label="Sign-in type" className="relative mb-6 grid grid-cols-2 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+            {TABS.map((t) => {
+              const on = tab === t.id;
+              return (
+                <button key={t.id} type="button" role="tab" id={`tab-${t.id}`} aria-selected={on} aria-controls="login-panel" onClick={() => pick(t.id)}
+                  className={cn("relative flex items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600", on ? "text-slate-950 dark:text-white" : "text-slate-500 hover:text-slate-800 dark:text-slate-300")}>
+                  {on && <motion.span layoutId="login-tab-pill" className="absolute inset-0 rounded-full bg-white shadow-sm dark:bg-slate-700" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+                  <t.icon className="relative h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="relative">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div id="login-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{agency ? "Partner & Agency Portal" : "Welcome Back"}</h2>
+                <p className="mt-1 mb-5 text-sm text-slate-600 dark:text-slate-200">
+                  {agency ? "Official gateway for Akshaya Centres, Jan Seva Kendras, and Registered Agencies" : "Book and manage your newspaper and media advertisements"}
+                </p>
+                {agency ? <AgencyForm /> : <AuthForm notice={notice} />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
         <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to IntelliAd&apos;s Terms &amp; Privacy Policy.</p>
       </motion.main>

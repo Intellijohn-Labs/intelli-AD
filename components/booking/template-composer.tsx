@@ -1,0 +1,123 @@
+"use client";
+
+import { Check, Copy, Eraser, PhoneCall, Sparkles } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useToast } from "@/components/ui/toast";
+import { useI18n } from "@/context/language-context";
+import { CONTACT_SNIPPET, templatesForCategory, type TemplateLang } from "@/data/ad-templates";
+import type { ParagraphSpacing } from "@/lib/paragraphs";
+import type { CategoryId } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { ParagraphField } from "./paragraph-field";
+
+const DEFAULT_PLACEHOLDER = "ഇവിടെ വിവരങ്ങൾ ഖണ്ഡികകളായി ടൈപ്പ് ചെയ്യുക അല്ലെങ്കിൽ മുകളിലുള്ള മാതൃകകളിൽ ക്ലിക്ക് ചെയ്യുക...";
+
+/**
+ * "Ad Content & Templates" box: one-click bilingual drafts for the chosen category, helper actions, and the editable
+ * paragraph box with live counts. The text is the booking's ad text, so the proof and checkout follow every edit.
+ */
+export function TemplateComposer({
+  categoryId,
+  value,
+  onChange,
+  error,
+  charsPerLine,
+  maxChars,
+  spacing,
+  onSpacing,
+  extra,
+  hint,
+}: {
+  categoryId: CategoryId | null;
+  value: string;
+  onChange: (text: string) => void;
+  error?: string;
+  charsPerLine: number;
+  maxChars?: number;
+  spacing?: ParagraphSpacing;
+  onSpacing?: (s: ParagraphSpacing) => void;
+  extra?: ReactNode;
+  hint?: string;
+}) {
+  const { lang: siteLang } = useI18n();
+  const toast = useToast();
+  const [lang, setLang] = useState<TemplateLang>(siteLang === "ml" ? "ml" : "en");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const templates = templatesForCategory(categoryId);
+  const active = templates.find((t) => t.id === activeId) ?? templates[0];
+
+  // A different category has different drafts: forget the previous pick.
+  useEffect(() => setActiveId(null), [categoryId]);
+
+  const apply = (id: string) => {
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return;
+    setActiveId(id);
+    onChange(tpl.text[lang]);
+  };
+  const insertContact = () => onChange(value.trim() ? `${value.replace(/\s+$/g, "")}\n${CONTACT_SNIPPET[lang]}` : CONTACT_SNIPPET[lang]);
+  const copySample = async () => {
+    if (!active) return;
+    try { await navigator.clipboard.writeText(active.text[lang]); toast("Sample copied"); } catch { toast("Could not copy. Select the text and copy it manually."); }
+  };
+
+  const link = "inline-flex items-center gap-1 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-blue-600";
+  return (
+    <div className="rounded-2xl border-2 border-blue-500/20 bg-white p-5 shadow-sm dark:border-blue-500/30 dark:bg-slate-900">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Ad Content &amp; Templates / പരസ്യ വിവരങ്ങളും മാതൃകകളും</h3>
+        </div>
+        <div className="flex items-center rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800" role="group" aria-label="Template language">
+          {(["ml", "en"] as const).map((l) => (
+            <button key={l} type="button" aria-pressed={lang === l} onClick={() => setLang(l)} className={cn("rounded-md px-2.5 py-1 text-xs font-semibold transition-all", lang === l ? "bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white" : "text-slate-500 dark:text-slate-300")}>
+              {l === "ml" ? "മലയാളം" : "English"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {templates.length > 0 ? (
+        <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Ready-made templates">
+          {templates.map((tpl) => (
+            <button key={tpl.id} type="button" aria-pressed={activeId === tpl.id} onClick={() => apply(tpl.id)}
+              className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-blue-600", activeId === tpl.id ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700")}>
+              {activeId === tpl.id && <Check className="h-3 w-3" aria-hidden="true" />}
+              {tpl.label[lang]}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-3 text-xs text-slate-500 dark:text-slate-300">Choose a category in step 1 to see ready-made drafts.</p>
+      )}
+
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-slate-500 dark:text-slate-300">Edit or paste your paragraphs below. Replace every [BRACKET].</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button type="button" onClick={insertContact} className={cn(link, "text-blue-600 hover:underline dark:text-blue-400")}><PhoneCall className="h-3 w-3" aria-hidden="true" /> {lang === "ml" ? "+ ഫോൺ നമ്പർ ചേർക്കുക" : "+ Insert contact"} / ഫോൺ നമ്പർ ചേർക്കുക</button>
+          {active && <button type="button" onClick={copySample} className={cn(link, "text-slate-500 hover:text-blue-600 dark:text-slate-300")}><Copy className="h-3 w-3" aria-hidden="true" /> Copy sample</button>}
+          <button type="button" onClick={() => { onChange(""); setActiveId(null); }} className={cn(link, "text-slate-500 hover:text-rose-500 dark:text-slate-300")}><Eraser className="h-3 w-3" aria-hidden="true" /> Clear text</button>
+        </div>
+      </div>
+
+      <ParagraphField
+        id="ad-text"
+        label="Ad text"
+        required
+        rows={6}
+        value={value}
+        onChange={onChange}
+        error={error}
+        hint={hint}
+        placeholder={DEFAULT_PLACEHOLDER}
+        charsPerLine={charsPerLine}
+        maxChars={maxChars}
+        spacing={spacing}
+        onSpacing={onSpacing}
+        extra={extra}
+        textClassName="font-serif text-sm"
+      />
+    </div>
+  );
+}

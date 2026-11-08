@@ -1,9 +1,13 @@
 "use client";
 
 import { Flame } from "lucide-react";
+import { useRef } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
-import { BOX_SIZES, composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
+import { composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
 import { useBooking, type BookingState } from "@/lib/booking-store";
+import { cropStyle, PhotoCropper } from "../photo-cropper";
+import { ParagraphField } from "../paragraph-field";
+import type { FileMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PreviewCaption } from "./preview-caption";
 
@@ -15,7 +19,7 @@ const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors
  * (In Memoriam), fill the fields, and the print text is generated into the ad text.
  * The portrait is the ad's artwork upload (classified display / box ads).
  */
-export function ObituaryComposer({ onText, onSize }: { onText: (text: string) => void; onSize: (columns: number, heightCm: number) => void }) {
+export function ObituaryComposer({ onText, onPhoto }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void }) {
   const { state, update } = useBooking();
   // The category decides the notice type: Obituary = death notice, Remembrance = death anniversary.
   const kind: ObituaryKind = state.categoryId === "remembrance" ? "anniversary" : "demise";
@@ -44,7 +48,7 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
       <div role="group" aria-label="Quick drafts" className="flex flex-wrap gap-2">
         {OBITUARY_PRESETS.filter((p) => p.kind === kind).map((p) => (
           <button key={p.id} type="button" title={p.description} className={cn(chip, "border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-[#0F1D3D] dark:text-white")}
-            onClick={() => { apply({ ...p.build(new Date()), kind }); if (p.adType !== state.adType && (p.adType === "classified-text" || isText)) update({ adType: p.adType }); }}>
+            onClick={() => apply({ ...p.build(new Date()), kind })}>
             {p.titleMl} <span className="font-normal text-zinc-500">· {p.title}</span>
           </button>
         ))}
@@ -68,11 +72,9 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
                 <button key={t.id} type="button" onClick={() => set({ tribute: tributeText(t.id, f.name) })} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>{t.label}</button>
               ))}
             </div>
-            <Textarea id="ob-tribute" rows={3} aria-label="Tribute verse" className="font-clipping" value={f.tribute} onChange={(e) => set({ tribute: e.target.value })} />
+            <ParagraphField id="ob-tribute" label="Tribute text" rows={4} maxHeight={260} value={f.tribute} onChange={(v) => set({ tribute: v })} placeholder="ഇവിടെ അനുശോചന കുറിപ്പുകൾ പാരഗ്രാഫുകളായി ടൈപ്പ് ചെയ്യുക (ഉദാ: ഞങ്ങളുടെ പ്രിയപ്പെട്ട... നിത്യശാന്തി നേരുന്നു)..." textClassName="font-clipping" />
           </div>
-          <Field id="ob-family" label="Remembered by · ഓർമ്മകളോടെ" hint="Spouse, children, grandchildren, relatives & friends · ഭാര്യ/ഭർത്താവ്, മക്കൾ, കൊച്ചുമക്കൾ, ബന്ധുമിത്രാദികൾ" className="sm:col-span-2">
-            <Textarea id="ob-family" rows={2} className="font-clipping" value={f.family} onChange={(e) => set({ family: e.target.value })} />
-          </Field>
+          <ParagraphField id="ob-family" label="Remembered by · ഓർമ്മകളോടെ" hint="Spouse, children, grandchildren, relatives & friends · ഭാര്യ/ഭർത്താവ്, മക്കൾ, കൊച്ചുമക്കൾ, ബന്ധുമിത്രാദികൾ" className="sm:col-span-2" rows={3} maxHeight={240} value={f.family} onChange={(v) => set({ family: v })} textClassName="font-clipping" />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -103,47 +105,62 @@ export function ObituaryComposer({ onText, onSize }: { onText: (text: string) =>
           <Field id="ob-fdate" label="Funeral date · സംസ്കാരം തീയതി"><Input id="ob-fdate" {...input("funeralDate", "date")} /></Field>
           <Field id="ob-ftime" label="Funeral time · സമയം"><Input id="ob-ftime" {...input("funeralTime", "time")} /></Field>
           <Field id="ob-fplace" label="Funeral / cremation place · സംസ്കാര സ്ഥലം" className="sm:col-span-2"><Input id="ob-fplace" {...input("funeralPlace")} /></Field>
-          <Field id="ob-family" label="Surviving family · ബന്ധുക്കൾ" hint="Spouse, children, in-laws · ഭാര്യ/ഭർത്താവ്, മക്കൾ, മരുമക്കൾ" className="sm:col-span-2">
-            <Textarea id="ob-family" rows={2} className="font-clipping" value={f.family} onChange={(e) => set({ family: e.target.value })} />
-          </Field>
+          <ParagraphField id="ob-family" label="Surviving family · ബന്ധുക്കൾ" hint="Spouse, children, in-laws · ഭാര്യ/ഭർത്താവ്, മക്കൾ, മരുമക്കൾ" className="sm:col-span-2" rows={3} maxHeight={240} value={f.family} onChange={(v) => set({ family: v })} textClassName="font-clipping" />
           <Field id="ob-contact" label="Contact number(s) · ഫോൺ" className="sm:col-span-2"><Input id="ob-contact" inputMode="tel" {...input("contact")} /></Field>
         </div>
       )}
 
-      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
-        <legend className="text-sm font-bold">Photo &amp; box · ഫോട്ടോ</legend>
-        {isText ? (
-          <p className="text-xs text-zinc-600 dark:text-slate-200">
-            Photos are printed in Classified Display (box) ads.{" "}
-            <button type="button" className="font-semibold text-navy-700 underline" onClick={() => update({ adType: "classified-display" })}>Switch to Classified Display</button>
-          </p>
-        ) : (
-          <>
-            <p className="text-xs text-zinc-600 dark:text-slate-200">Upload the portrait in the Artwork box below; it appears in the preview.</p>
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Photo frame">
-              {(["round", "rect"] as const).map((fr) => (
-                <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
-                  {fr === "round" ? "Circular frame" : "Rectangular frame"}
-                </button>
-              ))}
-            </div>
-            <div role="radiogroup" aria-label="Frame accent" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {FRAME_ACCENTS.map((a) => (
-                <button key={a.id} type="button" role="radio" aria-checked={f.frameAccent === a.id} onClick={() => set({ frameAccent: a.id })}
-                  className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
-                  {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Box size presets">
-              <span className="text-xs font-semibold text-zinc-600">Box size:</span>
-              {BOX_SIZES.map((b) => (
-                <button key={b.label} type="button" onClick={() => onSize(b.columns, b.heightCm)} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>{b.label}</button>
-              ))}
-            </div>
-          </>
-        )}
+      <ParagraphField id="ob-prayer" label="Prayer / tribute · പ്രാർത്ഥന" hint="Printed in italics under the details · e.g. ആത്മാവിന് നിത്യശാന്തി നേരുന്നു." rows={3} maxHeight={240} value={f.prayer} onChange={(v) => set({ prayer: v })} textClassName="font-clipping" />
+
+      {isText ? (
+        <p className="border-t border-zinc-300 pt-4 text-xs text-zinc-600 dark:border-[#1F2F57] dark:text-slate-200">Booked as Classified Text: billed per line, with no photo or border. Choose Classified Display in step 1 for a photo, frame and size-based pricing.</p>
+      ) : (
+      <fieldset className="space-y-4 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
+        <legend className="text-sm font-bold">Photo, frame &amp; heading · ഫോട്ടോ</legend>
+        <PhotoCropper photo={state.artwork} onPhoto={onPhoto} crop={f.photoCrop} onCrop={(c) => set({ photoCrop: c })} round={f.photoFrame === "round"} />
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Photo shape">
+          {(["round", "rect"] as const).map((fr) => (
+            <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
+              {fr === "round" ? "Circular photo" : "Rectangular photo"}
+            </button>
+          ))}
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-zinc-600 dark:text-slate-200">Border frame · ബോർഡർ</p>
+          <div role="radiogroup" aria-label="Border frame" className="grid grid-cols-3 gap-2">
+            {FRAME_STYLES.map((a) => (
+              <button key={a.id} type="button" role="radio" aria-checked={f.frameStyle === a.id} onClick={() => set({ frameStyle: a.id })}
+                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameStyle === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+                {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-zinc-600 dark:text-slate-200">Heading style · ശീർഷക ശൈലി</p>
+          <div role="radiogroup" aria-label="Heading style" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {HEADING_STYLES.map((h) => (
+              <button key={h.id} type="button" role="radio" aria-checked={f.headingStyle === h.id} onClick={() => set({ headingStyle: h.id })}
+                className={cn("rounded border px-2 py-2 text-center text-base focus-visible:outline-2 focus-visible:outline-navy-500", f.headingStyle === h.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}
+                style={{ fontFamily: h.family, fontWeight: h.weight }}>
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-zinc-600 dark:text-slate-200">Portrait ornament · അലങ്കാരം</p>
+          <div role="radiogroup" aria-label="Frame accent" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {FRAME_ACCENTS.map((a) => (
+              <button key={a.id} type="button" role="radio" aria-checked={f.frameAccent === a.id} onClick={() => set({ frameAccent: a.id })}
+                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+                {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </fieldset>
+      )}
     </section>
   );
 }
@@ -217,19 +234,54 @@ function Candle() {
 }
 
 /** 4×5 cm portrait (aspect 4:5) with the chosen accent. Overflow stays visible so ornaments can sit on the frame. */
-function Frame({ url, round, accent }: { url?: string; round: boolean; accent: FrameAccent }) {
+function Frame({ url, round, accent, crop, onCrop, onPhoto }: { url?: string; round: boolean; accent: FrameAccent; crop: { zoom: number; x: number; y: number }; onCrop?: (c: { zoom: number; x: number; y: number }) => void; onPhoto?: (f: FileMeta) => void }) {
   const W = 96, H = round ? 96 : 120; // px; a 4×5 cm print area at preview scale
   const pad = accent === "garland" ? 12 : 4;
+  const interactive = !!(onCrop && onPhoto);
+  const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!interactive) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, cx: crop.x, cy: crop.y, moved: false };
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || !onCrop || !url) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (!d.moved) return;
+    const r = e.currentTarget.getBoundingClientRect(); // screen size, so it also works when the preview is scaled
+    // Dragging the photo right means showing more of its left side: the focus point moves the other way.
+    onCrop({ ...crop, x: clamp(d.cx - (dx / r.width) * 100), y: clamp(d.cy - (dy / r.height) * 100) });
+  };
+  const up = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (d && !d.moved) input.current?.click(); // a plain click replaces the photo
+  };
+  const pick = (file?: File) => {
+    if (!file || !onPhoto || !/\.(jpe?g|png)$/i.test(file.name) || file.size > 15 * 1024 * 1024) return;
+    onPhoto({ name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) });
+  };
+
   return (
-    <div className="relative shrink-0 overflow-visible" style={{ width: W + pad * 2, height: H + pad * 2, padding: pad }} aria-hidden={!url}>
-      <div className={cn("h-full w-full overflow-hidden border-2 border-[#0F172A] bg-zinc-100", round && "rounded-full")}>
+    <div className="relative shrink-0 overflow-visible" style={{ width: W + pad * 2, height: H + pad * 2, padding: pad }} aria-hidden={!url && !interactive}>
+      <div
+        className={cn("group/photo relative h-full w-full overflow-hidden border-2 border-[#0F172A] bg-zinc-100", round && "rounded-full", interactive && "cursor-grab touch-none active:cursor-grabbing")}
+        {...(interactive ? { onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: () => { drag.current = null; }, role: "button", tabIndex: 0, "aria-label": url ? "Drag to reposition the photo, click to replace it" : "Click to add a photo", onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") input.current?.click(); } } : {})}
+      >
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="Portrait of the deceased" className="h-full w-full object-cover grayscale" />
+          <img src={url} alt="Portrait of the deceased" draggable={false} className="pointer-events-none h-full w-full object-cover grayscale" style={cropStyle(crop)} />
         ) : (
-          <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] text-zinc-500">Photo<br />4×5 cm</div>
+          <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] text-zinc-500">{interactive ? <>Click to add<br />photo</> : <>Photo<br />4×5 cm</>}</div>
         )}
+        {interactive && url && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[8px] font-bold text-white opacity-0 transition-opacity group-hover/photo:opacity-100">Drag · click to replace</span>}
       </div>
+      {interactive && <input ref={input} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" tabIndex={-1} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />}
       {accent === "garland" && <Garland round={round} w={W + pad * 2} h={H + pad * 2} />}
       {(accent === "lamp" || accent === "candle") && (
         <span className="pointer-events-none absolute right-[-8px] bottom-0">{accent === "lamp" ? <Lamp /> : <Candle />}</span>
@@ -238,44 +290,102 @@ function Frame({ url, round, accent }: { url?: string; round: boolean; accent: F
   );
 }
 
-/** Live Kerala-broadsheet preview of an obituary or remembrance, with line count and cost estimate. */
-export function ObituaryPreview({ state }: { state: BookingState }) {
+/** Flower strip for the traditional border (black outlines, white petals, so it prints in mono). */
+export function FloralBand({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" className={cn("block h-3.5 w-full", className)} preserveAspectRatio="none">
+      <defs>
+        <pattern id="floral-band" width="18" height="14" patternUnits="userSpaceOnUse">
+          <g transform="translate(9 7)" stroke="#000" strokeWidth="0.8" fill="#fff">
+            {[0, 72, 144, 216, 288].map((r) => <circle key={r} cx={0} cy={-2.6} r={2} transform={`rotate(${r})`} />)}
+            <circle r="1.3" fill="#000" />
+          </g>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#floral-band)" />
+    </svg>
+  );
+}
+
+function Cross({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 22" className={cn("h-5 w-3.5", className)}>
+      <path d="M6.5 0h3v6h6v3h-6v13h-3V9h-6V6h6z" fill="#000" />
+    </svg>
+  );
+}
+
+/** Border frame around the whole notice: traditional floral bands, Christian cross, or a minimal rule. */
+function NoticeFrame({ style, children }: { style: "traditional" | "christian" | "minimal"; children: React.ReactNode }) {
+  if (style === "minimal") return <div className="border border-[#0F172A] p-3">{children}</div>;
+  if (style === "christian") {
+    return (
+      <div className="border-[3px] border-double border-[#0F172A] p-1">
+        <div className="border border-[#0F172A] p-3 pt-2">
+          <div className="mb-1 flex justify-center"><Cross /></div>
+          {children}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="border-2 border-[#0F172A] p-1">
+      <FloralBand />
+      <div className="border-x border-[#0F172A] px-3 py-2">{children}</div>
+      <FloralBand />
+    </div>
+  );
+}
+
+/**
+ * Live Kerala-broadsheet preview of an obituary or remembrance. `bare` renders just the notice
+ * (no caption or width cap) so the to-scale print preview can place it inside the exact ad box.
+ */
+export function ObituaryPreview({ state, bare = false, editable = false }: { state: BookingState; bare?: boolean; editable?: boolean }) {
+  const { update } = useBooking();
   const f = { ...DEFAULT_OBITUARY, ...state.obituary, kind: state.categoryId === "remembrance" ? ("anniversary" as const) : ("demise" as const) };
   const anniv = f.kind === "anniversary";
   const isText = state.adType === "classified-text";
+  const heading = HEADING_STYLES.find((h) => h.id === f.headingStyle) ?? HEADING_STYLES[0];
 
   const all = state.text.split("\n").map((l) => l.trim()).filter(Boolean);
   const header = all[0];
   const hasFooter = all.length > 1 && all[all.length - 1].startsWith("ഓർമ്മകളോടെ");
   const footer = hasFooter ? all[all.length - 1] : null;
   const body = all.slice(1, hasFooter ? -1 : undefined);
+  const prayerLines = new Set(f.prayer.split("\n").map((l) => l.trim()).filter(Boolean));
+  const prayer = prayerLines.size > 0;
 
   const showPhoto = !isText;
-  const oneCol = !isText && state.display.columns === 1; // a single column is ~one photo wide, so the portrait sits top-centre
+  const narrow = !isText && (state.display.widthCm ?? state.display.columns * 4) < 6; // a ~1 column box stacks the portrait on top
 
-  return (
-    <figure aria-label="Obituary preview" className="mx-auto w-full" style={{ maxWidth: !isText && state.display.columns === 1 ? 240 : !isText && state.display.columns === 2 ? 340 : 384 }}>
-      {/* paper-grain keeps the cutting light newsprint (and restores the light zinc scale inside it) in dark mode too */}
-      <div className="paper-grain border-2 border-[#0F172A] bg-[#faf8f5] p-4 text-zinc-950 shadow-sm" style={SERIF}>
-        {!header ? (
-          <p className="py-6 text-center text-sm text-zinc-400 italic">Your notice appears here as you fill the form…</p>
-        ) : (
-          <>
-            <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug font-extrabold">
-              {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
-              {header}
-              {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
-            </h4>
-            <div className={cn("mt-2 gap-3", showPhoto ? (oneCol ? "flex flex-col items-center" : "flex items-start") : "block")}>
-              {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} />}
-              <div className="min-w-0 flex-1 space-y-1.5 text-[13px] leading-[1.7] text-justify">
-                {body.map((p, i) => <p key={i} className={cn(anniv && i === body.length - 1 && "text-center font-semibold italic")}>{p}</p>)}
-              </div>
+  const notice = (
+    <div className="paper-grain bg-[#faf8f5] p-2 text-zinc-950" style={SERIF}>
+      {!header ? (
+        <p className="py-6 text-center text-sm text-zinc-400 italic">Your notice appears here as you fill the form…</p>
+      ) : (
+        <NoticeFrame style={isText ? "minimal" : f.frameStyle}>
+          <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug" style={{ fontFamily: heading.family, fontWeight: heading.weight, letterSpacing: heading.spacing }}>
+            {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
+            {header}
+            {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
+          </h4>
+          <div className={cn("mt-2 gap-3", showPhoto ? (narrow ? "flex flex-col items-center" : "flex items-start") : "block")}>
+            {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update({ artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} />}
+            <div className="min-w-0 flex-1 space-y-1.5 text-justify text-[13px] leading-[1.7]">
+              {body.map((p, i) => <p key={i} className={cn(prayerLines.has(p) && "text-center font-semibold italic", !prayer && anniv && i === body.length - 1 && "text-center font-semibold italic")}>{p}</p>)}
             </div>
-            {footer && <p className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic">{footer}</p>}
-          </>
-        )}
-      </div>
+          </div>
+          {footer && <p className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic">{footer}</p>}
+        </NoticeFrame>
+      )}
+    </div>
+  );
+
+  if (bare) return notice;
+  return (
+    <figure aria-label="Obituary preview" className="mx-auto w-full" style={{ maxWidth: narrow ? 240 : 384 }}>
+      <div className="border-2 border-[#0F172A] shadow-sm">{notice}</div>
       <PreviewCaption state={state} />
     </figure>
   );

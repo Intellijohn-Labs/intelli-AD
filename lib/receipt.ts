@@ -1,3 +1,5 @@
+import { displayWidth, isDisplayOnlyCategory } from "./display";
+import { applySpacing } from "./paragraphs";
 import { getAdType, getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
 import type { BookingState } from "./booking-store";
@@ -47,6 +49,7 @@ export function createReceipt(
       ? ["Colour printing"]
       : [];
   const now = new Date();
+  const wCm = displayWidth(s.display, getNewspaper(paperIds[0])?.rates.colWidthCm ?? 4);
   return {
     bookingId: `BS-${String(now.getFullYear()).slice(2)}${digits(6)}`,
     roNumber: `RO/${now.getFullYear()}/${digits(6)}`,
@@ -61,8 +64,8 @@ export function createReceipt(
       const paper = getNewspaper(id)!;
       return { paper: paper.name, cutoff: cutoffFor(s.releaseDate!, paper.cutoffs[s.adType]).toISOString() };
     }),
-    adText: isText ? s.text.trim() : null,
-    displaySpec: isText ? null : `${s.display.columns} column × ${s.display.heightCm} cm, ${s.display.colorMode === "color" ? "colour" : "black & white"}`,
+    adText: isText ? applySpacing(s.text, s.paragraphSpacing).trim() : isDisplayOnlyCategory(s.categoryId) && s.creativeMode === "builder" ? s.text.trim() : !s.artwork && s.text.trim() ? s.text.trim() : null,
+    displaySpec: isText ? null : `${wCm} × ${s.display.heightCm} cm = ${(wCm * s.display.heightCm).toFixed(1)} cm², ${s.display.colorMode === "color" ? "colour" : "black & white"}`,
     artworkName: isText ? null : (s.artwork?.name ?? null),
     enhancements: enh,
     documents: Object.values(s.documents).map((d) => d.name),

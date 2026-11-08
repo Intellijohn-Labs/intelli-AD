@@ -9,11 +9,13 @@ export const PLACEHOLDER_RE = /\[[^\]]+\]/;
 export const MAX_TEXT_CHARS = 600;
 export const MIN_TEXT_CHARS = 15;
 
-export function composeSchema(adType: BookingState["adType"], requiredDocIds: string[]) {
+/** mode: "std" = classic flows; "builder"/"upload" = the two display paths for obituary, remembrance and tender. */
+export function composeSchema(adType: BookingState["adType"], requiredDocIds: string[], mode: "std" | "builder" | "upload" = "std") {
   return z
     .object({
       text: z.string(),
       columns: z.number({ error: "Choose the number of columns" }),
+      widthCm: z.number({ error: "Enter a width in cm" }),
       heightCm: z.number({ error: "Enter a height in cm" }),
       colorMode: z.enum(["bw", "color"]),
       enhancements: z.object({ bold: z.boolean(), border: z.boolean(), tint: z.boolean() }),
@@ -30,10 +32,26 @@ export function composeSchema(adType: BookingState["adType"], requiredDocIds: st
         else if (PLACEHOLDER_RE.test(t))
           ctx.addIssue({ code: "custom", path: ["text"], message: "Replace the [BRACKETED] placeholders with your details." });
       } else {
-        if (!v.artwork)
-          ctx.addIssue({ code: "custom", path: ["artwork"], message: "Upload your artwork (PDF, JPG or PNG)." });
-        if (v.heightCm < 3 || v.heightCm > 60)
+        if (mode === "builder") {
+          const t = v.text.trim();
+          if (t.length < MIN_TEXT_CHARS)
+            ctx.addIssue({ code: "custom", path: ["text"], message: "Fill in the notice details first." });
+          else if (PLACEHOLDER_RE.test(t))
+            ctx.addIssue({ code: "custom", path: ["text"], message: "Replace the [BRACKETED] placeholders with your details." });
+        } else if (mode === "std") {
+          // Classic display ads: artwork, or a written ad that is set in the box when there is no artwork.
+          const t = v.text.trim();
+          if (!v.artwork) {
+            if (t.length < MIN_TEXT_CHARS) ctx.addIssue({ code: "custom", path: ["artwork"], message: "Upload your artwork (PDF, JPG or PNG) or write the ad text above." });
+            else if (PLACEHOLDER_RE.test(t)) ctx.addIssue({ code: "custom", path: ["text"], message: "Replace the [BRACKETED] placeholders with your details." });
+          }
+        } else if (!v.artwork) {
+          ctx.addIssue({ code: "custom", path: ["artwork"], message: mode === "upload" ? "Upload your print-ready creative (PDF, TIFF or JPG)." : "Upload your artwork (PDF, JPG or PNG)." });
+        }
+        if (!(v.heightCm >= 3 && v.heightCm <= 60))
           ctx.addIssue({ code: "custom", path: ["heightCm"], message: "Height must be between 3 and 60 cm." });
+        if (!(v.widthCm >= 3 && v.widthCm <= 40))
+          ctx.addIssue({ code: "custom", path: ["widthCm"], message: "Width must be between 3 and 40 cm." });
       }
       for (const id of requiredDocIds) {
         if (!v.documents[id])
@@ -45,6 +63,7 @@ export function composeSchema(adType: BookingState["adType"], requiredDocIds: st
 export type ComposeValues = {
   text: string;
   columns: number;
+  widthCm: number;
   heightCm: number;
   colorMode: "bw" | "color";
   enhancements: { bold: boolean; border: boolean; tint: boolean };

@@ -263,4 +263,22 @@ html[data-theme="dark"] button {
 .art-shim { animation: art-sweep 4.2s ease-in-out infinite; will-change: transform; }
 .flicker .lamp-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: art-flicker 1.7s ease-in-out infinite; }
 .art-breathe { animation: art-breathe 5s ease-in-out infinite; }
+@keyframes card-wiggle { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-2.5deg) translateY(-2px); } 40% { transform: rotate(2deg); } 60% { transform: rotate(-1.5deg); } 80% { transform: rotate(1deg); } }
+@keyframes art-svg-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes art-svg-sweep { 0%, 30% { transform: translateX(0); } 75%, 100% { transform: translateX(150px); } }
+@keyframes art-svg-twinkle { 0%, 100% { transform: scale(0.75); opacity: 0.65; } 50% { transform: scale(1.12); opacity: 1; } }
+@keyframes art-svg-hl { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+@keyframes art-svg-halo { 0%, 100% { transform: scale(0.92); opacity: 0.75; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes art-svg-swing { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes art-svg-stamp { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.svg-float { animation: art-svg-float 4s ease-in-out infinite; }
+.svg-sweep { animation: art-svg-sweep 4.2s ease-in-out infinite; }
+.svg-twinkle { transform-box: fill-box; transform-origin: center; animation: art-svg-twinkle 2.6s ease-in-out infinite; }
+.svg-hl { animation: art-svg-hl 3s ease-in-out infinite; }
+.svg-stamp { animation: art-svg-stamp 3.4s ease-in-out infinite; }
+.svg-halo { transform-box: fill-box; transform-origin: center; animation: art-svg-halo 2.4s ease-in-out infinite; }
+.svg-swing { transform-origin: 205px 4px; animation: art-svg-swing 3.6s ease-in-out infinite; }
+:root { --art-shadow: rgba(15, 23, 42, 0.28); }
+.dark { --art-shadow: rgba(0, 0, 0, 0.6); }
+@media (prefers-reduced-motion: reduce) { .svg-float, .svg-sweep, .svg-twinkle, .svg-hl, .svg-stamp, .svg-halo, .svg-swing { animation: none !important; } }
 @media (prefers-reduced-motion: reduce) { .art-hl, .art-ring2, .art-shim, .flicker .lamp-flame, .art-breathe { animation: none !important; } .art-ring2 { display: none; } }

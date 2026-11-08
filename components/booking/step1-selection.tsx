@@ -15,6 +15,7 @@ import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
 import { comboSuggestions, flagshipEdition, startingRate } from "@/lib/pricing";
 import { validateStep1 } from "@/lib/validation";
+import { isDisplayOnlyCategory } from "@/lib/display";
 import { cn, formatINR } from "@/lib/utils";
 import { StepNav } from "./step-nav";
 
@@ -102,6 +103,7 @@ export function Step1Selection() {
               <CategoryIcon name={c.icon} className="h-5 w-5" />
               <span className="text-sm font-bold">{tl(c.name, c.nameMl)}</span>
               {c.badge && <span className="text-xs text-zinc-500">{tl(c.badge.en, c.badge.ml)}</span>}
+              {isDisplayOnlyCategory(c.id) && <Badge tone="navy">{state.adType === "classified-text" ? t("Billed per line") : state.adType === "classified-display" ? t("Billed by size (cm²)") : t("Billed by size")}</Badge>}
               {c.documents.some((d) => d.required) && <Badge tone="amber">{t("Documents needed")}</Badge>}
             </motion.label>
           ))}

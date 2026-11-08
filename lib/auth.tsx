@@ -10,7 +10,19 @@ export interface AuthUser {
   /** Phone (+91…) or email shown under the name. */
   identifier: string;
   method: "phone" | "email" | "google";
+  /** Agency / Akshaya partner profile. Absent or false for regular customers. */
+  is_agency?: boolean;
+  agency_name?: string;
+  akshaya_code?: string;
+  /** Opening wallet balance in INR. The live balance is kept in the agency ledger (lib/agency.ts). */
+  wallet_balance?: number;
+  /** Partner commission as a percentage of the pre-GST booking value. */
+  commission_rate?: number;
+  partner_type?: "akshaya" | "csc" | "agency";
 }
+
+/** Where a signed-in user lands: partners go to their workspace, customers to Home. */
+export const homeFor = (u: Pick<AuthUser, "is_agency"> | null | undefined) => (u?.is_agency ? "/agency/dashboard" : "/");
 
 /** Cookie read by proxy.ts to gate routes. Keep the name in sync with it. */
 export const SESSION_COOKIE = "intelliad_session";
@@ -67,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Client-side guard (backs up proxy.ts, e.g. when the cookie expires mid-visit).
   useEffect(() => {
     if (ready && !user && !isPublicPath(pathname)) {
-      router.replace("/login?auth=required");
+      router.replace(pathname.startsWith("/agency") ? "/login?tab=agency&auth=required" : "/login?auth=required");
     }
   }, [ready, user, pathname, router]);
 
@@ -80,8 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
     try { sessionStorage.removeItem("intelliad.booking.v1"); } catch { /* ignore */ } // drop the in-progress draft
     setUser(null);
-    router.replace("/login");
-  }, [router]);
+    router.replace(user?.is_agency ? "/login?tab=agency" : "/login?tab=user");
+  }, [router, user]);
 
   const value = useMemo(() => ({ user, ready, signIn, signOut }), [user, ready, signIn, signOut]);
   const blocked = ready && !user && !isPublicPath(pathname);

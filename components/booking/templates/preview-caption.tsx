@@ -2,6 +2,8 @@
 
 import { getNewspaper } from "@/data/newspapers";
 import type { BookingState } from "@/lib/booking-store";
+import { displayWidth } from "@/lib/display";
+import { applySpacing } from "@/lib/paragraphs";
 import { measureText } from "@/lib/pricing";
 import { useBookingQuote } from "@/lib/use-quote";
 import { formatINR } from "@/lib/utils";
@@ -16,14 +18,15 @@ export function PreviewCaption({ state }: { state: BookingState }) {
   const isText = state.adType === "classified-text";
   const cpl = paper?.rates.charsPerLine ?? 28;
   const minLines = paper?.rates.textMinLines ?? 3;
-  const m = measureText(state.text, cpl);
+  const m = measureText(isText ? applySpacing(state.text, state.paragraphSpacing) : state.text, cpl);
   const extra = Math.max(0, m.lines - minLines);
   const tier = extra === 0 ? "Base" : extra <= 3 ? "Standard" : "Extended";
   const h = Number.isFinite(state.display.heightCm) ? state.display.heightCm : 0;
-  const area = state.display.columns * (paper?.rates.colWidthCm ?? 4) * h;
+  const widthCm = displayWidth(state.display, paper?.rates.colWidthCm ?? 4);
+  const area = widthCm * h;
   const size = isText
     ? `${m.lines} lines · ${tier} tier (${minLines} base${extra ? ` + ${extra} extra at ${formatINR(quote.lines[0]?.rate ?? 0)}/line` : ""})`
-    : `${state.display.columns} col × ${h} cm = ${area.toFixed(1)} cm²`;
+    : `${widthCm} × ${h} cm = ${area.toFixed(1)} cm²`;
   return (
     <figcaption className="mt-2 space-y-0.5 text-center text-xs text-zinc-500">
       <p>{m.chars} characters · {size}</p>

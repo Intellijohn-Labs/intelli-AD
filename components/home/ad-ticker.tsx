@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from "framer-motion";
-import { Paperclip } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, type PointerEvent } from "react";
 import { cn, wrapText } from "@/lib/utils";
@@ -53,6 +52,19 @@ const ADS: Ad[] = [
   },
 ];
 
+/** Glossy metal paper clip: silver gradient wire with a bright highlight and a soft cast shadow. */
+function MetalClip() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 48" className="absolute -top-5 right-5 h-11 w-6 rotate-12 drop-shadow-[0_2px_2px_rgba(0,0,0,0.35)]">
+      <defs>
+        <linearGradient id="clip-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f8fafc" /><stop offset="0.35" stopColor="#94a3b8" /><stop offset="0.6" stopColor="#e2e8f0" /><stop offset="1" stopColor="#64748b" /></linearGradient>
+      </defs>
+      <path d="M8 34V12a5 5 0 0 1 10 0v26a8 8 0 0 1-16 0V16" fill="none" stroke="url(#clip-metal)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 33V13a5 5 0 0 1 3-4.6" fill="none" stroke="#fff" strokeWidth="0.9" strokeLinecap="round" opacity="0.9" />
+    </svg>
+  );
+}
+
 /** One newspaper cut-piece: tilted newsprint scrap with tape or a paper clip, masthead badge, category tag and line count. */
 function Clipping({ ad, index }: { ad: Ad; index: number }) {
   const lines = wrapText(ad.text, CPL);
@@ -64,11 +76,10 @@ function Clipping({ ad, index }: { ad: Ad; index: number }) {
       style={{ transform: `rotate(${TILTS[index % TILTS.length]}deg)` }}
     >
       {index % 2 === 0 ? (
-        /* yellow masking tape */
-        <span aria-hidden="true" className="absolute -top-3 left-1/2 h-6 w-16 -translate-x-1/2 -rotate-3 border border-yellow-400/70 bg-yellow-300/80 shadow-sm" />
+        /* pastel yellow masking tape, translucent with torn-looking ends */
+        <span aria-hidden="true" className="absolute -top-3 left-1/2 h-6 w-16 -translate-x-1/2 -rotate-3 border-x border-dashed border-yellow-400/60 bg-gradient-to-b from-yellow-100/95 to-yellow-300/85 shadow-[0_2px_4px_rgba(120,80,0,0.25)]" />
       ) : (
-        /* steel paper clip */
-        <Paperclip aria-hidden="true" className="absolute -top-4 right-5 h-8 w-8 rotate-12 text-slate-500 drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]" strokeWidth={2.4} />
+        <MetalClip />
       )}
       <div className="font-typeset">
         <div className="flex items-center justify-between gap-2 border-y border-slate-800 py-1">

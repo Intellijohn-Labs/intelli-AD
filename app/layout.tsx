@@ -6,6 +6,8 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { NewspaperMastheadBar } from "@/components/layout/newspaper-masthead-bar";
 import { Providers } from "@/components/providers";
+import { THEME_INIT_SCRIPT } from "@/components/theme-provider";
+import { WhatsAppWidget } from "@/components/whatsapp-widget";
 import { T } from "@/context/language-context";
 import "./globals.css";
 
@@ -32,6 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${syne.variable} ${jakarta.variable}`}>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Inter for Latin + Noto Sans Malayalam for crisp Malayalam; system fonts are the fallback. */}
@@ -42,6 +45,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="min-h-screen antialiased">
+        {/* Persistent ambient mesh glow behind every page */}
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-600/15" />
+          <div className="absolute top-1/3 -right-40 h-96 w-96 rounded-full bg-rose-500/[0.08] blur-3xl dark:bg-rose-600/[0.12]" />
+          <div className="absolute -bottom-40 left-1/3 h-96 w-96 rounded-full bg-emerald-500/[0.08] blur-3xl dark:bg-emerald-600/10" />
+        </div>
         <Providers>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
             <T k="Skip to content" />
@@ -52,6 +61,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </ChromeOnly>
           <main id="main">{children}</main>
           <ChromeOnly><Footer /></ChromeOnly>
+          <WhatsAppWidget />
         </Providers>
       </body>
     </html>

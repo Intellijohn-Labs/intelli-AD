@@ -4,8 +4,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getAdType } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
-import { ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import Link from "next/link";
 import { Field, Select } from "@/components/ui/field";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -41,7 +40,8 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
   const minLabel = adType === "classified-text" ? `${paper.rates.textMinLines} ${t("lines")}` : `${paper.rates.minDisplayCm2} cm²`;
 
   return (
-    <Card className="p-5 sm:p-6 lg:p-8">
+    <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/95 p-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#132247]/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-rose-500" />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-[family-name:var(--font-jakarta)] text-xl font-extrabold tracking-tight text-slate-900 dark:text-[#FFFFFF]">{t("Quick booking")}</h2>
@@ -100,7 +100,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
         ) : (
           <>
             <p className="font-mono text-xs font-bold uppercase tracking-wider text-slate-500">{t("Estimated total")}</p>
-            <p className="font-[family-name:var(--font-jakarta)] text-4xl font-black tracking-tight tabular-nums text-slate-900 dark:text-[#FFFFFF]">
+            <p className="font-[family-name:var(--font-jakarta)] text-3xl font-black tracking-tight text-emerald-600 tabular-nums md:text-4xl dark:text-emerald-400">
               <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> <span className="font-mono text-xs font-semibold text-slate-500">{t("incl. 18% GST")}</span>
             </p>
             <p className="mt-1 font-mono text-xs text-slate-500">
@@ -110,15 +110,15 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
           </>
         )}
         {hint && eds.length > 0 && (
-          <button type="button" onClick={() => setEds([...new Set([...eds, ...hint.missingEditionIds])])} className="mt-2 inline-flex items-center gap-1.5 text-left text-xs font-semibold text-amber-800 dark:text-amber-200 hover:underline">
+          <button type="button" onClick={() => setEds([...new Set([...eds, ...hint.missingEditionIds])])} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-left text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">
             <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {t("Add all {group} editions for {pct}% off", { group: place(hint.groupName), pct: hint.discountPct })}
           </button>
         )}
       </div>
 
-      <ButtonLink href={bookHref({ type: adType, paper: paperId, eds })} size="lg" className="mt-4 w-full rounded-xl bg-[#E11D48] text-white hover:bg-[#BE123C] active:scale-[0.98] dark:bg-[#E11D48] dark:text-white dark:hover:bg-[#BE123C]">
+      <Link href={bookHref({ type: adType, paper: paperId, eds })} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 py-4 font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:scale-[1.01] hover:from-rose-500 hover:to-red-500 hover:shadow-rose-600/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 active:scale-[0.99]">
         {t("Proceed to Booking")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </ButtonLink>
-    </Card>
+      </Link>
+    </div>
   );
 }

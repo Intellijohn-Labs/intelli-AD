@@ -1,6 +1,7 @@
 import { getCategory } from "@/data/categories";
 import { getNewspaper, newspapers } from "@/data/newspapers";
 import type { AdType, CategoryId, DisplaySpec, Enhancements, Newspaper } from "./types";
+import { displayWidth } from "./display";
 import { countWords, round2, wrapText } from "./utils";
 
 export const GST_RATE = 0.18;
@@ -98,7 +99,7 @@ export function volumeDiscountPct(editionCount: number) {
 }
 
 export function displayArea(spec: DisplaySpec, paper: Newspaper) {
-  return round2(spec.columns * paper.rates.colWidthCm * spec.heightCm);
+  return round2(displayWidth(spec, paper.rates.colWidthCm) * spec.heightCm);
 }
 
 /**

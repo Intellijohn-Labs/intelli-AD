@@ -32,8 +32,8 @@ export function Footer() {
   const formats = [
     { label: "Classifieds", href: bookHref({ type: "classified-text" }) },
     { label: "Display", href: bookHref({ type: "classified-display" }) },
-    { label: "Tenders", href: bookHref({ type: "classified-text", category: "tender" }) },
-    { label: "Obituaries", href: bookHref({ type: "classified-text", category: "obituary" }) },
+    { label: "Tenders", href: bookHref({ type: "classified-display", category: "tender" }) },
+    { label: "Obituaries", href: bookHref({ type: "classified-display", category: "obituary" }) },
   ];
   const papers = [
     { id: "malayala-manorama", label: "Malayala Manorama" },

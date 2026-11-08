@@ -7,6 +7,8 @@ import { DEFAULT_DISPLAY, DEFAULT_ENHANCEMENTS } from "./pricing";
 import type { ReceiptData } from "./receipt";
 import type { ObituaryFields } from "@/data/obituary";
 import type { TenderFields } from "@/data/tender";
+import type { CreativeMode } from "./display";
+import type { ParagraphSpacing } from "./paragraphs";
 
 export type Step = 1 | 2 | 3 | 4;
 
@@ -27,6 +29,21 @@ export interface BookingState {
   obituary: ObituaryFields | null;
   /** Tender notice composer fields (only used by the tender category). */
   tender: TenderFields | null;
+  /** Display flow for obituary/tender: upload a finished creative, or build one from a template. */
+  creativeMode: CreativeMode;
+  /** Set when the user jumped from checkout back to Compose: the primary action then returns straight to checkout. */
+  returnToCheckout: boolean;
+  /** Paragraph spacing for line-billed text ads (tight / normal / double-spaced). */
+  paragraphSpacing: ParagraphSpacing;
+  /** Print styling of a line-billed text ad, edited from the proof box toolbar. Italic and alignment are free. */
+  textStyle: TextStyle;
+}
+
+export interface TextStyle {
+  italic: boolean;
+  align: "left" | "center" | "justify";
+  /** Look of the border when the Border box enhancement is on (floral is for obituaries). */
+  borderStyle: "single" | "double" | "floral";
 }
 
 export const initialBookingState: BookingState = {
@@ -44,6 +61,10 @@ export const initialBookingState: BookingState = {
   receipt: null,
   obituary: null,
   tender: null,
+  creativeMode: "builder",
+  returnToCheckout: false,
+  paragraphSpacing: "normal",
+  textStyle: { italic: false, align: "justify", borderStyle: "single" },
 };
 
 const STORAGE_KEY = "intelliad.booking.v1";
