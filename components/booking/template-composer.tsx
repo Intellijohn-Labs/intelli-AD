@@ -1,12 +1,13 @@
 "use client";
 
 import { Check, Copy, Eraser, PhoneCall, Sparkles } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/context/language-context";
 import { CONTACT_SNIPPET, templatesForCategory, type TemplateLang } from "@/data/ad-templates";
 import type { ParagraphSpacing } from "@/lib/paragraphs";
 import type { CategoryId } from "@/lib/types";
+import { findPlaceholders } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import { ParagraphField } from "./paragraph-field";
 
@@ -43,7 +44,9 @@ export function TemplateComposer({
   const toast = useToast();
   const [lang, setLang] = useState<TemplateLang>(siteLang === "ml" ? "ml" : "en");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const area = useRef<HTMLTextAreaElement | null>(null);
   const templates = templatesForCategory(categoryId);
+  const placeholders = findPlaceholders(value);
   const active = templates.find((t) => t.id === activeId) ?? templates[0];
 
   // A different category has different drafts: forget the previous pick.
@@ -117,7 +120,34 @@ export function TemplateComposer({
         onSpacing={onSpacing}
         extra={extra}
         textClassName="font-serif text-sm"
+        textareaRef={(el) => { area.current = el; }}
       />
+
+      {placeholders.length > 0 && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10" role="status">
+          <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+            Replace these [ ] placeholders with your details before continuing / ഈ [ ] ഭാഗങ്ങൾ നിങ്ങളുടെ വിവരങ്ങൾ കൊണ്ട് മാറ്റുക. Click one to select it, then type.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {placeholders.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  const el = area.current;
+                  const i = value.indexOf(p);
+                  if (!el || i < 0) return;
+                  el.focus();
+                  el.setSelectionRange(i, i + p.length); // the next keystroke replaces it
+                }}
+                className="rounded-full border border-amber-400 bg-white px-2.5 py-0.5 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-amber-600 dark:bg-slate-900 dark:text-amber-200 dark:hover:bg-amber-500/20"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

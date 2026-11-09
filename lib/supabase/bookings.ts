@@ -11,7 +11,7 @@ export type BookingStatus = "pending_payment" | "confirmed";
 export interface BookingRow {
   booking_ref: string;
   ad_type: string;
-  category: string | null;
+  category: string;
   publication: string;
   editions: Record<string, string[]>;
   release_date: string | null;
@@ -44,7 +44,7 @@ export function buildBookingRow(state: BookingState, quote: Quote, customer: Cus
   return {
     booking_ref: ref,
     ad_type: state.adType,
-    category: state.categoryId,
+    category: state.categoryId ?? "general", // the column is NOT NULL
     publication: paperIds.map((id) => getNewspaper(id)?.name ?? id).join(", "),
     editions: Object.fromEntries(paperIds.map((id) => [id, state.selection[id]])),
     release_date: state.releaseDate,

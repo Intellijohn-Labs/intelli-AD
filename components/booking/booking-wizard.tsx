@@ -9,7 +9,7 @@ import { Check, Eye, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
-import { flagshipRate } from "@/lib/pricing";
+import { flagshipEdition, flagshipRate } from "@/lib/pricing";
 import { formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
@@ -166,6 +166,8 @@ function MiniSummary({ state }: { state: BookingState }) {
 
 function Shell() {
   const { state, update, reset, hydrated } = useBooking();
+  const { activeId, paper: activePaper } = usePublication();
+  const lastActive = useRef<string | null>(null);
   const { t } = useI18n();
   const toast = useToast();
   const [prevStep, setPrevStep] = useState<Step>(state.step);
@@ -174,6 +176,20 @@ function Shell() {
     setDir(state.step > prevStep ? 1 : -1);
     setPrevStep(state.step);
   }
+  // The publication chosen in the top bar wins over whatever an earlier visit left in session storage: on load, and
+  // whenever it changes while still choosing publications (step 1), the selection follows it.
+  useEffect(() => {
+    if (!hydrated || state.step !== 1) return;
+    const first = lastActive.current === null;
+    if (lastActive.current === activeId) return;
+    lastActive.current = activeId;
+    const chosen = Object.keys(state.selection).filter((k) => state.selection[k].length);
+    if (chosen.length === 1 && chosen[0] === activeId) return;
+    if (first && chosen.length > 1) return; // a deliberate multi-paper choice from this session
+    update({ selection: { [activeId]: [flagshipEdition(activePaper).id] } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, activeId, state.step]);
+
   const templateTitle = hydrated ? state.templateTitle : null;
   useEffect(() => {
     if (templateTitle) toast(t("Template applied: {title}", { title: templateTitle }));

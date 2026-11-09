@@ -53,8 +53,8 @@ interface Stored {
 }
 
 const key = (u: AuthUser) => `intelliad.agency.v1.${u.akshaya_code ?? u.identifier}`;
-const rand = (n: number) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
-export const newVerificationId = () => `IA-VRF-${rand(8)}`;
+/** The verification ID printed on customer receipts is the booking reference itself (INT-2026-XXXXXX): one format everywhere. */
+export const newVerificationId = (bookingRef: string) => bookingRef;
 export const newBookingId = newBookingRef; // INT-2026-123456, shared with customer bookings
 
 /**
@@ -82,10 +82,10 @@ export function useAgencyLedger(user: AuthUser | null) {
     let cancelled = false;
     fetch("/api/agency/bookings", { cache: "no-store" })
       .then(async (r) => {
-        if (r.status === 501) return { status: "local" as const, note: "Server sync is off: add SUPABASE_SERVICE_ROLE_KEY to enable it." };
         if (!r.ok) return { status: "error" as const, note: `Could not load bookings (${r.status}).` };
-        const { rows } = (await r.json()) as { rows: BookingRow[] };
-        return { status: "ok" as const, rows: rows.map(rowToBooking).filter((b): b is AgencyBooking => !!b) };
+        const body = (await r.json()) as { bookings: BookingRow[]; localMode?: boolean };
+        if (body.localMode) return { status: "local" as const, note: "" };
+        return { status: "ok" as const, rows: body.bookings.map(rowToBooking).filter((b): b is AgencyBooking => !!b) };
       })
       .catch(() => ({ status: "error" as const, note: "Could not reach the server." }))
       .then((res) => {
@@ -149,7 +149,7 @@ export async function saveAgencyBooking(user: AuthUser, b: AgencyBooking): Promi
   const row: BookingRow = {
     booking_ref: b.id,
     ad_type: b.adType ?? (b.kind === "classified-text" ? "classified-text" : "classified-display"),
-    category: b.category ?? null,
+    category: b.category || "general", // the column is NOT NULL
     publication: b.paperName,
     editions: b.paperId && b.editionId ? { [b.paperId]: [b.editionId] } : {},
     release_date: b.releaseDate,

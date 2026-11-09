@@ -7,7 +7,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { getAdType, getCategory } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
-import { customerReceiptsHtml, newBookingId, newVerificationId, useAgencyLedger, type AgencyBooking, type ExpressKind } from "@/lib/agency";
+import { customerReceiptsHtml, newBookingId, useAgencyLedger, type AgencyBooking, type ExpressKind } from "@/lib/agency";
 import { useAuth, type AuthUser } from "@/lib/auth";
 import { earliestRelease, isBookable } from "@/lib/cutoff";
 import { SIZE_PRESETS } from "@/lib/display";
@@ -22,6 +22,8 @@ const KINDS: { id: ExpressKind; label: string; adType: AdType; category?: Catego
   { id: "obituary", label: "Obituary", adType: "classified-display", category: "obituary", hint: "Boxed notice, billed by size (cm²)." },
   { id: "tender", label: "Tender notice", adType: "classified-display", category: "tender", hint: "Boxed notice, billed by size (cm²)." },
 ];
+
+const TEXT_CATEGORIES: CategoryId[] = ["business", "matrimonial", "property", "recruitment", "public-notice", "name-change"];
 
 const card = "rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2B3D6B] dark:bg-[#132247]";
 
@@ -69,25 +71,27 @@ export function AgencyDashboard() {
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-sky-300">Partner dashboard</p>
           <h1 className="mt-1 text-2xl font-extrabold text-slate-900 dark:text-white">{user.agency_name}</h1>
           <p className="text-sm text-slate-600 dark:text-slate-200">{user.akshaya_code} · Commission rate {rate}%</p>
+          {ledger.sync.status === "local" && <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">Local Demo Mode (Cloud Sync Pending)</span>}
         </div>
       </div>
 
-      {ledger.sync.status !== "ok" && ledger.sync.status !== "checking" && (
+      {ledger.sync.status === "error" && (
         <p role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
-          {ledger.sync.status === "error" ? "Database sync problem: " : "Showing bookings from this device only. "}{ledger.sync.note}
+          Cloud sync hit a problem. {ledger.sync.note}
         </p>
       )}
 
       <section aria-label="Wallet and commission" className="mt-6 grid gap-4 md:grid-cols-4">
-        <div className={cn(card, "bg-[#0B1F4B] text-white dark:bg-[#0B1F4B]")}>
-          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-300"><Wallet className="h-4 w-4" aria-hidden="true" /> Wallet balance</p>
-          <p className="mt-2 font-mono text-3xl font-bold tabular-nums" aria-live="polite">{formatINR(ledger.balance, { decimals: true })}</p>
+        {/* Own dark surface (not the shared white card), explicit text colours: readable in light and dark mode */}
+        <div className="rounded-xl border border-slate-700/60 bg-[#0B1F4B] p-5 text-white shadow-sm">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-200"><Wallet className="h-4 w-4" aria-hidden="true" /> Wallet balance</p>
+          <p className="mt-2 font-mono text-3xl font-bold tabular-nums !text-white" aria-live="polite">{formatINR(ledger.balance, { decimals: true })}</p>
           <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Add funds">
             {[5000, 10000, 25000].map((n) => (
-              <button key={n} type="button" onClick={() => { ledger.topUp(n); toast(`Added ${formatINR(n)} (demo top-up)`); }} className="inline-flex items-center gap-1 rounded-md border border-white/30 px-2 py-1 text-xs font-bold hover:bg-white/10"><Plus className="h-3 w-3" aria-hidden="true" />{formatINR(n)}</button>
+              <button key={n} type="button" onClick={() => { ledger.topUp(n); toast(`Added ${formatINR(n)} (demo top-up)`); }} className="inline-flex items-center gap-1 rounded-md bg-sky-300 px-2.5 py-1 text-xs font-bold !text-[#0B1F4B] transition-colors hover:bg-sky-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"><Plus className="h-3 w-3" aria-hidden="true" />{formatINR(n)}</button>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-slate-300">Demo wallet: top-ups are simulated, no payment is taken.</p>
+          <p className="mt-2 text-[11px] !text-slate-200">Demo wallet: top-ups are simulated, no payment is taken.</p>
         </div>
         {stats.map((s) => (
           <div key={s.label} className={card}>
@@ -149,6 +153,7 @@ export function AgencyDashboard() {
 /** Fast single-page entry: no marketing, no wizard. Pay straight from the wallet. */
 function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: number; balance: number; onBook: (b: AgencyBooking) => boolean }) {
   const [kindId, setKindId] = useState<ExpressKind>("classified-text");
+  const [textCategory, setTextCategory] = useState<CategoryId>("business");
   const [paperId, setPaperId] = useState(newspapers[0].id);
   const paper = newspapers.find((p) => p.id === paperId)!;
   const [editionId, setEditionId] = useState(paper.editions[0].id);
@@ -161,6 +166,7 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
   const [spacing, setSpacing] = useState<ParagraphSpacing>("normal");
   const [err, setErr] = useState("");
   const kind = KINDS.find((k) => k.id === kindId)!;
+  const category: CategoryId = kind.category ?? textCategory; // always set: the bookings table requires one
   const isDisplay = kind.adType === "classified-display";
   const preset = SIZE_PRESETS[+size];
   const now = useMemo(() => new Date(), []);
@@ -169,8 +175,8 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
 
   const printText = isDisplay ? text : applySpacing(text, spacing);
   const quote = useMemo(
-    () => calculateQuote({ adType: kind.adType, category: kind.category, selection: { [paperId]: [editionId] }, text: printText, display: { columns: Math.max(1, Math.round(preset.widthCm / paper.rates.colWidthCm)), widthCm: preset.widthCm, heightCm: preset.heightCm, colorMode: color } }),
-    [kind, paperId, editionId, printText, preset, color, paper],
+    () => calculateQuote({ adType: kind.adType, category, selection: { [paperId]: [editionId] }, text: printText, display: { columns: Math.max(1, Math.round(preset.widthCm / paper.rates.colWidthCm)), widthCm: preset.widthCm, heightCm: preset.heightCm, colorMode: color } }),
+    [kind, category, paperId, editionId, printText, preset, color, paper],
   );
   const t = quote.totals;
   const commission = Math.round(t.taxable * rate) / 100;
@@ -184,15 +190,16 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
     if (!isBookable(releaseDate, [paperId], kind.adType, now)) return setErr("The cut-off for that date has passed. Pick a later date.");
     if (short) return setErr("Wallet balance is too low. Add funds first.");
     setErr("");
+    const ref = newBookingId();
     const ok = onBook({
-      id: newBookingId(),
+      id: ref,
       roNumber: `RO/${now.getFullYear()}/${Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("")}`,
-      verificationId: newVerificationId(),
+      verificationId: ref,
       createdAt: new Date().toISOString(),
       customer: { name: name.trim(), phone: phone.trim() },
       kind: kindId,
       adTypeLabel: getAdType(kind.adType).label,
-      categoryName: kind.category ? getCategory(kind.category)?.name ?? "General" : "Classified text",
+      categoryName: getCategory(category)?.name ?? "General",
       paperName: paper.name,
       editionName: paper.editions.find((e) => e.id === editionId)?.name ?? "",
       releaseDate,
@@ -203,7 +210,7 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
       total: t.total,
       commission,
       adType: kind.adType,
-      category: kind.category ?? null,
+      category,
       paperId,
       editionId,
       widthCm: isDisplay ? preset.widthCm : null,
@@ -228,6 +235,11 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field id="ex-paper" label="Publication"><Select id="ex-paper" value={paperId} onChange={(e) => { setPaperId(e.target.value); const p = newspapers.find((x) => x.id === e.target.value)!; setEditionId(p.editions[0].id); }}>{newspapers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Field>
         <Field id="ex-ed" label="Edition"><Select id="ex-ed" value={editionId} onChange={(e) => setEditionId(e.target.value)}>{paper.editions.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</Select></Field>
+        {kindId === "classified-text" ? (
+          <Field id="ex-cat" label="Category"><Select id="ex-cat" value={textCategory} onChange={(e) => setTextCategory(e.target.value as CategoryId)}>{TEXT_CATEGORIES.map((c) => <option key={c} value={c}>{getCategory(c)?.name ?? c}</option>)}</Select></Field>
+        ) : (
+          <Field id="ex-cat" label="Category"><Input id="ex-cat" value={getCategory(category)?.name ?? category} readOnly aria-readonly="true" /></Field>
+        )}
         <Field id="ex-date" label="Release date" hint={`Earliest: ${formatDate(minDate)}`}><Input id="ex-date" type="date" min={minDate} value={releaseDate} onChange={(e) => setDate(e.target.value)} /></Field>
         {isDisplay ? (
           <Field id="ex-size" label="Size (W × H)"><Select id="ex-size" value={size} onChange={(e) => setSize(e.target.value)}>{SIZE_PRESETS.map((p, i) => <option key={i} value={i}>{p.widthCm} × {p.heightCm} cm · {p.label}</option>)}</Select></Field>

@@ -6,6 +6,11 @@ import type { BookingState } from "./booking-store";
 const fileMeta = z.object({ name: z.string(), size: z.number(), type: z.string(), previewUrl: z.string().optional(), url: z.string().optional() });
 
 export const PLACEHOLDER_RE = /\[[^\]]+\]/;
+/** Every [BRACKETED] placeholder still in the text, in order and without repeats. */
+export const findPlaceholders = (text: string) => [...new Set(text.match(/\[[^\]]+\]/g) ?? [])];
+/** Friendly bilingual nudge that names the first placeholder left in the text. */
+export const placeholderMessage = (text: string) =>
+  `Please replace template placeholders like ${findPlaceholders(text)[0] ?? "[ ]"} with your actual details / ദയവായി [ ] അടയാളങ്ങൾ മാറ്റി യഥാർത്ഥ വിവരങ്ങൾ നൽകുക.`;
 export const MAX_TEXT_CHARS = 600;
 export const MIN_TEXT_CHARS = 15;
 
@@ -14,13 +19,16 @@ export function composeSchema(adType: BookingState["adType"], requiredDocIds: st
   return z
     .object({
       text: z.string(),
-      columns: z.number({ error: "Choose the number of columns" }),
-      widthCm: z.number({ error: "Enter a width in cm" }),
-      heightCm: z.number({ error: "Enter a height in cm" }),
-      colorMode: z.enum(["bw", "color"]),
-      enhancements: z.object({ bold: z.boolean(), border: z.boolean(), tint: z.boolean() }),
-      artwork: fileMeta.nullable(),
-      documents: z.record(z.string(), fileMeta),
+      // Sizes only matter for display ads (checked below). `.catch` turns undefined / NaN into a value instead of a
+      // hidden type error, so a text ad can never be blocked by a field it doesn't even show.
+      columns: z.number().catch(1),
+      widthCm: z.number().catch(0),
+      heightCm: z.number().catch(0),
+      colorMode: z.enum(["bw", "color"]).catch("bw"),
+      // Optional nested objects: undefined and null both mean "nothing entered", never a validation failure.
+      enhancements: z.preprocess((v) => v ?? {}, z.object({ bold: z.boolean().catch(false), border: z.boolean().catch(false), tint: z.boolean().catch(false) })),
+      artwork: z.preprocess((v) => v ?? null, fileMeta.nullable()),
+      documents: z.preprocess((v) => v ?? {}, z.record(z.string(), z.any())) as unknown as z.ZodType<Record<string, z.infer<typeof fileMeta>>>,
     })
     .superRefine((v, ctx) => {
       if (adType === "classified-text") {
@@ -30,20 +38,20 @@ export function composeSchema(adType: BookingState["adType"], requiredDocIds: st
         else if (t.length > MAX_TEXT_CHARS)
           ctx.addIssue({ code: "custom", path: ["text"], message: "Keep the ad under 600 characters." });
         else if (PLACEHOLDER_RE.test(t))
-          ctx.addIssue({ code: "custom", path: ["text"], message: "Replace the [BRACKETED] placeholders with your details." });
+          ctx.addIssue({ code: "custom", path: ["text"], message: placeholderMessage(t) });
       } else {
         if (mode === "builder") {
           const t = v.text.trim();
           if (t.length < MIN_TEXT_CHARS)
             ctx.addIssue({ code: "custom", path: ["text"], message: "Fill in the notice details first." });
           else if (PLACEHOLDER_RE.test(t))
-            ctx.addIssue({ code: "custom", path: ["text"], message: "Replace the [BRACKETED] placeholders with your details." });
+            ctx.addIssue({ code: "custom", path: ["text"], message: placeholderMessage(t) });
         } else if (mode === "std") {
           // Classic display ads: artwork, or a written ad that is set in the box when there is no artwork.
           const t = v.text.trim();
           if (!v.artwork) {
             if (t.length < MIN_TEXT_CHARS) ctx.addIssue({ code: "custom", path: ["artwork"], message: "Upload your artwork (PDF, JPG or PNG) or write the ad text above." });
-            else if (PLACEHOLDER_RE.test(t)) ctx.addIssue({ code: "custom", path: ["text"], message: "Replace the [BRACKETED] placeholders with your details." });
+            else if (PLACEHOLDER_RE.test(t)) ctx.addIssue({ code: "custom", path: ["text"], message: placeholderMessage(t) });
           }
         } else if (!v.artwork) {
           ctx.addIssue({ code: "custom", path: ["artwork"], message: mode === "upload" ? "Upload your print-ready creative (PDF, TIFF or JPG)." : "Upload your artwork (PDF, JPG or PNG)." });

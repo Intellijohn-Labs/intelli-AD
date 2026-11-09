@@ -132,7 +132,7 @@ export function NewspaperPreview({
       {/* Newsprint box: publication rules, column margins, dimension tags on the border */}
       <div className="relative">
         <span className="absolute -top-2.5 left-3 z-10 bg-[#FBF8F1] px-1.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-[#1E2430] dark:text-slate-200">Width: {colWidthCm} cm</span>
-        <span className="absolute -right-2 top-1/2 z-10 -translate-y-1/2 rotate-90 whitespace-nowrap bg-[#FBF8F1] px-1.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
+        <span className="absolute -top-2.5 right-3 z-10 whitespace-nowrap bg-[#FBF8F1] px-1.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
         <div className="font-serif relative rounded-sm border-2 border-slate-900/80 bg-[#FBF8F1] p-4 tracking-tight text-slate-900 shadow-[3px_3px_0px_rgba(0,0,0,0.8)] dark:border-slate-300 dark:bg-[#1E2430] dark:text-slate-100 dark:shadow-[3px_3px_0px_rgba(255,255,255,0.18)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
           <div className="mb-2 border-y-[3px] border-double border-slate-800 py-1 text-center dark:border-slate-300">
             <p className="text-base font-bold tracking-tight">{paperName}</p>

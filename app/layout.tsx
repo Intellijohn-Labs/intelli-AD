@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800;900&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Manjari:wght@400;700&family=Gayathri:wght@400;700&family=Noto+Serif+Malayalam:wght@600;700;800&family=Baloo+Chettan+2:wght@600;800&family=Anek+Malayalam:wght@500;800&family=Chilanka&family=Meera+Inimai&display=swap"
         />
       </head>
-      <body className="min-h-screen antialiased">
+      <body className="min-h-screen w-full max-w-full overflow-x-hidden antialiased">
         {/* Persistent ambient mesh glow behind every page */}
         <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-600/15" />

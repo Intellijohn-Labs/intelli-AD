@@ -28,6 +28,7 @@ export function ParagraphField({
   extra,
   className,
   textClassName,
+  textareaRef,
 }: {
   id: string;
   label: string;
@@ -46,6 +47,8 @@ export function ParagraphField({
   extra?: ReactNode;
   className?: string;
   textClassName?: string;
+  /** Gives the parent the underlying textarea (e.g. to select a placeholder). */
+  textareaRef?: (el: HTMLTextAreaElement | null) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   // Auto-expand: reset, then fit to content.
@@ -65,7 +68,7 @@ export function ParagraphField({
     <div className={className}>
       <Field id={id} label={label} required={required} error={error} hint={hint}>
         <Textarea
-          ref={ref}
+          ref={(el) => { ref.current = el; textareaRef?.(el); }}
           id={id}
           rows={rows}
           value={value}

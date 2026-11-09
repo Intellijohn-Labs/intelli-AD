@@ -98,7 +98,13 @@ export function Step1Selection() {
         <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((c) => (
             <motion.label key={c.id} {...cardMotion} className={cn(cardBase, "flex flex-col items-start gap-1.5", CATEGORY_TINT[c.id].base, state.categoryId === c.id && CATEGORY_TINT[c.id].on)}>
-              <input type="radio" name="category" className="sr-only" checked={state.categoryId === c.id} onChange={() => update({ categoryId: c.id })} />
+              <input type="radio" name="category" className="sr-only" checked={state.categoryId === c.id} onChange={() => {
+                if (state.categoryId === c.id) return;
+                // Category-specific content (template text, memorial photo, notice fields) must not leak into another category.
+                const hasContent = !!state.text.trim() || !!state.artwork || !!state.obituary || !!state.tender;
+                if (hasContent && state.categoryId && !window.confirm("Switching category clears your ad text, photo and notice details. Continue?")) return;
+                update({ categoryId: c.id, text: "", artwork: null, obituary: null, tender: null, documents: {}, templateTitle: null });
+              }} />
               {state.categoryId === c.id && <Tick />}
               <CategoryIcon name={c.icon} className="h-5 w-5" />
               <span className="text-sm font-bold">{tl(c.name, c.nameMl)}</span>

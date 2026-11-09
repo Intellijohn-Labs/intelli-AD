@@ -12,7 +12,8 @@ const SESSION_COOKIE = "intelliad_session";
  */
 export async function GET() {
   const admin = createAdminClient();
-  if (!admin) return NextResponse.json({ error: "Server sync not configured" }, { status: 501 });
+  // No service-role key: not an error, the dashboard simply runs on this device's own bookings.
+  if (!admin) return NextResponse.json({ bookings: [], localMode: true });
 
   const raw = (await cookies()).get(SESSION_COOKIE)?.value;
   let code: string | undefined;
@@ -29,5 +30,5 @@ export async function GET() {
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ rows: data ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ bookings: data ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }

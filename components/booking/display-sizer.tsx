@@ -33,7 +33,7 @@ export function DisplaySizer({
 }) {
   const w = Number.isFinite(widthCm) ? widthCm : 0;
   const h = Number.isFinite(heightCm) ? heightCm : 0;
-  const area = Math.round(w * h * 10) / 10;
+  const area = Math.round(w * h * 100) / 100; // same rounding as the quote, so the sentence below matches it exactly
   const line = quote.lines[0];
   const billed = Math.max(area, minAreaCm2);
   const colour = quote.enhancementItems.find((e) => e.key === "color");
@@ -68,7 +68,7 @@ export function DisplaySizer({
         <Field id="ad-height" label="Height (cm)" required error={errors.heightCm} className="w-32">
           <Input id="ad-height" type="number" step="0.5" min={HEIGHT_LIMITS.min} max={HEIGHT_LIMITS.max} inputMode="decimal" value={Number.isFinite(heightCm) ? heightCm : ""} aria-invalid={!!errors.heightCm} onChange={(e) => onSize(w, e.target.valueAsNumber)} />
         </Field>
-        <p className="pb-2 font-mono text-sm font-bold" aria-live="polite">= {area.toFixed(1)} cm²</p>
+        <p className="pb-2 font-mono text-sm font-bold" aria-live="polite">= {Number(area.toFixed(2))} cm²</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Colour mode">
@@ -81,17 +81,21 @@ export function DisplaySizer({
         ))}
       </div>
 
-      {line && (
-        <div className="rounded-md border border-dashed border-zinc-400 bg-white/60 p-3 font-mono text-xs leading-relaxed dark:bg-transparent" aria-live="polite">
-          <p className="font-bold">Price = area × base rate × colour multiplier + GST</p>
-          <p>
-            {billed.toFixed(1)} cm² × {formatINR(line.rate)}/cm² × {colorMode === "color" ? (1 + colorPremiumPct / 100).toFixed(2) : "1.00"}
-            {colour ? "" : ""} = {formatINR(quote.totals.taxable)}
-          </p>
-          {area < minAreaCm2 && <p className="text-amber-700 dark:text-amber-200">Minimum billable area is {minAreaCm2} cm²; smaller boxes are billed at the minimum.</p>}
-          <p>+ 18% GST {formatINR(quote.totals.gst)} → <b>{formatINR(quote.totals.total)}</b>{quote.editionCount > 1 ? ` for ${quote.editionCount} editions` : ""}</p>
-        </div>
-      )}
+      {line && (() => {
+        const mult = colorMode === "color" ? 1 + colorPremiumPct / 100 : 1;
+        const perEdition = Math.round(billed * line.rate * mult * 100) / 100; // exactly what the sentence below multiplies out to
+        const n = quote.editionCount;
+        return (
+          <div className="rounded-md border border-dashed border-zinc-400 bg-white/60 p-3 font-mono text-xs leading-relaxed dark:bg-transparent" aria-live="polite">
+            <p className="font-bold">Price = area × base rate × colour multiplier, then GST</p>
+            <p>{Number(billed.toFixed(2))} cm² × {formatINR(line.rate, { decimals: true })}/cm² × {mult.toFixed(2)} = {formatINR(perEdition, { decimals: true })}{n > 1 ? " per edition" : ""}</p>
+            {area < minAreaCm2 && <p className="text-amber-700 dark:text-amber-200">Minimum billable area is {minAreaCm2} cm²; smaller boxes are billed at the minimum.</p>}
+            {n > 1 && <p>× {n} editions = {formatINR(quote.totals.gross, { decimals: true })}</p>}
+            {quote.totals.discount > 0 && <p>− multi-edition discount {formatINR(quote.totals.discount, { decimals: true })} = {formatINR(quote.totals.taxable, { decimals: true })}</p>}
+            <p>+ 18% GST {formatINR(quote.totals.gst, { decimals: true })} → <b>{formatINR(quote.totals.total, { decimals: true })}</b></p>
+          </div>
+        );
+      })()}
     </fieldset>
   );
 }

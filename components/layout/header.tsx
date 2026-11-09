@@ -47,7 +47,7 @@ export function Header() {
       <div className="mx-auto flex min-h-10 max-w-[1500px] items-center justify-between gap-4 px-6 py-3.5 md:px-12">
         <div className="flex shrink-0 items-center"><BrandLogo /></div>
 
-        <nav aria-label="Main" className="ml-8 hidden flex-1 items-center gap-2 md:flex lg:ml-12 lg:gap-4">
+        <nav aria-label="Main" className="ml-8 hidden min-w-0 flex-1 items-center gap-2 min-[1120px]:flex min-[1120px]:ml-12 min-[1120px]:gap-4">
           {links.map((l) => (
             <Link key={l.href} href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={linkCls(l.href)}>
               {t(l.label)}
@@ -55,7 +55,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-3 md:flex">
+        <div className="hidden shrink-0 items-center gap-1.5 min-[1120px]:flex lg:gap-3">
           <LanguageSwitcher />
           <ThemeToggle />
           {!inPartnerArea && <Link href="/login?tab=agency" className={AGENCY_BADGE}><Building2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("Akshaya / Agency Login")}</Link>}
@@ -64,7 +64,7 @@ export function Header() {
           <Link href="/book" className={CTA}>{t("Book an ad")}</Link>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 min-[1120px]:hidden">
           <AuthControl />
           <ThemeToggle />
           <button
@@ -81,7 +81,7 @@ export function Header() {
       </div>
 
       {open && (
-        <nav id="mobile-nav" aria-label="Mobile" className="flex flex-col gap-1 border-t border-slate-200 px-6 py-4 md:hidden dark:border-[#1F2F57]">
+        <nav id="mobile-nav" aria-label="Mobile" className="flex flex-col gap-1 border-t border-slate-200 px-6 py-4 min-[1120px]:hidden dark:border-[#1F2F57]">
           {links.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} aria-current={isActive(l.href) ? "page" : undefined} className={cn(linkCls(l.href), "py-2.5")}>
               {t(l.label)}
