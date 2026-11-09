@@ -40,6 +40,7 @@ export function createReceipt(
   quote: Quote,
   contact: ReceiptData["contact"],
   paymentMethod: PaymentMethod,
+  bookingId?: string,
 ): ReceiptData {
   const paperIds = Object.keys(s.selection).filter((k) => s.selection[k].length);
   const isText = s.adType === "classified-text";
@@ -51,7 +52,7 @@ export function createReceipt(
   const now = new Date();
   const wCm = displayWidth(s.display, getNewspaper(paperIds[0])?.rates.colWidthCm ?? 4);
   return {
-    bookingId: `BS-${String(now.getFullYear()).slice(2)}${digits(6)}`,
+    bookingId: bookingId ?? `BS-${String(now.getFullYear()).slice(2)}${digits(6)}`,
     roNumber: `RO/${now.getFullYear()}/${digits(6)}`,
     transactionId: `TXN${digits(12)}`,
     paidAt: now.toISOString(),

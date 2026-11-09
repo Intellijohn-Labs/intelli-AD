@@ -67,7 +67,7 @@ export function Step2Compose() {
   useEffect(() => {
     const cur = getValues();
     if (state.text !== cur.text) setValue("text", state.text, { shouldValidate: true });
-    if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
+    if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null) || (state.artwork?.url ?? null) !== (cur.artwork?.url ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
     const e = state.enhancements, c = cur.enhancements;
     if (e.bold !== c.bold || e.border !== c.border || e.tint !== c.tint) setValue("enhancements", e);
   }, [state.text, state.artwork, state.enhancements, getValues, setValue]);
@@ -252,6 +252,7 @@ export function Step2Compose() {
                         hint={t(d.hint)}
                         required={d.required}
                         maxMb={10}
+                        artwork={false}
                         value={field.value}
                         onChange={(f) => {
                           const next = { ...(v.documents ?? {}) };

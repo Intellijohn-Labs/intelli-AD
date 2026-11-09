@@ -72,6 +72,12 @@ export function AgencyDashboard() {
         </div>
       </div>
 
+      {ledger.sync.status !== "ok" && ledger.sync.status !== "checking" && (
+        <p role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
+          {ledger.sync.status === "error" ? "Database sync problem: " : "Showing bookings from this device only. "}{ledger.sync.note}
+        </p>
+      )}
+
       <section aria-label="Wallet and commission" className="mt-6 grid gap-4 md:grid-cols-4">
         <div className={cn(card, "bg-[#0B1F4B] text-white dark:bg-[#0B1F4B]")}>
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-300"><Wallet className="h-4 w-4" aria-hidden="true" /> Wallet balance</p>
@@ -196,6 +202,14 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
       gst: t.gst,
       total: t.total,
       commission,
+      adType: kind.adType,
+      category: kind.category ?? null,
+      paperId,
+      editionId,
+      widthCm: isDisplay ? preset.widthCm : null,
+      heightCm: isDisplay ? preset.heightCm : null,
+      lines: quote.metrics.lines,
+      colorMode: color,
     });
     if (!ok) return setErr("Wallet balance is too low. Add funds first.");
     setText(""); setName(""); setPhone("");

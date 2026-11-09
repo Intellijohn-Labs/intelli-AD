@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "./auth";
+import { createClient } from "./supabase/client";
+import { newBookingRef, type BookingRow } from "./supabase/bookings";
 
 export type ExpressKind = "classified-text" | "obituary" | "tender";
 
@@ -34,6 +36,15 @@ export interface AgencyBooking {
   gst: number;
   total: number;
   commission: number;
+  /** Machine values used when saving the booking to the database. */
+  adType?: string;
+  category?: string | null;
+  paperId?: string;
+  editionId?: string;
+  widthCm?: number | null;
+  heightCm?: number | null;
+  lines?: number;
+  colorMode?: string;
 }
 
 interface Stored {
@@ -44,7 +55,7 @@ interface Stored {
 const key = (u: AuthUser) => `intelliad.agency.v1.${u.akshaya_code ?? u.identifier}`;
 const rand = (n: number) => Array.from({ length: n }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
 export const newVerificationId = () => `IA-VRF-${rand(8)}`;
-export const newBookingId = () => `AG-${new Date().getFullYear().toString().slice(2)}${Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("")}`;
+export const newBookingId = newBookingRef; // INT-2026-123456, shared with customer bookings
 
 /**
  * Partner wallet and booking ledger, kept in localStorage per centre. Demo only: a real
@@ -52,6 +63,7 @@ export const newBookingId = () => `AG-${new Date().getFullYear().toString().slic
  */
 export function useAgencyLedger(user: AuthUser | null) {
   const [data, setData] = useState<Stored | null>(null);
+  const [sync, setSync] = useState<SyncState>({ status: "checking" });
 
   useEffect(() => {
     if (!user?.is_agency) return;
@@ -64,6 +76,33 @@ export function useAgencyLedger(user: AuthUser | null) {
     setData(next);
   }, [user]);
 
+  // Bookings live in the database: load them (merged over anything only saved on this device).
+  useEffect(() => {
+    if (!user?.is_agency) return;
+    let cancelled = false;
+    fetch("/api/agency/bookings", { cache: "no-store" })
+      .then(async (r) => {
+        if (r.status === 501) return { status: "local" as const, note: "Server sync is off: add SUPABASE_SERVICE_ROLE_KEY to enable it." };
+        if (!r.ok) return { status: "error" as const, note: `Could not load bookings (${r.status}).` };
+        const { rows } = (await r.json()) as { rows: BookingRow[] };
+        return { status: "ok" as const, rows: rows.map(rowToBooking).filter((b): b is AgencyBooking => !!b) };
+      })
+      .catch(() => ({ status: "error" as const, note: "Could not reach the server." }))
+      .then((res) => {
+        if (cancelled) return;
+        if (res.status === "ok") {
+          setData((d) => {
+            if (!d) return d;
+            const ids = new Set(res.rows.map((b) => b.id));
+            const localOnly = d.bookings.filter((b) => !ids.has(b.id));
+            return { ...d, bookings: [...res.rows, ...localOnly].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
+          });
+          setSync({ status: "ok" });
+        } else setSync({ status: res.status, note: res.note });
+      });
+    return () => { cancelled = true; };
+  }, [user]);
+
   const commit = useCallback((next: Stored) => {
     setData(next);
     if (!user) return;
@@ -74,8 +113,9 @@ export function useAgencyLedger(user: AuthUser | null) {
   const book = useCallback((b: AgencyBooking) => {
     if (!data || data.balance < b.total) return false;
     commit({ balance: Math.round((data.balance - b.total + b.commission) * 100) / 100, bookings: [b, ...data.bookings] });
+    if (user) void saveAgencyBooking(user, b).then((r) => { if (!r.ok && !r.skipped) setSync({ status: "error", note: `Booking ${b.id} was not saved online: ${r.error}` }); });
     return true;
-  }, [data, commit]);
+  }, [data, commit, user]);
 
   const topUp = useCallback((amount: number) => {
     if (!data || !(amount > 0)) return;
@@ -97,7 +137,65 @@ export function useAgencyLedger(user: AuthUser | null) {
     };
   }, [data]);
 
-  return { ready: data !== null, balance: data?.balance ?? 0, bookings: data?.bookings ?? [], stats, book, topUp };
+  return { sync, ready: data !== null, balance: data?.balance ?? 0, bookings: data?.bookings ?? [], stats, book, topUp };
+}
+
+export interface SyncState { status: "checking" | "ok" | "local" | "error"; note?: string }
+
+/** Saves a partner booking to the `bookings` table; partner details sit under customer_details.agency. */
+export async function saveAgencyBooking(user: AuthUser, b: AgencyBooking): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const supabase = createClient();
+  if (!supabase) return { ok: false, skipped: true };
+  const row: BookingRow = {
+    booking_ref: b.id,
+    ad_type: b.adType ?? (b.kind === "classified-text" ? "classified-text" : "classified-display"),
+    category: b.category ?? null,
+    publication: b.paperName,
+    editions: b.paperId && b.editionId ? { [b.paperId]: [b.editionId] } : {},
+    release_date: b.releaseDate,
+    ad_text: b.text,
+    artwork_url: null,
+    dimensions: { width: b.widthCm ?? null, height: b.heightCm ?? null, lines: b.lines ?? 0 },
+    enhancements: { colorMode: b.colorMode ?? "bw" },
+    pricing: { baseRate: b.taxable, gst: b.gst, total: b.total, commission: b.commission },
+    customer_details: {
+      name: b.customer.name,
+      mobile: b.customer.phone,
+      agency: {
+        code: user.akshaya_code, name: user.agency_name, partner_type: user.partner_type, commission_rate: user.commission_rate,
+        meta: { roNumber: b.roNumber, verificationId: b.verificationId, kind: b.kind, adTypeLabel: b.adTypeLabel, categoryName: b.categoryName, paperName: b.paperName, editionName: b.editionName, sizeLabel: b.sizeLabel, taxable: b.taxable, createdAt: b.createdAt },
+      },
+    },
+    status: "confirmed", // paid from the partner wallet
+  };
+  const { error } = await supabase.from("bookings").insert(row);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/** Database row -> dashboard booking (only partner rows carry the agency meta). */
+function rowToBooking(r: BookingRow & { created_at?: string }): AgencyBooking | null {
+  const cd = r.customer_details as { name?: string; mobile?: string; agency?: { meta?: Record<string, unknown> } };
+  const m = cd.agency?.meta as Partial<AgencyBooking> | undefined;
+  if (!m) return null;
+  return {
+    id: r.booking_ref,
+    roNumber: m.roNumber ?? "",
+    verificationId: m.verificationId ?? "",
+    createdAt: m.createdAt ?? r.created_at ?? new Date().toISOString(),
+    customer: { name: cd.name ?? "", phone: cd.mobile ?? "" },
+    kind: (m.kind as ExpressKind) ?? "classified-text",
+    adTypeLabel: m.adTypeLabel ?? r.ad_type,
+    categoryName: m.categoryName ?? r.category ?? "",
+    paperName: m.paperName ?? r.publication,
+    editionName: m.editionName ?? "",
+    releaseDate: r.release_date ?? "",
+    text: r.ad_text ?? "",
+    sizeLabel: m.sizeLabel ?? null,
+    taxable: Number(m.taxable ?? r.pricing.baseRate ?? 0),
+    gst: Number(r.pricing.gst ?? 0),
+    total: Number(r.pricing.total ?? 0),
+    commission: Number(r.pricing.commission ?? 0),
+  };
 }
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);

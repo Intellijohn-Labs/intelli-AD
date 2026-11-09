@@ -18,20 +18,44 @@ import { cn, formatDate, formatINR } from "@/lib/utils";
 import { applySpacing } from "@/lib/paragraphs";
 import { PriceBreakdown } from "./price-breakdown";
 import { ProofCard } from "./proof-card";
+import { useToast } from "@/components/ui/toast";
+import { buildBookingRow, newBookingRef, saveBooking, supabaseConfigured } from "@/lib/supabase/bookings";
 
 export function Step4Checkout() {
   const { state, update } = useBooking();
   const { t, tl, pn } = useI18n();
   const quote = useBookingQuote(state);
   const [paying, setPaying] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const toast = useToast();
   const { register, handleSubmit, watch, formState: { errors } } = useForm<CheckoutValues>({
     resolver: zodResolver(checkoutSchema) as unknown as Resolver<CheckoutValues>,
     defaultValues: { paymentMethod: "upi", fullName: "", email: "", phone: "", company: "", gstin: "", address: "" },
   });
   const method = watch("paymentMethod");
 
-  const onSubmit = (values: CheckoutValues) => {
+  const onSubmit = async (values: CheckoutValues) => {
+    setSaveError(null);
+    // The ad's photo / artwork must already be in storage, or the saved booking would point at nothing.
+    if (supabaseConfigured && state.artwork && !state.artwork.url) {
+      setSaveError("Your artwork is still uploading or the upload failed. Go back to Compose and wait for “saved”, or upload it again.");
+      return;
+    }
     setPaying(true);
+    const customer = { name: values.fullName, mobile: values.phone, email: values.email, address: values.address, company: values.company || undefined, gstin: values.gstin || undefined };
+    // No payment gateway yet, so the booking is stored as pending_payment.
+    let ref = newBookingRef();
+    let res = await saveBooking(buildBookingRow(state, quote, customer, ref, "pending_payment"));
+    for (let i = 0; i < 2 && !res.ok && !res.skipped && /duplicate|unique/i.test(res.error ?? ""); i++) {
+      ref = newBookingRef(); // reference collision: draw another
+      res = await saveBooking(buildBookingRow(state, quote, customer, ref, "pending_payment"));
+    }
+    if (!res.ok && !res.skipped) {
+      setPaying(false);
+      setSaveError(`We couldn't save your booking (${res.error}). Nothing was charged. Please try again.`);
+      return;
+    }
+    if (res.skipped) toast("Database is not configured, so this booking was not saved online.");
     // Mock payment gateway: simulate a short processing delay.
     window.setTimeout(() => {
       const receipt = createReceipt(
@@ -39,9 +63,10 @@ export function Step4Checkout() {
         quote,
         { fullName: values.fullName, email: values.email, phone: values.phone, company: values.company || undefined, gstin: values.gstin || undefined, address: values.address },
         values.paymentMethod as PaymentMethod,
+        res.ref ?? ref,
       );
       update({ receipt });
-    }, 2200);
+    }, 1500);
   };
 
   const papers = Object.keys(state.selection).filter((k) => state.selection[k].length);
@@ -110,6 +135,7 @@ export function Step4Checkout() {
             </label>
             {errors.terms && <p role="alert" className="mt-1 text-xs font-medium text-red-700 dark:text-red-200">{t(errors.terms.message ?? "")}</p>}
           </div>
+          {saveError && <p role="alert" className="mt-3 rounded bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-500/20 dark:text-red-200">{saveError}</p>}
           <Button type="submit" size="lg" className="mt-4 w-full" disabled={paying}>
             {paying ? (
               <>

@@ -2,6 +2,7 @@
 
 import { Flame } from "lucide-react";
 import { useRef } from "react";
+import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
 import { useBooking, type BookingState } from "@/lib/booking-store";
@@ -240,6 +241,7 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto }: { url?: string; ro
   const interactive = !!(onCrop && onPhoto);
   const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const upload = useArtworkUpload((f) => { if (f) onPhoto?.(f); });
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
   const down = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -264,7 +266,9 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto }: { url?: string; ro
   };
   const pick = (file?: File) => {
     if (!file || !onPhoto || !/\.(jpe?g|png)$/i.test(file.name) || file.size > 15 * 1024 * 1024) return;
-    onPhoto({ name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) });
+    const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) };
+    onPhoto(meta);
+    upload.start(file, meta); // calls onPhoto again with the Supabase URL attached
   };
 
   return (
@@ -371,7 +375,7 @@ export function ObituaryPreview({ state, bare = false, editable = false }: { sta
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
           </h4>
           <div className={cn("mt-2 gap-3", showPhoto ? (narrow ? "flex flex-col items-center" : "flex items-start") : "block")}>
-            {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update({ artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} />}
+            {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} />}
             <div className="min-w-0 flex-1 space-y-1.5 text-justify text-[13px] leading-[1.7]">
               {body.map((p, i) => <p key={i} className={cn(prayerLines.has(p) && "text-center font-semibold italic", !prayer && anniv && i === body.length - 1 && "text-center font-semibold italic")}>{p}</p>)}
             </div>

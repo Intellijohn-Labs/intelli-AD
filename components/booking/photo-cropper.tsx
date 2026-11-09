@@ -2,6 +2,7 @@
 
 import { ImagePlus, Trash2 } from "lucide-react";
 import { useId } from "react";
+import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import type { FileMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -22,10 +23,13 @@ export function PhotoCropper({
   round: boolean;
 }) {
   const id = useId();
+  const upload = useArtworkUpload(onPhoto);
   const pick = (file?: File) => {
     if (!file) return;
     if (!/\.(jpe?g|png)$/i.test(file.name) || file.size > 15 * 1024 * 1024) return;
-    onPhoto({ name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) });
+    const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) };
+    onPhoto(meta);
+    upload.start(file, meta); // photo goes to Supabase Storage; the booking keeps the public URL
     onCrop({ zoom: 1, x: 50, y: 50 });
   };
   const slider = "h-1.5 w-full cursor-pointer accent-[#E11D48]";
@@ -44,8 +48,8 @@ export function PhotoCropper({
         {photo ? (
           <>
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="truncate font-semibold">{photo.name}</span>
-              <button type="button" onClick={() => onPhoto(null)} className="rounded p-1 text-zinc-500 hover:text-red-700" aria-label="Remove photo"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
+              <span className="truncate font-semibold">{photo.name}{upload.busy ? " · uploading…" : photo.url ? " · saved" : ""}</span>
+              <button type="button" onClick={() => { upload.cancel(); onPhoto(null); }} className="rounded p-1 text-zinc-500 hover:text-red-700" aria-label="Remove photo"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
             </div>
             <label className="block text-xs font-semibold">Zoom {crop.zoom.toFixed(1)}×
               <input type="range" min={1} max={3} step={0.05} value={crop.zoom} onChange={(e) => onCrop({ ...crop, zoom: +e.target.value })} className={slider} />
@@ -56,6 +60,7 @@ export function PhotoCropper({
             <label className="block text-xs font-semibold">Move up / down
               <input type="range" min={0} max={100} value={crop.y} onChange={(e) => onCrop({ ...crop, y: +e.target.value })} className={slider} />
             </label>
+          {upload.error && <p role="alert" className="text-xs font-medium text-red-700 dark:text-red-300">{upload.error}</p>}
           </>
         ) : (
           <label htmlFor={id} className="flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed border-zinc-300 bg-white px-4 py-5 text-center hover:border-navy-400 focus-within:outline-2 focus-within:outline-navy-500 dark:bg-zinc-800/50">

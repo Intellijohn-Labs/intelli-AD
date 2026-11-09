@@ -33,6 +33,8 @@ export interface FileMeta {
   type: string;
   /** Object URL for images; never persisted. */
   previewUrl?: string;
+  /** Public URL in Supabase Storage once uploaded; this is what the saved booking points to. */
+  url?: string;
 }
 
 export interface EditionGroup {

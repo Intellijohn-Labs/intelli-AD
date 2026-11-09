@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { cn, formatBytes } from "@/lib/utils";
 import type { FileMeta } from "@/lib/types";
 import { FieldError } from "@/components/ui/field";
+import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { useI18n } from "@/context/language-context";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
@@ -19,6 +20,7 @@ export function FileDropzone({
   error,
   maxMb = 25,
   logo = false,
+  artwork = true,
 }: {
   label: string;
   hint?: string;
@@ -29,11 +31,14 @@ export function FileDropzone({
   maxMb?: number;
   /** Logo mode: accepts PNG, JPG or SVG (no PDF). */
   logo?: boolean;
+  /** False for supporting documents (not uploaded to the artwork bucket). */
+  artwork?: boolean;
 }) {
   const { t } = useI18n();
   const id = useId();
   const [localError, setLocalError] = useState<string>();
   const [dragging, setDragging] = useState(false);
+  const upload = useArtworkUpload(onChange);
 
   const accept = (file?: File) => {
     if (!file) return;
@@ -41,15 +46,18 @@ export function FileDropzone({
     if (!okType) return setLocalError(logo ? t("Only PNG, JPG or SVG logos are supported.") : t("Only PDF, JPG or PNG files are supported."));
     if (file.size > maxMb * 1024 * 1024) return setLocalError(t("File is larger than {mb} MB.", { mb: maxMb }));
     setLocalError(undefined);
-    onChange({
+    const meta: FileMeta = {
       name: file.name,
       size: file.size,
       type: file.type,
       previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-    });
+    };
+    onChange(meta);
+    if (artwork) upload.start(file, meta); // ad artwork goes to Supabase Storage; supporting documents stay local
+
   };
 
-  const err = localError ?? error;
+  const err = localError ?? upload.error ?? error;
   return (
     <div>
       <p className="mb-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-100">
@@ -60,9 +68,9 @@ export function FileDropzone({
           <FileText className="h-5 w-5 text-emerald-700 dark:text-emerald-200" aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{value.name}</p>
-            <p className="text-xs text-zinc-500">{formatBytes(value.size)}</p>
+            <p className="text-xs text-zinc-500">{formatBytes(value.size)}{upload.busy ? " · uploading…" : value.url ? " · saved" : ""}</p>
           </div>
-          <button type="button" onClick={() => onChange(null)} className="rounded p-1.5 text-zinc-500 hover:bg-white hover:text-red-700 dark:text-red-200" aria-label={t("Remove {name}", { name: value.name })}>
+          <button type="button" onClick={() => { upload.cancel(); onChange(null); }} className="rounded p-1.5 text-zinc-500 hover:bg-white hover:text-red-700 dark:text-red-200" aria-label={t("Remove {name}", { name: value.name })}>
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>

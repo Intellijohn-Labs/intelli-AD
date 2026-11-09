@@ -79,7 +79,7 @@ interface Ctx {
 const BookingContext = createContext<Ctx | null>(null);
 
 function stripPreview(state: BookingState): BookingState {
-  const clean = (f: FileMeta | null) => (f ? { name: f.name, size: f.size, type: f.type } : null);
+  const clean = (f: FileMeta | null) => (f ? { name: f.name, size: f.size, type: f.type, url: f.url } : null);
   return {
     ...state,
     artwork: clean(state.artwork),

@@ -3,7 +3,7 @@ import { getCategory } from "@/data/categories";
 import { isBookable } from "./cutoff";
 import type { BookingState } from "./booking-store";
 
-const fileMeta = z.object({ name: z.string(), size: z.number(), type: z.string(), previewUrl: z.string().optional() });
+const fileMeta = z.object({ name: z.string(), size: z.number(), type: z.string(), previewUrl: z.string().optional(), url: z.string().optional() });
 
 export const PLACEHOLDER_RE = /\[[^\]]+\]/;
 export const MAX_TEXT_CHARS = 600;

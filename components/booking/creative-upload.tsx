@@ -3,6 +3,7 @@
 import { AlertTriangle, CheckCircle2, FileText, Trash2, Upload, XCircle } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { FieldError } from "@/components/ui/field";
+import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { checkCreative, fileKind, inspectCreative, type CreativeCheck, type CreativeInfo } from "@/lib/display";
 import type { FileMeta } from "@/lib/types";
 import { cn, formatBytes } from "@/lib/utils";
@@ -31,6 +32,7 @@ export function CreativeUpload({
   const [info, setInfo] = useState<CreativeInfo | null>(null);
   const [dragging, setDragging] = useState(false);
   const [localError, setLocalError] = useState<string>();
+  const upload = useArtworkUpload(onChange);
 
   // Keep the analysis only while the file it belongs to is still attached.
   useEffect(() => {
@@ -44,11 +46,13 @@ export function CreativeUpload({
     if (file.size > MAX_MB * 1024 * 1024) return setLocalError(`File is larger than ${MAX_MB} MB.`);
     setLocalError(undefined);
     setInfo(await inspectCreative(file));
-    onChange({ name: file.name, size: file.size, type: file.type, previewUrl: file.type.startsWith("image/") && !/tiff?$/i.test(file.type) ? URL.createObjectURL(file) : undefined });
+    const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: file.type.startsWith("image/") && !/tiff?$/i.test(file.type) ? URL.createObjectURL(file) : undefined };
+    onChange(meta);
+    upload.start(file, meta); // stored in Supabase Storage; the booking keeps the public URL
   };
 
   const checks: CreativeCheck[] = info && widthCm > 0 && heightCm > 0 ? checkCreative(info, widthCm, heightCm) : [];
-  const err = localError ?? error;
+  const err = localError ?? upload.error ?? error;
 
   return (
     <div>
@@ -62,12 +66,12 @@ export function CreativeUpload({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{value.name}</p>
               <p className="text-xs text-zinc-500">
-                {formatBytes(value.size)}
+                {formatBytes(value.size)}{upload.busy ? " · uploading…" : value.url ? " · saved" : ""}
                 {info?.widthPx ? ` · ${info.widthPx} × ${info.heightPx} px` : ""}
                 {info?.widthCm ? ` · page ${info.widthCm.toFixed(1)} × ${info.heightCm?.toFixed(1)} cm` : ""}
               </p>
             </div>
-            <button type="button" onClick={() => onChange(null)} className="rounded p-1.5 text-zinc-500 hover:bg-white hover:text-red-700 dark:text-red-200" aria-label={`Remove ${value.name}`}>
+            <button type="button" onClick={() => { upload.cancel(); onChange(null); }} className="rounded p-1.5 text-zinc-500 hover:bg-white hover:text-red-700 dark:text-red-200" aria-label={`Remove ${value.name}`}>
               <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
