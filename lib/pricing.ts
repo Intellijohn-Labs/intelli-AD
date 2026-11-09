@@ -3,7 +3,7 @@ import { getNewspaper, newspapers } from "@/data/newspapers";
 import type { AdType, CategoryId, DisplaySpec, Enhancements, Newspaper } from "./types";
 import { displayWidth } from "./display";
 import { countWords, round2, wrapText } from "./utils";
-import { findRate, getActiveRates, headlineRate, type RateBook } from "./rates";
+import { findRate, getActiveRates, headlineRate, paperConfig, type RateBook } from "./rates";
 
 export const GST_RATE = 0.18;
 
@@ -130,11 +130,12 @@ export function calculateQuote(input: QuoteInput): Quote {
     const r = paper.rates;
     const m = measureText(text, r.charsPerLine);
     const area = displayArea(display, paper);
+    const cfg = paperConfig(paper, input.adType, rates);
     metrics ??= {
       ...m,
-      minLines: r.textMinLines,
+      minLines: cfg.minLines,
       areaCm2: area,
-      minAreaCm2: r.minDisplayCm2,
+      minAreaCm2: cfg.minSqCm,
       charsPerLine: r.charsPerLine,
     };
 
@@ -152,19 +153,20 @@ export function calculateQuote(input: QuoteInput): Quote {
       // Prices come only from the published rate sheet. No rule → this edition is not priced (never a default).
       const rule = findRate(rates, paper.name, e.name, input.category, input.adType);
       if (!rule) continue;
+      const net = rule.gst_included ? 1 / (1 + GST_RATE) : 1; // sheet rates that already include GST are backed out; GST is added once on the total
       let unitLabel: string, extraUnitLabel: string;
       let baseUnits: number, extraUnits: number, rate: number, base: number, extra: number;
       let enhancements = 0;
 
       if (isText) {
         // base_rate covers the minimum lines, then extra_line_rate per additional line.
-        baseUnits = r.textMinLines;
+        baseUnits = rule.min_lines ?? r.textMinLines;
         unitLabel = "lines";
-        rate = round2(rule.base_rate / Math.max(1, baseUnits));
-        base = round2(rule.base_rate);
+        rate = round2((rule.base_rate * net) / Math.max(1, baseUnits));
+        base = round2(rule.base_rate * net);
         extraUnits = Math.max(0, m.lines - baseUnits);
         extraUnitLabel = "lines";
-        extra = round2(extraUnits * rule.extra_line_rate);
+        extra = round2(extraUnits * rule.extra_line_rate * net);
         for (const key of ["bold", "border", "tint"] as const) {
           if (!enh[key]) continue;
           const amt = round2((base + extra) * ENHANCEMENT_PCT[key]);
@@ -173,8 +175,8 @@ export function calculateQuote(input: QuoteInput): Quote {
         }
       } else {
         // sq_cm_rate is final for this edition/category; colour adds color_surcharge_percent.
-        rate = round2(rule.sq_cm_rate);
-        baseUnits = r.minDisplayCm2;
+        rate = round2(rule.sq_cm_rate * net);
+        baseUnits = rule.min_sq_cm ?? r.minDisplayCm2;
         unitLabel = "cm²";
         base = round2(baseUnits * rate);
         extraUnits = Math.max(0, round2(area - baseUnits));
@@ -305,7 +307,7 @@ export function estimateQuote(adType: AdType, selection: Selection, size?: { lin
 
 /** Lowest published per-unit rate for a publication, or null when the admin hasn't published rates for it. */
 export function startingRate(paper: Newspaper, adType: AdType) {
-  return headlineRate(getActiveRates(), paper.name, adType, paper.rates.textMinLines);
+  return headlineRate(getActiveRates(), paper.name, adType, paperConfig(paper, adType).minLines);
 }
 
 /** The headline edition of a publication (first listed, weight-leading). */

@@ -1,19 +1,20 @@
 "use client";
 
-import { CheckCircle2, FileSpreadsheet, Newspaper, Table2, TriangleAlert, X } from "lucide-react";
+import { CheckCircle2, FileSpreadsheet, Newspaper, Settings, Table2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BRAND, DEFAULT_BRAND } from "@/data/brand-colors";
 import { newspapers } from "@/data/newspapers";
 import { getActiveRates, paperHasRates } from "@/lib/rates";
 import { loadRates, useRatesVersion } from "@/lib/use-rates";
 import { RateManager } from "./rate-manager";
+import { PaperSettingsPanel } from "./paper-settings-panel";
 import { RateTableEditor } from "./rate-table-editor";
 
 const FORMATS = ["Classified Text", "Classified Display", "Commercial Display"];
 
 export function NewspaperDirectory() {
   const version = useRatesVersion();
-  const [open, setOpen] = useState<{ id: string; mode: "upload" | "table" } | null>(null);
+  const [open, setOpen] = useState<{ id: string; mode: "upload" | "table" | "settings" } | null>(null);
   useEffect(() => { void loadRates(); }, []);
 
   const counts = useMemo(() => {
@@ -65,6 +66,7 @@ export function NewspaperDirectory() {
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setOpen({ id: n.id, mode: "upload" })} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel / Update Rates</button>
                   <button type="button" onClick={() => setOpen({ id: n.id, mode: "table" })} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Table2 className="h-3.5 w-3.5" aria-hidden="true" />Edit Rates in Table</button>
+                  <button type="button" onClick={() => setOpen({ id: n.id, mode: "settings" })} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Settings className="h-3.5 w-3.5" aria-hidden="true" />Publication Settings</button>
                 </div>
               </div>
             </li>
@@ -75,14 +77,14 @@ export function NewspaperDirectory() {
       <section className="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Current database rates</h2>
         <div className="mt-3 max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>{["Newspaper", "Edition", "Category", "Ad type", "Base rate (₹)", "Line rate (₹)", "Sq.cm rate (₹)"].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>{["Newspaper", "Edition", "Category", "Ad type", "Min", "Cut-off", "Base rate (₹)", "Line rate (₹)", "Sq.cm rate (₹)"].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
             <tbody>
-              {!tableRows.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">No rates uploaded yet.</td></tr>}
+              {!tableRows.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No rates uploaded yet.</td></tr>}
               {tableRows.map((r) => (
                 <tr key={r.id ?? `${r.newspaper_name}|${r.edition}|${r.category}|${r.ad_type}`} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-3 py-2">{r.newspaper_name}</td><td className="px-3 py-2">{r.edition}</td><td className="px-3 py-2">{r.category}</td><td className="px-3 py-2">{r.ad_type}</td>
-                  <td className="px-3 py-2">{r.base_rate}</td><td className="px-3 py-2">{r.extra_line_rate}</td><td className="px-3 py-2">{r.sq_cm_rate}</td>
+                  <td className="px-3 py-2">{r.min_lines ?? (r.min_sq_cm ? `${r.min_sq_cm} cm²` : "—")}</td><td className="px-3 py-2 whitespace-nowrap">{r.cutoff_days !== null && r.cutoff_time ? `${r.cutoff_days}d · ${r.cutoff_time}` : "—"}</td><td className="px-3 py-2">{r.base_rate}</td><td className="px-3 py-2">{r.extra_line_rate}</td><td className="px-3 py-2">{r.sq_cm_rate}</td>
                 </tr>
               ))}
             </tbody>
@@ -96,11 +98,11 @@ export function NewspaperDirectory() {
           <div className="relative flex h-full w-full max-w-4xl flex-col overflow-y-auto bg-slate-50 shadow-2xl dark:bg-slate-900">
             <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
               <Newspaper className="h-5 w-5 text-slate-500" aria-hidden="true" />
-              <h2 className="flex-1 truncate text-lg font-extrabold text-slate-900 dark:text-white">{paper.name} <span className="text-sm font-normal text-slate-500">· {open.mode === "upload" ? "upload rate sheet" : "edit rates"}</span></h2>
+              <h2 className="flex-1 truncate text-lg font-extrabold text-slate-900 dark:text-white">{paper.name} <span className="text-sm font-normal text-slate-500">· {open.mode === "upload" ? "upload rate sheet" : open.mode === "table" ? "edit rates" : "publication settings"}</span></h2>
               <FileSpreadsheet className="hidden h-4 w-4 text-emerald-600 sm:block" aria-hidden="true" />
               <button type="button" onClick={() => setOpen(null)} aria-label="Close drawer" className="rounded p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button>
             </div>
-            <div className="p-4 sm:p-6">{open.mode === "upload" ? <RateManager key={paper.id} paper={paper.name} /> : <RateTableEditor key={paper.id} paper={paper} />}</div>
+            <div className="p-4 sm:p-6">{open.mode === "upload" ? <RateManager key={paper.id} paper={paper.name} /> : open.mode === "table" ? <RateTableEditor key={paper.id} paper={paper} /> : <PaperSettingsPanel key={paper.id} paper={paper} />}</div>
           </div>
         </div>
       )}

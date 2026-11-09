@@ -2,6 +2,8 @@
 
 import { getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
+import { paperConfig } from "@/lib/rates";
+import { useRatesVersion } from "@/lib/use-rates";
 import { useI18n } from "@/context/language-context";
 import { useBooking, type BookingState } from "@/lib/booking-store";
 import { displayWidth, isDisplayOnlyCategory } from "@/lib/display";
@@ -20,6 +22,7 @@ export function AdRender({ state, editable = false }: { state: BookingState; edi
   const paper = getNewspaper(paperId) ?? undefined;
   const isText = state.adType === "classified-text";
   const displayOnly = isDisplayOnlyCategory(state.categoryId) && !isText;
+  useRatesVersion();
   const colW = paper?.rates.colWidthCm ?? 4;
   const widthCm = displayWidth(state.display, colW);
   const builder = displayOnly && state.creativeMode === "builder";
@@ -49,7 +52,7 @@ export function AdRender({ state, editable = false }: { state: BookingState; edi
         enhancements={state.enhancements}
         paperName={paperName}
         categoryName={category ? tl(category.name, category.nameMl) : "General"}
-        minLines={paper?.rates.textMinLines ?? 3}
+        minLines={paper ? paperConfig(paper, "classified-text").minLines : 3}
         colWidthCm={colW}
         textStyle={state.textStyle}
         floralAllowed={state.categoryId === "obituary" || state.categoryId === "remembrance"}

@@ -1,12 +1,19 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getActiveRates, getRatesVersion, headlineRate, matchRate, paperHasRates, setActiveRates, subscribeRates, type RateRow } from "./rates";
+import { getActiveRates, getRatesVersion, headlineRate, matchRate, paperHasRates, setActiveRates, setActiveSettings, subscribeRates, type PaperSettings, type RateRow } from "./rates";
 import { createClient } from "./supabase/client";
 
 /** Re-renders the caller whenever the active rate book changes; include the value in useMemo deps of quote calculations. */
 export function useRatesVersion() {
   return useSyncExternalStore(subscribeRates, getRatesVersion, getRatesVersion);
+}
+
+/** Per-newspaper print days and enabled editions. Optional: if the table is missing, every day / edition stays enabled. */
+async function loadSettings(sb: NonNullable<ReturnType<typeof createClient>>) {
+  const { data, error } = await sb.from("newspaper_settings").select("*");
+  if (error) { console.warn("[rates] newspaper_settings unavailable: all print days and editions stay enabled.", error.message); setActiveSettings([]); return; }
+  setActiveSettings((data ?? []) as PaperSettings[]);
 }
 
 /** Fetches `publication_rates`. On any failure the calculator keeps its built-in rates (logged to the console). */
@@ -24,7 +31,10 @@ export async function loadRates(): Promise<RateRow[] | null> {
       ...r,
       base_rate: Number(r.base_rate), extra_line_rate: Number(r.extra_line_rate),
       sq_cm_rate: Number(r.sq_cm_rate), color_surcharge_percent: Number(r.color_surcharge_percent),
+      min_lines: r.min_lines ?? null, min_sq_cm: r.min_sq_cm == null ? null : Number(r.min_sq_cm),
+      cutoff_days: r.cutoff_days ?? null, cutoff_time: r.cutoff_time ?? null, gst_included: r.gst_included === true,
     })) as RateRow[];
+    await loadSettings(sb);
     setActiveRates(rows);
     return rows;
   } catch (e) {

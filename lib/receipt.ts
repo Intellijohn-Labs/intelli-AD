@@ -3,7 +3,7 @@ import { applySpacing } from "./paragraphs";
 import { getAdType, getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
 import type { BookingState } from "./booking-store";
-import { cutoffFor } from "./cutoff";
+import { cutoffFor, cutoffRuleFor } from "./cutoff";
 import { ENHANCEMENT_LABEL, type Quote } from "./pricing";
 import { formatDate, formatDateTime, formatINR } from "./utils";
 
@@ -63,7 +63,7 @@ export function createReceipt(
     releaseDate: s.releaseDate!,
     cutoffs: paperIds.map((id) => {
       const paper = getNewspaper(id)!;
-      return { paper: paper.name, cutoff: cutoffFor(s.releaseDate!, paper.cutoffs[s.adType]).toISOString() };
+      return { paper: paper.name, cutoff: cutoffFor(s.releaseDate!, cutoffRuleFor(paper, s.adType)).toISOString() };
     }),
     adText: isText ? applySpacing(s.text, s.paragraphSpacing).trim() : isDisplayOnlyCategory(s.categoryId) && s.creativeMode === "builder" ? s.text.trim() : !s.artwork && s.text.trim() ? s.text.trim() : null,
     displaySpec: isText ? null : `${wCm} × ${s.display.heightCm} cm = ${(wCm * s.display.heightCm).toFixed(1)} cm², ${s.display.colorMode === "color" ? "colour" : "black & white"}`,

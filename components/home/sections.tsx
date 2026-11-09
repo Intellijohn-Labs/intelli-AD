@@ -12,6 +12,7 @@ import { useI18n } from "@/context/language-context";
 import { bookHref } from "@/lib/booking-params";
 import { flagshipEdition } from "@/lib/pricing";
 import { useRateAvailability } from "@/lib/use-rates";
+import { paperConfig } from "@/lib/rates";
 import { usePublication } from "@/lib/publication";
 import { cn, formatINR } from "@/lib/utils";
 import { TemplateCard } from "./template-card";
@@ -30,7 +31,7 @@ export function Publications() {
       </SectionHeading>
       <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {newspapers.map((n) => {
-          const r = headline(n.name, "classified-text", n.rates.textMinLines);
+          const r = headline(n.name, "classified-text", paperConfig(n, "classified-text").minLines);
           const available = hasRates(n.name);
           const brand = brandFor(n.id);
           const isMl = n.language === "Malayalam";

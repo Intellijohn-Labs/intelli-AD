@@ -13,6 +13,7 @@ import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
 import { comboSuggestions, estimateQuote, flagshipEdition } from "@/lib/pricing";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
+import { paperConfig } from "@/lib/rates";
 import type { AdType } from "@/lib/types";
 import { cn, formatINR } from "@/lib/utils";
 
@@ -41,7 +42,8 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
     [adType, paperId, eds, lines, height, isText, ratesVersion], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const hint = comboSuggestions(paperId, eds)[0];
-  const minLabel = adType === "classified-text" ? `${paper.rates.textMinLines} ${t("lines")}` : `${paper.rates.minDisplayCm2} cm²`;
+  const cfg = paperConfig(paper, adType);
+  const minLabel = adType === "classified-text" ? `${cfg.minLines} ${t("lines")}` : `${cfg.minSqCm} cm²`;
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/95 p-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#132247]/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)]">

@@ -25,7 +25,7 @@ import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
 import { TemplateComposer } from "./template-composer";
 import { applySpacing } from "@/lib/paragraphs";
-import { getActiveRates, matchRate } from "@/lib/rates";
+import { getActiveRates, matchRate, paperConfig } from "@/lib/rates";
 import { useRatesVersion } from "@/lib/use-rates";
 
 const FIELD_LABEL: Record<string, string> = { text: "Ad text", artwork: "Artwork", heightCm: "Height", widthCm: "Width", columns: "Size", documents: "Supporting documents", colorMode: "Colour mode", enhancements: "Enhancements" };
@@ -50,6 +50,7 @@ export function Step2Compose() {
   const firstEdition = paper?.editions.find((e) => state.selection[paper.id]?.includes(e.id));
   const rule = paper && firstEdition ? matchRate(getActiveRates(), paper.name, firstEdition.name, state.categoryId, state.adType) : null;
   const colourPct = rule?.color_surcharge_percent ?? 0;
+  const cfg = paper ? paperConfig(paper, state.adType) : null;
   const cpl = rates?.charsPerLine ?? 28;
   const colW = rates?.colWidthCm ?? 4;
 
@@ -164,7 +165,7 @@ export function Step2Compose() {
               heightCm={v.heightCm}
               colorMode={v.colorMode}
               colorPremiumPct={colourPct}
-              minAreaCm2={rates?.minDisplayCm2 ?? 0}
+              minAreaCm2={cfg?.minSqCm ?? 0}
               quote={liveQuote}
               errors={{ widthCm: errors.widthCm?.message, heightCm: errors.heightCm?.message }}
               onSize={setSize}
@@ -216,7 +217,7 @@ export function Step2Compose() {
                 onSpacing={(sp) => update({ paragraphSpacing: sp })}
                 extra={
                   <>
-                    <span><AnimatedNumber value={m.lines} className="font-semibold tabular-nums" /> {t(" Lines ({min} base) • Extra Lines: {rate}/line", { min: rates?.textMinLines ?? 3, rate: formatINR(rule?.extra_line_rate ?? 0) })}</span>
+                    <span><AnimatedNumber value={m.lines} className="font-semibold tabular-nums" /> {t(" Lines ({min} base) • Extra Lines: {rate}/line", { min: cfg?.minLines ?? 3, rate: formatINR(rule?.extra_line_rate ?? 0) })}</span>
                     {placeholders > 0 && <Badge tone="amber">{t("{n} placeholder(s) to fill", { n: placeholders })}</Badge>}
                   </>
                 }
@@ -236,7 +237,7 @@ export function Step2Compose() {
                 heightCm={v.heightCm}
                 colorMode={v.colorMode}
                 colorPremiumPct={colourPct}
-                minAreaCm2={rates?.minDisplayCm2 ?? 0}
+                minAreaCm2={cfg?.minSqCm ?? 0}
                 quote={liveQuote}
                 errors={{ widthCm: errors.widthCm?.message, heightCm: errors.heightCm?.message }}
                 onSize={setSize}

@@ -10,7 +10,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { brandFor } from "@/data/brand-colors";
 import { bookHref } from "@/lib/booking-params";
-import { cutoffFor, earliestRelease, formatClock } from "@/lib/cutoff";
+import { cutoffFor, cutoffRuleFor, earliestRelease, formatClock } from "@/lib/cutoff";
+import { paperConfig } from "@/lib/rates";
 import { flagshipRate, flagshipEdition } from "@/lib/pricing";
 import { useRateAvailability } from "@/lib/use-rates";
 import { usePublication } from "@/lib/publication";
@@ -56,7 +57,9 @@ export function ActiveRateCard() {
             <div className="grid gap-px bg-zinc-200 sm:grid-cols-3">
               {AD_TYPES.map((a) => {
                 const rate = flagshipRate(paper, a.id);
-                const rule = paper.cutoffs[a.id];
+                const rule = cutoffRuleFor(paper, a.id);
+                const cfg = paperConfig(paper, a.id);
+                const gst = t(cfg.gstIncluded ? "incl. GST" : "excl. GST");
                 const earliest = now ? earliestRelease([paper.id], a.id, now) : null;
                 return (
                   <div key={a.id} className="bg-white p-5">
@@ -70,7 +73,7 @@ export function ActiveRateCard() {
                       <p className="mt-3 text-base font-semibold text-amber-800">{t(loaded ? "Rates Updating / Unavailable" : "Checking rates…")}</p>
                     )}
                     <p className="mt-1 text-xs text-zinc-500">
-                      {a.id === "classified-text" ? t("Minimum {n} lines · excl. GST", { n: paper.rates.textMinLines }) : t("Minimum {n} cm² · excl. GST", { n: paper.rates.minDisplayCm2 })}
+                      {a.id === "classified-text" ? t("Minimum {n} lines · {gst}", { n: cfg.minLines, gst }) : t("Minimum {n} cm² · {gst}", { n: cfg.minSqCm, gst })}
                     </p>
                     <div className="mt-4 flex items-start gap-2 border-t border-zinc-200 pt-3 text-xs text-zinc-700">
                       <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />

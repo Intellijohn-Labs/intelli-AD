@@ -1,6 +1,6 @@
 "use client";
 
-import { permutations, RATE_COLUMNS, type RateRow } from "./rates";
+import { LOCKED_COLUMNS, permutations, RATE_COLUMNS, type RateRow } from "./rates";
 import type { Newspaper } from "./types";
 
 /** Advisory only: sheet protection can be removed in Excel, so the upload parser re-checks headers and every row. */
@@ -16,24 +16,33 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
   const ws = wb.addWorksheet("rates", { views: [{ state: "frozen", ySplit: 1 }] });
   const current = new Map(existing.filter((r) => r.newspaper_name === paper.name).map((r) => [`${r.edition}|${r.category}|${r.ad_type}`, r]));
 
-  ws.columns = RATE_COLUMNS.map((key) => ({ header: key, key, width: key === "newspaper_name" ? 22 : key === "ad_type" ? 20 : 18 }));
+  ws.columns = RATE_COLUMNS.map((key) => ({ header: key, key, width: key === "newspaper_name" ? 22 : key === "ad_type" ? 20 : key === "category" ? 18 : 16 }));
   const header = ws.getRow(1);
   header.font = { bold: true, color: { argb: "FFFFFFFF" } };
   header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A8A" } };
 
+  const num = (v: number | null | undefined) => (v ? v : null);
   for (const p of permutations(paper)) {
     const cur = current.get(`${p.edition}|${p.category}|${p.ad_type}`);
     const row = ws.addRow({
       newspaper_name: paper.name, edition: p.edition, category: p.category, ad_type: p.ad_type,
-      base_rate: cur?.base_rate || null, extra_line_rate: cur?.extra_line_rate || null, sq_cm_rate: cur?.sq_cm_rate || null, color_surcharge_percent: cur?.color_surcharge_percent || null,
+      min_lines: cur?.min_lines ?? null, min_sq_cm: cur?.min_sq_cm ?? null, cutoff_days: cur?.cutoff_days ?? null, cutoff_time: cur?.cutoff_time ?? null,
+      gst_included: cur ? (cur.gst_included ? "TRUE" : "FALSE") : null,
+      base_rate: num(cur?.base_rate), extra_line_rate: num(cur?.extra_line_rate), sq_cm_rate: num(cur?.sq_cm_rate), color_surcharge_percent: num(cur?.color_surcharge_percent),
     });
-    // Metadata columns stay locked (the default); only the four rate cells are unlocked and number-validated.
-    for (let c = 5; c <= 8; c++) {
+    // Identity columns (1-4) stay locked (the default); every other cell is unlocked, tinted and validated.
+    for (let c = LOCKED_COLUMNS + 1; c <= RATE_COLUMNS.length; c++) {
       const cell = row.getCell(c);
+      const key = RATE_COLUMNS[c - 1];
       cell.protection = { locked: false };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF9C3" } };
-      cell.numFmt = "0.00";
-      cell.dataValidation = { type: "decimal", operator: c === 8 ? "between" : "greaterThanOrEqual", formulae: c === 8 ? [0, 500] : [0], allowBlank: true, showErrorMessage: true, errorTitle: "Invalid rate", error: c === 8 ? "Enter a percentage from 0 to 500." : "Enter a number, 0 or more." };
+      if (key === "cutoff_time") { cell.numFmt = "@"; cell.dataValidation = { type: "textLength", operator: "lessThanOrEqual", formulae: [8], allowBlank: true, showErrorMessage: true, errorTitle: "Invalid time", error: 'Use a time like 16:00 or 4:00 PM.' }; }
+      else if (key === "gst_included") cell.dataValidation = { type: "list", allowBlank: true, formulae: ['"TRUE,FALSE"'], showErrorMessage: true, errorTitle: "Invalid value", error: "Choose TRUE or FALSE." };
+      else if (key === "min_lines" || key === "cutoff_days") { cell.dataValidation = { type: "whole", operator: "between", formulae: key === "min_lines" ? [1, 50] : [0, 30], allowBlank: true, showErrorMessage: true, errorTitle: "Invalid number", error: key === "min_lines" ? "Whole number from 1 to 50." : "Whole number from 0 to 30." }; }
+      else {
+        cell.numFmt = "0.00";
+        cell.dataValidation = { type: "decimal", operator: key === "color_surcharge_percent" ? "between" : "greaterThanOrEqual", formulae: key === "color_surcharge_percent" ? [0, 500] : [0], allowBlank: true, showErrorMessage: true, errorTitle: "Invalid number", error: key === "color_surcharge_percent" ? "Enter a percentage from 0 to 500." : "Enter a number, 0 or more." };
+      }
     }
   }
   await ws.protect(SHEET_PASSWORD, { selectLockedCells: true, selectUnlockedCells: true, formatColumns: true, autoFilter: true });
@@ -41,11 +50,13 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
   const help = wb.addWorksheet("help");
   help.addRows([
     ["IntelliAd rate template for " + paper.name],
-    ["Fill the yellow cells only. Headings, newspaper, edition, category and ad_type are locked; do not rename or reorder columns."],
-    ["Leave all four rate cells empty for combinations you don't want to publish. Rows with any rate must follow:"],
-    ["classified-text: base_rate (price for the minimum lines) is required; extra_line_rate is the price per extra line."],
-    ["classified-display / commercial-display: sq_cm_rate is required; color_surcharge_percent is the extra % for colour."],
-    ["'all' in edition or category means every edition / category; the most specific row wins."],
+    ["Fill the yellow cells only. Headings, newspaper_name, edition, category and ad_type are locked; do not rename or reorder columns."],
+    ["Leave every yellow cell of a row empty for combinations you don't want to publish."],
+    ["classified-text rows: base_rate (price for the minimum lines) is required; extra_line_rate is the price per extra line; min_lines is the minimum billable lines."],
+    ["classified-display / commercial-display rows: sq_cm_rate is required; min_sq_cm is the minimum billable area; color_surcharge_percent is the extra % for colour."],
+    ["cutoff_days + cutoff_time (set together, e.g. 1 and 16:00): booking closes that many days before the print date at that time."],
+    ["gst_included: TRUE if the rates you entered already include GST (cards then say incl. GST); FALSE (default) means excl. GST."],
+    ["Blank min_lines / min_sq_cm / cutoff cells use the publication's standard values. 'all' in edition or category means every edition / category; the most specific row wins."],
   ]);
   help.getColumn(1).width = 120;
   await help.protect(SHEET_PASSWORD, {});

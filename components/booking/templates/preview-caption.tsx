@@ -1,6 +1,7 @@
 "use client";
 
 import { getNewspaper } from "@/data/newspapers";
+import { paperConfig } from "@/lib/rates";
 import type { BookingState } from "@/lib/booking-store";
 import { displayWidth } from "@/lib/display";
 import { applySpacing } from "@/lib/paragraphs";
@@ -17,7 +18,7 @@ export function PreviewCaption({ state }: { state: BookingState }) {
   const paper = getNewspaper(Object.keys(state.selection).find((k) => state.selection[k].length));
   const isText = state.adType === "classified-text";
   const cpl = paper?.rates.charsPerLine ?? 28;
-  const minLines = paper?.rates.textMinLines ?? 3;
+  const minLines = paper ? paperConfig(paper, "classified-text").minLines : 3;
   const m = measureText(isText ? applySpacing(state.text, state.paragraphSpacing) : state.text, cpl);
   const extra = Math.max(0, m.lines - minLines);
   const tier = extra === 0 ? "Base" : extra <= 3 ? "Standard" : "Extended";

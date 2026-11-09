@@ -19,9 +19,28 @@ export interface RateRow {
   sq_cm_rate: number;
   /** Extra charged for a colour ad, in percent. */
   color_surcharge_percent: number;
+  /** Minimum billable lines (text) / cm² (display). Null → the publication's standard minimum. */
+  min_lines: number | null;
+  min_sq_cm: number | null;
+  /** Booking closes this many days before the print date, at cutoff_time ("HH:mm"). Null → standard cut-off. */
+  cutoff_days: number | null;
+  cutoff_time: string | null;
+  /** True when the rates above already include GST (cards say "incl. GST"). */
+  gst_included: boolean;
 }
 
-export const RATE_COLUMNS = ["newspaper_name", "edition", "category", "ad_type", "base_rate", "extra_line_rate", "sq_cm_rate", "color_surcharge_percent"] as const;
+/** Per-newspaper settings (table `newspaper_settings`). */
+export interface PaperSettings {
+  newspaper_name: string;
+  /** Weekdays it prints, 0 = Sunday … 6 = Saturday; null = every day. */
+  print_days: number[] | null;
+  /** Edition names offered for booking; null = all. */
+  enabled_editions: string[] | null;
+}
+
+export const RATE_COLUMNS = ["newspaper_name", "edition", "category", "ad_type", "min_lines", "min_sq_cm", "cutoff_days", "cutoff_time", "gst_included", "base_rate", "extra_line_rate", "sq_cm_rate", "color_surcharge_percent"] as const;
+/** Locked (identity) columns of the template; everything after them is editable. */
+export const LOCKED_COLUMNS = 4;
 export const CONFLICT_KEY = "newspaper_name,edition,category,ad_type";
 export const ALL = "all";
 export const AD_TYPE_IDS: AdType[] = ["classified-text", "classified-display", "commercial-display"];
@@ -29,16 +48,6 @@ export const AD_TYPE_IDS: AdType[] = ["classified-text", "classified-display", "
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 const normAdType = (s: unknown) => norm(s).replace(/[_\s]+/g, "-");
 const isAll = (s: unknown) => ["all", "*", "any", ""].includes(norm(s));
-
-/** Sample rows for the downloadable template (real newspaper, edition and category names from the app). */
-export function sampleRows(paperName?: string): RateRow[] {
-  const p = newspapers.find((n) => n.name === paperName) ?? newspapers[0];
-  return [
-    { newspaper_name: p.name, edition: p.editions[0].name, category: "matrimonial", ad_type: "classified-text", base_rate: 450, extra_line_rate: 150, sq_cm_rate: 0, color_surcharge_percent: 0 },
-    { newspaper_name: p.name, edition: ALL, category: ALL, ad_type: "classified-display", base_rate: 0, extra_line_rate: 0, sq_cm_rate: 380, color_surcharge_percent: 25 },
-    { newspaper_name: p.name, edition: p.editions[0].name, category: ALL, ad_type: "commercial-display", base_rate: 0, extra_line_rate: 0, sq_cm_rate: 620, color_surcharge_percent: 30 },
-  ];
-}
 
 export interface RowResult {
   /** 1-based spreadsheet row (header is row 1, so data starts at 2). */
@@ -81,6 +90,37 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+const optNum = (v: unknown): number | null | "bad" => {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(/[,\s]/g, ""));
+  return Number.isFinite(n) ? n : "bad";
+};
+
+/** "16:00", "4:00 PM", "4 pm" or an Excel time fraction → "HH:mm"; null when blank; "bad" when unreadable. */
+export function parseCutoffTime(v: unknown): string | null | "bad" {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
+  if (typeof v === "number") {
+    if (v < 0 || v >= 1) return "bad";
+    const mins = Math.round(v * 1440);
+    return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  }
+  const m = String(v).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if (!m) return "bad";
+  let h = Number(m[1]);
+  const min = Number(m[2] ?? 0);
+  const ap = m[3]?.toLowerCase();
+  if (ap) { if (h < 1 || h > 12) return "bad"; h = (h % 12) + (ap === "pm" ? 12 : 0); }
+  return h <= 23 && min <= 59 ? `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}` : "bad";
+}
+
+const parseBool = (v: unknown): boolean | "bad" => {
+  if (typeof v === "boolean") return v;
+  const x = norm(v);
+  if (["", "false", "no", "n", "0"].includes(x)) return false;
+  if (["true", "yes", "y", "1"].includes(x)) return true;
+  return "bad";
+};
+
 /** Validates and canonicalises raw spreadsheet rows. Duplicate keys inside one file are rejected (an upsert can't hit one row twice). */
 export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
   const seen = new Map<string, number>();
@@ -114,7 +154,15 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       else if (v < 0) errors.push(`${name} can't be negative`);
     }
     if (color !== null && color > 500) errors.push("color_surcharge_percent looks too high (max 500)");
-    const empty = !base && !extra && !sq && !color;
+    const minLines = optNum(r.min_lines), minSq = optNum(r.min_sq_cm), cutDays = optNum(r.cutoff_days);
+    const cutTime = parseCutoffTime(r.cutoff_time), gst = parseBool(r.gst_included);
+    if (minLines === "bad" || (minLines !== null && (!Number.isInteger(minLines) || minLines < 1 || minLines > 50))) errors.push("min_lines must be a whole number from 1 to 50");
+    if (minSq === "bad" || (minSq !== null && (minSq <= 0 || minSq > 5000))) errors.push("min_sq_cm must be a number above 0 (max 5000)");
+    if (cutDays === "bad" || (cutDays !== null && (!Number.isInteger(cutDays) || cutDays < 0 || cutDays > 30))) errors.push("cutoff_days must be a whole number from 0 to 30");
+    if (cutTime === "bad") errors.push('cutoff_time must be a time like "16:00" or "4:00 PM"');
+    if ((cutDays === null) !== (cutTime === null)) errors.push("cutoff_days and cutoff_time must be set together");
+    if (gst === "bad") errors.push("gst_included must be TRUE or FALSE");
+    const empty = !base && !extra && !sq && !color && minLines === null && minSq === null && cutDays === null && cutTime === null && gst === false;
     if (!empty && adType === "classified-text" && !(base && base > 0)) errors.push("base_rate is required (> 0) for classified-text");
     if (!empty && adType && adType !== "classified-text" && AD_TYPE_IDS.includes(adType) && !(sq && sq > 0)) errors.push("sq_cm_rate is required (> 0) for display ads");
 
@@ -125,13 +173,14 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       else seen.set(key, line);
     }
     if (errors.length || !paper) return { line, errors };
-    if (!base && !extra && !sq && !color) {
+    if (empty) {
       return { line, errors, skipped: true, key: { newspaper_name: paper.name, edition, category, ad_type: adType } };
     }
     return {
       line,
       errors,
-      row: { newspaper_name: paper.name, edition, category, ad_type: adType, base_rate: base!, extra_line_rate: extra!, sq_cm_rate: sq!, color_surcharge_percent: color! },
+      row: { newspaper_name: paper.name, edition, category, ad_type: adType, base_rate: base!, extra_line_rate: extra!, sq_cm_rate: sq!, color_surcharge_percent: color!,
+        min_lines: minLines as number | null, min_sq_cm: minSq as number | null, cutoff_days: cutDays as number | null, cutoff_time: cutTime as string | null, gst_included: gst as boolean },
     };
   });
 }
@@ -198,4 +247,53 @@ export function headlineRate(rates: RateBook | null, paperName: string, adType: 
     .map((r) => (adType === "classified-text" ? r.base_rate / Math.max(1, minLines) : r.sq_cm_rate))
     .filter((v) => v > 0);
   return vals.length ? { amount: Math.round(Math.min(...vals)), unit: adType === "classified-text" ? "line" : "cm²" } : null;
+}
+
+// ── Publication settings and effective per-card configuration ─────────────────────────────────────────────────────
+
+let settingsBook: PaperSettings[] | null = null;
+export function setActiveSettings(rows: PaperSettings[] | null) {
+  settingsBook = rows;
+  version++;
+  listeners.forEach((l) => l());
+}
+export const getActiveSettings = () => settingsBook;
+const settingsFor = (name: string) => settingsBook?.find((s) => norm(s.newspaper_name) === norm(name)) ?? null;
+
+/** Does the newspaper print on this date's weekday? (No setting → every day.) */
+export function printsOn(paperName: string, date: Date): boolean {
+  const days = settingsFor(paperName)?.print_days;
+  return !days || days.length === 0 || days.includes(date.getDay());
+}
+
+/** Is the edition offered for booking? (No setting → all editions.) */
+export function editionEnabled(paperName: string, editionName: string): boolean {
+  const list = settingsFor(paperName)?.enabled_editions;
+  return !list || list.length === 0 || list.some((e) => norm(e) === norm(editionName));
+}
+
+export interface PaperConfig {
+  minLines: number;
+  minSqCm: number;
+  cutoff: { daysBefore: number; time: string };
+  gstIncluded: boolean;
+}
+
+/**
+ * What a card shows for a newspaper and ad type: the admin's values from the rate sheet, using the publication's
+ * standard minimums / cut-off only where the sheet leaves them blank. (These are limits, not prices.)
+ */
+export function paperConfig(paper: Newspaper, adType: AdType, rates: RateBook | null = book): PaperConfig {
+  const rows = (rates ?? [])
+    .filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paper.name) && (r.base_rate > 0 || r.sq_cm_rate > 0))
+    // most general first: "all" edition/category rows describe the publication as a whole
+    .sort((a, b) => Number(!isAll(a.edition)) + Number(!isAll(a.category)) - (Number(!isAll(b.edition)) + Number(!isAll(b.category))));
+  const pick = <K extends keyof RateRow>(k: K) => rows.find((r) => r[k] !== null && r[k] !== undefined)?.[k] as RateRow[K] | undefined;
+  const cut = rows.find((r) => r.cutoff_days !== null && r.cutoff_time !== null);
+  return {
+    minLines: pick("min_lines") ?? paper.rates.textMinLines,
+    minSqCm: pick("min_sq_cm") ?? paper.rates.minDisplayCm2,
+    cutoff: cut ? { daysBefore: cut.cutoff_days!, time: cut.cutoff_time! } : paper.cutoffs[adType],
+    gstIncluded: rows[0]?.gst_included ?? false,
+  };
 }

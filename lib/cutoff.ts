@@ -1,6 +1,10 @@
 import { getNewspaper } from "@/data/newspapers";
 import type { AdType, CutoffRule, Newspaper } from "./types";
 import { parseISODate, toISODate } from "./utils";
+import { paperConfig, printsOn } from "./rates";
+
+/** The cut-off in force for a publication and ad type: the admin's rate-sheet values, else the standard rule. */
+export const cutoffRuleFor = (paper: Newspaper, adType: AdType): CutoffRule => paperConfig(paper, adType).cutoff;
 
 export const MAX_ADVANCE_DAYS = 90;
 
@@ -26,7 +30,7 @@ export function paperCutoffs(releaseISO: string, paperIds: string[], adType: AdT
   for (const id of paperIds) {
     const paper = getNewspaper(id);
     if (!paper) continue;
-    const rule = paper.cutoffs[adType];
+    const rule = cutoffRuleFor(paper, adType);
     const cutoff = cutoffFor(releaseISO, rule);
     const msLeft = cutoff.getTime() - now.getTime();
     out.push({
@@ -34,7 +38,7 @@ export function paperCutoffs(releaseISO: string, paperIds: string[], adType: AdT
       rule,
       cutoff,
       msLeft,
-      status: msLeft <= 0 ? "closed" : msLeft < 3 * 3600_000 ? "closing" : "open",
+      status: msLeft <= 0 || !printsOn(paper.name, parseISODate(releaseISO)) ? "closed" : msLeft < 3 * 3600_000 ? "closing" : "open",
     });
   }
   return out;

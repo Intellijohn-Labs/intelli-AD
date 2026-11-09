@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AD_TYPES, categories, getCategory } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
 import { useRateAvailability } from "@/lib/use-rates";
+import { editionEnabled } from "@/lib/rates";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/field";
@@ -30,7 +31,7 @@ export function Step1Selection() {
   const { activeId, setActive } = usePublication();
   const firstRun = useRef(true);
   const { loaded, canPrice } = useRateAvailability();
-  const edOk = (paper: (typeof newspapers)[number], editionName: string) => canPrice(paper.name, editionName, state.categoryId, state.adType);
+  const edOk = (paper: (typeof newspapers)[number], editionName: string) => editionEnabled(paper.name, editionName) && canPrice(paper.name, editionName, state.categoryId, state.adType);
   const availableFor = (paper: (typeof newspapers)[number]) => paper.editions.some((e) => edOk(paper, e.name));
 
   // Drop papers that lost their rate sheet (e.g. from a saved draft) so they can't be booked.

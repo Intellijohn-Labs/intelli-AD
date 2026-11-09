@@ -92,3 +92,26 @@ create policy "admins delete rates" on public.publication_rates for delete to au
 --   update auth.users
 --      set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
 --    where email = 'you@example.com';
+
+-- ── Card settings per rate row (minimums, cut-off, GST) and publication settings ────────────────────────────────────
+-- ad_type values stay 'classified-text' | 'classified-display' | 'commercial-display' (the app also accepts underscores in uploads).
+-- Blank min_lines / min_sq_cm / cutoff_* mean "use the publication's standard setting".
+alter table public.publication_rates add column if not exists min_lines integer check (min_lines is null or min_lines between 1 and 50);
+alter table public.publication_rates add column if not exists min_sq_cm numeric(8,2) check (min_sq_cm is null or min_sq_cm > 0);
+alter table public.publication_rates add column if not exists cutoff_days integer check (cutoff_days is null or cutoff_days between 0 and 30);
+alter table public.publication_rates add column if not exists cutoff_time text check (cutoff_time is null or cutoff_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$');
+-- true = the entered rates already include 18% GST (cards say "incl. GST"; the calculator backs GST out before adding it once).
+alter table public.publication_rates add column if not exists gst_included boolean not null default false;
+
+-- Per-newspaper settings: which weekdays it prints (0 = Sunday … 6 = Saturday; null = every day) and which of its
+-- editions are offered for booking (null = all).
+create table if not exists public.newspaper_settings (
+  newspaper_name text primary key,
+  print_days integer[] check (print_days is null or print_days <@ array[0,1,2,3,4,5,6]),
+  enabled_editions text[],
+  updated_at timestamptz not null default now()
+);
+alter table public.newspaper_settings enable row level security;
+drop policy if exists "settings are public" on public.newspaper_settings;
+create policy "settings are public" on public.newspaper_settings for select to anon, authenticated using (true);
+-- Writes happen only through the admin server action (service-role key); no insert/update/delete policy for anon or authenticated.

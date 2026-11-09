@@ -11,7 +11,7 @@ import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition, flagshipRate } from "@/lib/pricing";
 import { useRatesVersion } from "@/lib/use-rates";
-import { formatClock } from "@/lib/cutoff";
+import { cutoffRuleFor, formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
 import { getAdType, getCategory } from "@/data/categories";
@@ -141,7 +141,7 @@ function MiniSummary({ state }: { state: BookingState }) {
   const quote = useBookingQuote(state);
   useRatesVersion();
   const rate = flagshipRate(paper, state.adType);
-  const rule = paper.cutoffs[state.adType];
+  const rule = cutoffRuleFor(paper, state.adType);
   return (
     <Card className="p-5 sm:p-6">
       <p className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>

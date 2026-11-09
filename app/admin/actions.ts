@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { newspapers } from "@/data/newspapers";
 import { CONFLICT_KEY, validateRows, type RateRow } from "@/lib/rates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -173,4 +174,37 @@ export async function saveRates(raw: unknown, allowClear = false): Promise<SaveR
   revalidatePath("/admin");
   revalidatePath("/admin/rates");
   return { ok: true, message: `${rows.length} rate${rows.length === 1 ? "" : "s"} saved${cleared ? `, ${cleared} cleared` : ""}.`, saved: rows.length, cleared, errors: [] };
+}
+
+const settingsSchema = z.object({
+  newspaperName: z.string(),
+  // null = every day / every edition
+  printDays: z.array(z.number().int().min(0).max(6)).max(7).nullable(),
+  enabledEditions: z.array(z.string()).nullable(),
+});
+
+/** Saves a newspaper's print schedule (weekdays it prints) and which of its editions are offered for booking. */
+export async function savePaperSettings(input: unknown): Promise<ActionResult> {
+  if (!(await requireAdmin())) return fail("Not authorised.");
+  const admin = createAdminClient();
+  if (!admin) return fail(NO_KEY);
+  const parsed = settingsSchema.safeParse(input);
+  if (!parsed.success) return fail("Invalid settings.");
+  const { newspaperName, printDays, enabledEditions } = parsed.data;
+  const paper = newspapers.find((n) => n.name === newspaperName);
+  if (!paper) return fail("Unknown newspaper.");
+  if (printDays && printDays.length === 0) return fail("Select at least one print day.");
+  if (enabledEditions) {
+    if (enabledEditions.length === 0) return fail("Enable at least one edition.");
+    const known = new Set(paper.editions.map((e) => e.name));
+    if (enabledEditions.some((e) => !known.has(e))) return fail("Unknown edition in the list.");
+  }
+  const all = enabledEditions && enabledEditions.length === paper.editions.length;
+  const { error } = await admin.from("newspaper_settings").upsert(
+    { newspaper_name: paper.name, print_days: printDays && printDays.length < 7 ? [...new Set(printDays)].sort() : null, enabled_editions: all ? null : enabledEditions, updated_at: new Date().toISOString() },
+    { onConflict: "newspaper_name" },
+  );
+  if (error) return fail(/does not exist|schema cache/i.test(error.message) ? "The newspaper_settings table doesn't exist yet. Run supabase/schema.sql in Supabase." : error.message);
+  revalidatePath("/admin/rates");
+  return { ok: true, message: `${paper.name} settings saved.` };
 }
