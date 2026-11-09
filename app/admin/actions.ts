@@ -208,3 +208,18 @@ export async function savePaperSettings(input: unknown): Promise<ActionResult> {
   revalidatePath("/admin/rates");
   return { ok: true, message: `${paper.name} settings saved.` };
 }
+
+/** Deletes every saved rate and limit row for one newspaper (its print schedule / edition list in newspaper_settings is kept). */
+export async function clearNewspaperRates(newspaperName: unknown): Promise<ActionResult & { deleted: number }> {
+  const bad = (message: string) => ({ ok: false, message, deleted: 0 });
+  if (!(await requireAdmin())) return bad("Not authorised.");
+  const admin = createAdminClient();
+  if (!admin) return bad(NO_KEY);
+  const paper = newspapers.find((n) => n.name === newspaperName);
+  if (!paper) return bad("Unknown newspaper.");
+  const { data, error } = await admin.from("publication_rates").delete().eq("newspaper_name", paper.name).select("id");
+  if (error) return bad(error.message);
+  revalidatePath("/admin");
+  revalidatePath("/admin/rates");
+  return { ok: true, message: `All rates for ${paper.name} have been cleared.`, deleted: data?.length ?? 0 };
+}

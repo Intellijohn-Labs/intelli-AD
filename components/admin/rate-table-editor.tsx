@@ -1,13 +1,13 @@
 "use client";
 
-import { Loader2, Save } from "lucide-react";
-import { useMemo, useState } from "react";
-import { saveRates } from "@/app/admin/actions";
+import { Loader2, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { clearNewspaperRates, saveRates } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { AD_TYPE_IDS, getActiveRates, permutations } from "@/lib/rates";
-import { loadRates } from "@/lib/use-rates";
+import { loadRates, useRatesVersion } from "@/lib/use-rates";
 import type { AdType, Newspaper } from "@/lib/types";
 
 type Key = "min_lines" | "min_sq_cm" | "cutoff_days" | "cutoff_time" | "base_rate" | "extra_line_rate" | "sq_cm_rate" | "color_surcharge_percent";
@@ -29,7 +29,9 @@ const str = (v: number | string | null | undefined) => (v === null || v === unde
 export function RateTableEditor({ paper }: { paper: Newspaper }) {
   const toast = useToast();
   const perms = useMemo(() => permutations(paper), [paper]);
-  const original = useMemo(() => new Map((getActiveRates() ?? []).filter((r) => r.newspaper_name === paper.name).map((r) => [keyOf(r), r])), [paper]);
+  const ratesVersion = useRatesVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const original = useMemo(() => new Map((getActiveRates() ?? []).filter((r) => r.newspaper_name === paper.name).map((r) => [keyOf(r), r])), [paper, ratesVersion]);
   const initial = (k: string): Cell => {
     const r = original.get(k);
     return { vals: Object.fromEntries(COLS.map((c) => [c.key, str(r?.[c.key])])) as Record<Key, string>, gst: r?.gst_included ?? false };
@@ -38,6 +40,9 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
   const [adType, setAdType] = useState<AdType>("classified-text");
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const isDirty = (k: string) => {
@@ -57,6 +62,26 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
     else setMsg({ ok: false, text: res.message + (res.errors.length ? " " + res.errors.slice(0, 3).map((e) => { const r = rows[e.line - 2]; return `${r?.edition}/${r?.category}/${r?.ad_type}: ${e.errors[0]}`; }).join("; ") : "") });
   }
 
+  useEffect(() => {
+    if (!confirming) return;
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !clearing) { e.stopPropagation(); setConfirming(false); } };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [confirming, clearing]);
+
+  async function clearAll() {
+    setClearing(true); setMsg(null);
+    const res = await clearNewspaperRates(paper.name); // deletes this newspaper's rows from publication_rates (admin-only, server side)
+    setClearing(false);
+    setConfirming(false);
+    if (!res.ok) return setMsg({ ok: false, text: res.message });
+    setCells(Object.fromEntries(perms.map((p) => [keyOf(p), { vals: Object.fromEntries(COLS.map((c) => [c.key, ""])) as Record<Key, string>, gst: false }])));
+    toast(res.message);
+    setMsg({ ok: true, text: res.message });
+    await loadRates(); // refreshes the live calculator and the card badge
+  }
+
   const set = (k: string, f: (c: Cell) => Cell) => setCells((all) => ({ ...all, [k]: f(all[k]) }));
 
   return (
@@ -67,6 +92,7 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
         <Input aria-label="Filter rows" placeholder="Filter edition / category…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-56" />
         <div className="ml-auto flex items-center gap-3">
           <span className="text-xs text-slate-500">{dirty.length} unsaved change{dirty.length === 1 ? "" : "s"}</span>
+          <button type="button" disabled={saving || clearing || original.size === 0} onClick={() => setConfirming(true)} title={original.size === 0 ? "No saved rates to clear" : undefined} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-red-400 px-3 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:pointer-events-none disabled:opacity-50"><Trash2 className="h-4 w-4" aria-hidden="true" />Clear All Rates</button>
           <Button size="sm" disabled={saving || !dirty.length} onClick={() => void save()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />} Save Rates</Button>
         </div>
       </div>
@@ -92,6 +118,19 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
           </tbody>
         </table>
       </div>
+      {confirming && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60" onClick={() => !clearing && setConfirming(false)} />
+          <div role="alertdialog" aria-modal="true" aria-labelledby="clear-title" aria-describedby="clear-desc" className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-slate-800">
+            <h3 id="clear-title" className="text-lg font-extrabold text-slate-900 dark:text-white">Clear all rates for {paper.name}?</h3>
+            <p id="clear-desc" className="mt-2 text-sm text-slate-600 dark:text-slate-300">Are you sure you want to delete all configured rates and limits for this newspaper? This action cannot be undone.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button ref={cancelRef} type="button" disabled={clearing} onClick={() => setConfirming(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-700">Cancel</button>
+              <button type="button" disabled={clearing} onClick={() => void clearAll()} className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60">{clearing && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}Yes, Clear All</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
