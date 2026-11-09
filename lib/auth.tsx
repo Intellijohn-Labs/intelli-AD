@@ -30,7 +30,7 @@ export interface AuthUser {
 }
 
 /** Where a signed-in user lands: partners go to their workspace, customers to Home. */
-export const homeFor = (u: Pick<AuthUser, "is_agency" | "is_admin"> | null | undefined) => (u?.is_admin ? "/admin/rates" : u?.is_agency ? "/agency/dashboard" : "/");
+export const homeFor = (u: Pick<AuthUser, "is_agency"> | null | undefined) => (u?.is_agency ? "/agency/dashboard" : "/");
 
 /** Cookie read by proxy.ts to gate routes. Keep the name in sync with it. */
 export const SESSION_COOKIE = "intelliad_session";

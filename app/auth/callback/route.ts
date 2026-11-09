@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       // No explicit destination: approved partners go to their dashboard, everyone else to Home.
       const { data } = await supabase.auth.getUser();
       const role = (data.user?.app_metadata as { role?: string } | undefined)?.role;
-      return NextResponse.redirect(`${origin}${role === "admin" ? "/admin/rates" : role === "agency" || role === "akshaya" ? "/agency/dashboard" : "/"}`);
+      return NextResponse.redirect(`${origin}${role === "agency" || role === "akshaya" ? "/agency/dashboard" : "/"}`);
     }
   }
 

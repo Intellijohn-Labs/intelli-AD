@@ -7,7 +7,7 @@ import { Field, Input } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { signInWithPassword, signOutSupabase } from "@/lib/supabase/auth";
 
-const DENIED = "Access denied. This account does not have admin privileges.";
+const DENIED = "Access denied. Not an admin.";
 
 /** Admin sign-in: email + password only (no registration). Non-admins are signed straight back out. */
 export function AdminForm() {
@@ -36,7 +36,7 @@ export function AdminForm() {
       return;
     }
     toast("Welcome, admin");
-    router.replace("/admin/rates");
+    router.replace("/admin");
     router.refresh();
   }
 

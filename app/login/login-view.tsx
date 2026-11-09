@@ -57,9 +57,9 @@ export function LoginView() {
   // Already signed in: partners go to their dashboard, customers Home (unless they came to switch to the partner tab).
   useEffect(() => {
     if (!ready || !user || unauthorized) return; // bounced from /admin: stay and explain
-    if (user.is_admin) router.replace(homeFor(user));
-    else if (tab === "admin") return; // non-admin on the admin tab: the form handles it (sign-out + message)
-    else if (user.is_agency) router.replace(homeFor(user));
+    // The admin portal is entered only from the Admin tab; every other tab treats an admin like any customer.
+    if (tab === "admin") { if (user.is_admin) router.replace("/admin"); return; } // non-admins stay: the form signs them out
+    if (user.is_agency) router.replace(homeFor(user));
     else if (user.partner_status === "pending") { if (!pendingNotice) router.replace("/"); } // pending partners stay for the notice
     else if (tab !== "agency") router.replace("/");
   }, [ready, user, tab, pendingNotice, unauthorized, router]);
