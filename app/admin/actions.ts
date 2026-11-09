@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { CONFLICT_KEY, validateRows, type RateRow } from "@/lib/rates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -127,4 +128,49 @@ export async function revokeAdmin(userId: string): Promise<ActionResult> {
   if (error) return fail(error.message);
   revalidatePath("/admin/admins");
   return { ok: true, message: "Admin access removed." };
+}
+
+export interface SaveRatesResult {
+  ok: boolean;
+  message: string;
+  saved: number;
+  cleared: number;
+  /** Row-by-row problems (1-based line in the submitted batch + 1 header offset, as in the spreadsheet). */
+  errors: { line: number; errors: string[] }[];
+}
+
+const MAX_BATCH = 1000;
+
+/**
+ * Batch upsert of publication rates (spreadsheet upload and the inline table editor). Admin-only and re-validated
+ * on the server, whatever the browser sent. With `allowClear`, rows whose four rate cells are all 0 delete the existing rate.
+ */
+export async function saveRates(raw: unknown, allowClear = false): Promise<SaveRatesResult> {
+  const none = { saved: 0, cleared: 0, errors: [] };
+  if (!(await requireAdmin())) return { ok: false, message: "Not authorised.", ...none };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, message: NO_KEY, ...none };
+  if (!Array.isArray(raw) || !raw.length) return { ok: false, message: "Nothing to save.", ...none };
+  if (raw.length > MAX_BATCH) return { ok: false, message: `Too many rows at once (max ${MAX_BATCH}).`, ...none };
+
+  const results = validateRows(raw.map((r) => (r && typeof r === "object" ? (r as Record<string, unknown>) : {})));
+  const errors = results.filter((r) => r.errors.length).map((r) => ({ line: r.line, errors: r.errors }));
+  if (errors.length) return { ok: false, message: `${errors.length} row${errors.length === 1 ? " has" : "s have"} errors. Nothing was saved.`, saved: 0, cleared: 0, errors };
+
+  const rows = results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() }));
+  if (rows.length) {
+    const { error } = await admin.from("publication_rates").upsert(rows, { onConflict: CONFLICT_KEY });
+    if (error) return { ok: false, message: error.message, saved: 0, cleared: 0, errors: [] };
+  }
+  let cleared = 0;
+  if (allowClear) {
+    for (const r of results.filter((x) => x.skipped && x.key)) {
+      const { data, error } = await admin.from("publication_rates").delete().match(r.key!).select("id");
+      if (error) return { ok: false, message: `Saved ${rows.length}, but clearing failed: ${error.message}`, saved: rows.length, cleared, errors: [] };
+      cleared += data?.length ?? 0;
+    }
+  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/rates");
+  return { ok: true, message: `${rows.length} rate${rows.length === 1 ? "" : "s"} saved${cleared ? `, ${cleared} cleared` : ""}.`, saved: rows.length, cleared, errors: [] };
 }

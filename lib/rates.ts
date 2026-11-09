@@ -1,6 +1,6 @@
 import { categories } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
-import type { AdType } from "./types";
+import type { AdType, Newspaper } from "./types";
 
 /** One row of the `publication_rates` table (and of the admin Excel template). */
 export interface RateRow {
@@ -45,6 +45,34 @@ export interface RowResult {
   line: number;
   row?: RateRow;
   errors: string[];
+  /** All four rate cells empty/0: nothing to save (the table editor treats it as "clear this rate"). */
+  skipped?: boolean;
+  /** Canonical identity of a skipped row. */
+  key?: Pick<RateRow, "newspaper_name" | "edition" | "category" | "ad_type">;
+}
+
+export const HEADER_ERROR = "Invalid template format: Column headers must not be modified.";
+
+/** Strict header check: the first row must be exactly the template's columns, in order, with nothing added or removed. */
+export function headersValid(headers: unknown[]): boolean {
+  const h = headers.map((x) => String(x ?? "").trim());
+  while (h.length && h[h.length - 1] === "") h.pop(); // ignore trailing empty cells
+  return h.length === RATE_COLUMNS.length && RATE_COLUMNS.every((c, i) => h[i] === c);
+}
+
+export interface Permutation {
+  edition: string;
+  category: string;
+  ad_type: AdType;
+}
+
+/** Every valid (edition, category, ad_type) combination for a newspaper, "all" included. This is the fixed template structure. */
+export function permutations(paper: Newspaper): Permutation[] {
+  const editions = [ALL, ...paper.editions.map((e) => e.name)];
+  const cats = [ALL, ...categories.map((c) => c.id)];
+  const out: Permutation[] = [];
+  for (const ad_type of AD_TYPE_IDS) for (const edition of editions) for (const category of cats) out.push({ edition, category, ad_type });
+  return out;
 }
 
 const num = (v: unknown): number | null => {
@@ -86,8 +114,9 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       else if (v < 0) errors.push(`${name} can't be negative`);
     }
     if (color !== null && color > 500) errors.push("color_surcharge_percent looks too high (max 500)");
-    if (adType === "classified-text" && !(base && base > 0)) errors.push("base_rate is required (> 0) for classified-text");
-    if (adType && adType !== "classified-text" && AD_TYPE_IDS.includes(adType) && !(sq && sq > 0)) errors.push("sq_cm_rate is required (> 0) for display ads");
+    const empty = !base && !extra && !sq && !color;
+    if (!empty && adType === "classified-text" && !(base && base > 0)) errors.push("base_rate is required (> 0) for classified-text");
+    if (!empty && adType && adType !== "classified-text" && AD_TYPE_IDS.includes(adType) && !(sq && sq > 0)) errors.push("sq_cm_rate is required (> 0) for display ads");
 
     if (!errors.length && paper) {
       const key = [paper.name, edition, category, adType].join("|").toLowerCase();
@@ -96,6 +125,9 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       else seen.set(key, line);
     }
     if (errors.length || !paper) return { line, errors };
+    if (!base && !extra && !sq && !color) {
+      return { line, errors, skipped: true, key: { newspaper_name: paper.name, edition, category, ad_type: adType } };
+    }
     return {
       line,
       errors,
