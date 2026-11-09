@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm, type FieldErrors, type Resolver } from "react-hook-form";
 import { getCategory, templatesFor } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
 import { Field, FieldError, Input, Select, Switch, Textarea } from "@/components/ui/field";
 import { useBooking } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
@@ -24,6 +25,8 @@ import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
 import { TemplateComposer } from "./template-composer";
 import { applySpacing } from "@/lib/paragraphs";
+
+const FIELD_LABEL: Record<string, string> = { text: "Ad text", artwork: "Artwork", heightCm: "Height", widthCm: "Width", columns: "Size", documents: "Supporting documents", colorMode: "Colour mode", enhancements: "Enhancements" };
 
 export function Step2Compose() {
   const { state, update } = useBooking();
@@ -55,7 +58,7 @@ export function Step2Compose() {
       colorMode: state.display.colorMode,
       enhancements: state.enhancements,
       artwork: state.artwork,
-      documents: state.documents,
+      documents: state.documents ?? {},
     },
   });
   const { register, control, watch, setValue, getValues, handleSubmit, formState } = form;
@@ -91,6 +94,31 @@ export function Step2Compose() {
     return () => sub.unsubscribe();
   }, [watch, update]);
 
+  // A failed "Continue" must always say why, never fail silently.
+  const [issues, setIssues] = useState<string[]>([]);
+  const [tried, setTried] = useState(false); // has the user pressed Continue yet?
+  const toast = useToast();
+  // Leftover [placeholders] are a normal part of editing a template: the amber chips guide the user, and the red
+  // message only appears after Continue was pressed.
+  const textError = errors.text?.message && !tried && errors.text.message.startsWith("Please replace template placeholders") ? undefined : errors.text?.message;
+
+  const onInvalid = (errs: FieldErrors<ComposeValues>) => {
+    const found: string[] = [];
+    const walk = (node: unknown, path: string[]) => {
+      if (!node || typeof node !== "object") return;
+      const n = node as { message?: unknown; [k: string]: unknown };
+      if (typeof n.message === "string") { found.push(`${FIELD_LABEL[path[0]] ?? path.join(" › ")}: ${n.message}`); return; }
+      for (const [k, v] of Object.entries(n)) if (k !== "ref") walk(v, [...path, k]);
+    };
+    walk(errs, []);
+    const list = found.length ? [...new Set(found)] : ["Some details are missing or invalid. Please review the form."];
+    if (process.env.NODE_ENV !== "production") console.warn("[Step 2] validation notice", list);
+    setTried(true);
+    setIssues(list);
+    toast(list[0]);
+    requestAnimationFrame(() => document.getElementById("step2-issues")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
+
   // Coming back from checkout to edit: saving returns straight to step 4, skipping Schedule.
   const returning = state.returnToCheckout;
   const next = returning ? { step: 4 as const, returnToCheckout: false } : { step: 3 as const };
@@ -119,7 +147,7 @@ export function Step2Compose() {
   const requiredTotal = docs.filter((d) => d.required).length;
 
   return (
-    <form onSubmit={handleSubmit(() => update(next))} noValidate>
+    <form onSubmit={handleSubmit(() => { setIssues([]); update(next); }, onInvalid)} noValidate>
       <div>
         <div className="space-y-6">
           {displayOnly && <PathPicker mode={mode} onMode={setMode} />}
@@ -139,7 +167,7 @@ export function Step2Compose() {
           {displayOnly && mode === "upload" && (
             <Controller control={control} name="artwork" render={({ field }) => <CreativeUpload value={field.value} onChange={field.onChange} widthCm={v.widthCm} heightCm={v.heightCm} error={errors.artwork?.message} />} />
           )}
-          {displayOnly && mode === "builder" && errors.text?.message && <FieldError message={errors.text.message} />}
+          {displayOnly && mode === "builder" && textError && <FieldError message={textError} />}
           {isObituary && (isText || mode === "builder") && (
             <ObituaryComposer
               onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
@@ -173,7 +201,7 @@ export function Step2Compose() {
                 categoryId={state.categoryId}
                 value={v.text ?? ""}
                 onChange={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
-                error={errors.text?.message}
+                error={textError}
                 hint={t("Write as it should appear in print. Press Enter for a new paragraph. Abbreviations save lines.")}
                 charsPerLine={cpl}
                 maxChars={MAX_TEXT_CHARS}
@@ -212,7 +240,7 @@ export function Step2Compose() {
                 categoryId={state.categoryId}
                 value={v.text ?? ""}
                 onChange={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
-                error={errors.text?.message}
+                error={textError}
                 hint={t("No artwork yet? Write the ad here and it is set in the box for you. Uploading artwork replaces it.")}
                 charsPerLine={cpl}
                 maxChars={MAX_TEXT_CHARS}
@@ -271,7 +299,13 @@ export function Step2Compose() {
         </div>
 
       </div>
-      <StepNav onBack={returning ? undefined : () => update({ step: 1 })} onNext={() => void handleSubmit(() => update(next))()} nextLabel={returning ? "Save Changes & Return to Checkout" : undefined} />
+      {issues.length > 0 && (
+        <div id="step2-issues" role="alert" className="mt-6 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-100">
+          <p className="font-bold">Fix this to continue:</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">{issues.map((i) => <li key={i}>{i}</li>)}</ul>
+        </div>
+      )}
+      <StepNav onBack={returning ? undefined : () => update({ step: 1 })} onNext={() => void handleSubmit(() => { setIssues([]); update(next); }, onInvalid)()} nextLabel={returning ? "Save Changes & Return to Checkout" : undefined} />
     </form>
   );
 }
