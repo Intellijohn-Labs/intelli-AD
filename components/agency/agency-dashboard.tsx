@@ -200,6 +200,7 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
     if (text.trim().length < 15) return setErr("Enter the ad text (at least 15 characters).");
     if (text.trim().length > 600) return setErr("Keep the ad under 600 characters.");
     if (!isBookable(releaseDate, [paperId], kind.adType, now)) return setErr("The cut-off for that date has passed. Pick a later date.");
+    if (!quote.lines.length || t.total <= 0) return setErr("Rates for this publication aren't published yet. Choose another publication or ask the admin to upload its rate sheet.");
     if (short) return setErr("Wallet balance is too low. Add funds first.");
     setErr("");
     const ref = newBookingId();

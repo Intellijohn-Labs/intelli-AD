@@ -6,6 +6,7 @@ import { brandFor } from "@/data/brand-colors";
 import { getNewspaper } from "@/data/newspapers";
 import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
+import { useRateAvailability } from "@/lib/use-rates";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,7 @@ const MASTHEADS: { id: string; style: CSSProperties }[] = [
   { id: "mathrubhumi", style: { fontFamily: '"Baloo Chettan 2", sans-serif', fontWeight: 800 } },
   { id: "deshabhimani", style: { fontFamily: '"Anek Malayalam", sans-serif', fontWeight: 800 } },
   { id: "madhyamam", style: { fontFamily: "Manjari, sans-serif", fontWeight: 700 } },
+  { id: "deepika", style: { fontFamily: '"Noto Serif Malayalam", serif', fontWeight: 800 } },
   { id: "kerala-kaumudi", style: { fontFamily: '"Noto Serif Malayalam", serif', fontWeight: 700, fontStyle: "italic" } },
   { id: "siraj", style: { fontFamily: "Chilanka, cursive", fontWeight: 400 } },
   { id: "janmabhumi", style: { fontFamily: "Gayathri, sans-serif", fontWeight: 700 } },
@@ -28,6 +30,7 @@ const MASTHEADS: { id: string; style: CSSProperties }[] = [
 export function NewspaperMastheadBar() {
   const { activeId, setActive } = usePublication();
   const { t } = useI18n();
+  const { loaded, hasRates } = useRateAvailability();
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Keep the active masthead visible when it changes from elsewhere on the page.
@@ -51,6 +54,7 @@ export function NewspaperMastheadBar() {
             if (!paper) return null;
             const active = id === activeId;
             const brand = brandFor(id).primary;
+            const locked = !hasRates(paper.name);
             return (
               <button
                 key={id}
@@ -61,9 +65,11 @@ export function NewspaperMastheadBar() {
                 role="radio"
                 aria-checked={active}
                 aria-label={paper.name}
-                title={paper.name}
+                title={locked ? `${paper.name}: ${loaded ? "rates updating" : "checking rates"}` : paper.name}
+                disabled={locked}
                 onClick={() => setActive(id)}
                 className={cn(
+                  locked && "pointer-events-none cursor-not-allowed opacity-50",
                   "relative flex shrink-0 snap-center items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm whitespace-nowrap antialiased transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500",
                   active
                     ? "border-transparent text-white dark:text-slate-900"

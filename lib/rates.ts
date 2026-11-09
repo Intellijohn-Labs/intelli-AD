@@ -130,26 +130,40 @@ function warnOnce(key: string, msg: string) {
   console.warn(`[rates] ${msg}`);
 }
 
-/** Most specific matching rule: exact edition beats "all", exact category beats "all". Null → caller uses built-in rates. */
-export function findRate(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
-  if (!rates) {
-    warnOnce("offline", "Database rates unavailable (offline or not loaded): using built-in default rates.");
-    return null;
-  }
+/** Most specific matching rule: exact edition beats "all", exact category beats "all". No rule → null (never a default). */
+export function matchRate(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
+  if (!rates) return null;
   let best: RateRow | null = null;
   let bestScore = -1;
   for (const r of rates) {
     if (r.ad_type !== adType || norm(r.newspaper_name) !== norm(paperName)) continue;
+    if (!(r.base_rate > 0 || r.sq_cm_rate > 0)) continue;
     const edOk = isAll(r.edition) || norm(r.edition) === norm(editionName);
     const catOk = isAll(r.category) || (!!categoryId && norm(r.category) === norm(categoryId));
     if (!edOk || !catOk) continue;
     const score = (isAll(r.edition) ? 0 : 2) + (isAll(r.category) ? 0 : 1);
     if (score > bestScore) { best = r; bestScore = score; }
   }
-  if (!best) warnOnce(`${paperName}|${editionName}|${categoryId}|${adType}`, `No rate for ${paperName} / ${editionName} / ${categoryId ?? "any category"} / ${adType}: using built-in default rate.`);
   return best;
 }
 
-/** True when the rate book has at least one usable rule (a base rate or a per-cm² rate) for the newspaper. */
-export const paperHasRates = (rates: RateBook, paperName: string) =>
-  rates.some((r) => norm(r.newspaper_name) === norm(paperName) && (r.base_rate > 0 || r.sq_cm_rate > 0));
+/** Same as matchRate, but logs (once) when nothing is published: the calculator then prices nothing for that edition. */
+export function findRate(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
+  const hit = matchRate(rates, paperName, editionName, categoryId, adType);
+  if (!hit) warnOnce(`${paperName}|${editionName}|${categoryId}|${adType}`, rates ? `No published rate for ${paperName} / ${editionName} / ${categoryId ?? "any category"} / ${adType}: not priced.` : "Rates not loaded: nothing is priced.");
+  return hit;
+}
+
+/** True when the newspaper has a usable published rule (optionally for one ad type). */
+export const paperHasRates = (rates: RateBook, paperName: string, adType?: AdType) =>
+  rates.some((r) => norm(r.newspaper_name) === norm(paperName) && (!adType || r.ad_type === adType) && (r.base_rate > 0 || r.sq_cm_rate > 0));
+
+/** Lowest published per-unit rate (per line for text, per cm² for display), or null when none is published. */
+export function headlineRate(rates: RateBook | null, paperName: string, adType: AdType, minLines: number): { amount: number; unit: "line" | "cm²" } | null {
+  if (!rates) return null;
+  const vals = rates
+    .filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paperName))
+    .map((r) => (adType === "classified-text" ? r.base_rate / Math.max(1, minLines) : r.sq_cm_rate))
+    .filter((v) => v > 0);
+  return vals.length ? { amount: Math.round(Math.min(...vals)), unit: adType === "classified-text" ? "line" : "cm²" } : null;
+}

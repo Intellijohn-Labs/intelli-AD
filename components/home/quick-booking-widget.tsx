@@ -12,7 +12,7 @@ import { bookHref } from "@/lib/booking-params";
 import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
 import { comboSuggestions, estimateQuote, flagshipEdition } from "@/lib/pricing";
-import { useRatesVersion } from "@/lib/use-rates";
+import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
 import type { AdType } from "@/lib/types";
 import { cn, formatINR } from "@/lib/utils";
 
@@ -34,6 +34,8 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
   const [height, setHeight] = useState(10);
   const isText = adType === "classified-text";
   const ratesVersion = useRatesVersion();
+  const { loaded, hasRates } = useRateAvailability();
+  const available = hasRates(paper.name, adType);
   const quote = useMemo(
     () => estimateQuote(adType, eds.length ? { [paperId]: eds } : {}, isText ? { lines } : { heightCm: height }),
     [adType, paperId, eds, lines, height, isText, ratesVersion], // eslint-disable-line react-hooks/exhaustive-deps
@@ -56,10 +58,10 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
         <Field id="qb-paper" label={t("Publication")}>
           <Select id="qb-paper" value={paperId} onChange={(e) => setPaperId(e.target.value)}>
             <optgroup label={t("National dailies")}>
-              {newspapers.filter((n) => n.scope === "national").map((n) => <option key={n.id} value={n.id}>{pn(n)}</option>)}
+              {newspapers.filter((n) => n.scope === "national").map((n) => <option key={n.id} value={n.id} disabled={!hasRates(n.name)}>{pn(n)}{!hasRates(n.name) ? ` · ${t("Rates updating")}` : ""}</option>)}
             </optgroup>
             <optgroup label={t("Regional dailies")}>
-              {newspapers.filter((n) => n.scope === "regional").map((n) => <option key={n.id} value={n.id}>{pn(n)}</option>)}
+              {newspapers.filter((n) => n.scope === "regional").map((n) => <option key={n.id} value={n.id} disabled={!hasRates(n.name)}>{pn(n)}{!hasRates(n.name) ? ` · ${t("Rates updating")}` : ""}</option>)}
             </optgroup>
           </Select>
         </Field>
@@ -97,7 +99,9 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#1F2F57] dark:bg-[#17284F]" aria-live="polite">
-        {eds.length === 0 ? (
+        {!available ? (
+          <p className="text-sm font-semibold text-amber-800">{t(loaded ? "Rates not yet published by admin" : "Checking rates…")}</p>
+        ) : eds.length === 0 ? (
           <p className="text-sm text-zinc-600">{t("Select at least one edition to see an estimate.")}</p>
         ) : (
           <>
@@ -111,16 +115,20 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
             </p>
           </>
         )}
-        {hint && eds.length > 0 && (
+        {available && hint && eds.length > 0 && (
           <button type="button" onClick={() => setEds([...new Set([...eds, ...hint.missingEditionIds])])} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-left text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">
             <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {t("Add all {group} editions for {pct}% off", { group: place(hint.groupName), pct: hint.discountPct })}
           </button>
         )}
       </div>
 
+      {!available ? (
+        <button type="button" disabled className="mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-slate-200 py-4 font-bold text-slate-500">{t("Proceed to Booking")}</button>
+      ) : (
       <Link href={bookHref({ type: adType, paper: paperId, eds })} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 py-4 font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:scale-[1.01] hover:from-rose-500 hover:to-red-500 hover:shadow-rose-600/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 active:scale-[0.99]">
         {t("Proceed to Booking")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
+      )}
     </div>
   );
 }

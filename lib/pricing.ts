@@ -3,7 +3,7 @@ import { getNewspaper, newspapers } from "@/data/newspapers";
 import type { AdType, CategoryId, DisplaySpec, Enhancements, Newspaper } from "./types";
 import { displayWidth } from "./display";
 import { countWords, round2, wrapText } from "./utils";
-import { findRate, getActiveRates, type RateBook } from "./rates";
+import { findRate, getActiveRates, headlineRate, type RateBook } from "./rates";
 
 export const GST_RATE = 0.18;
 
@@ -39,7 +39,7 @@ export interface QuoteInput {
   text?: string;
   enhancements?: Enhancements;
   display?: DisplaySpec;
-  /** Database rate book; defaults to the one loaded from `publication_rates` (null/missing rule → built-in rates). */
+  /** Database rate book; defaults to the one loaded from `publication_rates`. Editions without a published rule are not priced. */
   rates?: RateBook | null;
 }
 
@@ -111,8 +111,6 @@ export function displayArea(spec: DisplaySpec, paper: Newspaper) {
  *   → combo/volume discount → sum → GST on the discounted amount.
  */
 export function calculateQuote(input: QuoteInput): Quote {
-  const category = getCategory(input.category);
-  const catMult = category?.rateMultiplier ?? 1;
   const enh = input.enhancements ?? DEFAULT_ENHANCEMENTS;
   const display = input.display ?? DEFAULT_DISPLAY;
   const text = input.text ?? "";
@@ -151,14 +149,15 @@ export function calculateQuote(input: QuoteInput): Quote {
     }
 
     for (const e of selected) {
-      const w = e.weight * catMult;
+      // Prices come only from the published rate sheet. No rule → this edition is not priced (never a default).
       const rule = findRate(rates, paper.name, e.name, input.category, input.adType);
+      if (!rule) continue;
       let unitLabel: string, extraUnitLabel: string;
       let baseUnits: number, extraUnits: number, rate: number, base: number, extra: number;
       let enhancements = 0;
 
-      if (isText && rule) {
-        // Database rule: base_rate covers the minimum lines, then extra_line_rate per additional line.
+      if (isText) {
+        // base_rate covers the minimum lines, then extra_line_rate per additional line.
         baseUnits = r.textMinLines;
         unitLabel = "lines";
         rate = round2(rule.base_rate / Math.max(1, baseUnits));
@@ -172,31 +171,9 @@ export function calculateQuote(input: QuoteInput): Quote {
           enhancements += amt;
           enhTotals[key] = (enhTotals[key] ?? 0) + amt;
         }
-      } else if (isText) {
-        rate = round2(r.textPerLine * w);
-        baseUnits = r.textMinLines;
-        unitLabel = "lines";
-        base = round2(baseUnits * rate);
-        if (r.incremental === "line") {
-          extraUnits = Math.max(0, m.lines - baseUnits);
-          extraUnitLabel = "lines";
-          extra = round2(extraUnits * rate);
-        } else {
-          const minChars = baseUnits * r.charsPerLine;
-          extraUnits = Math.max(0, m.chars - minChars);
-          extraUnitLabel = "characters";
-          extra = round2(extraUnits * (rate / r.charsPerLine));
-        }
-        for (const key of ["bold", "border", "tint"] as const) {
-          if (!enh[key]) continue;
-          const amt = round2((base + extra) * ENHANCEMENT_PCT[key]);
-          enhancements += amt;
-          enhTotals[key] = (enhTotals[key] ?? 0) + amt;
-        }
       } else {
-        const perCm2 = input.adType === "classified-display" ? r.classifiedDisplayPerCm2 : r.commercialDisplayPerCm2;
-        // Database rule: sq_cm_rate is final for this edition/category (no weight or category multiplier on top).
-        rate = rule ? round2(rule.sq_cm_rate) : round2(perCm2 * w);
+        // sq_cm_rate is final for this edition/category; colour adds color_surcharge_percent.
+        rate = round2(rule.sq_cm_rate);
         baseUnits = r.minDisplayCm2;
         unitLabel = "cm²";
         base = round2(baseUnits * rate);
@@ -204,7 +181,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         extraUnitLabel = "cm²";
         extra = round2(extraUnits * rate);
         if (display.colorMode === "color") {
-          const amt = round2((base + extra) * ((rule ? rule.color_surcharge_percent : r.colorPremiumPct) / 100));
+          const amt = round2((base + extra) * (rule.color_surcharge_percent / 100));
           enhancements += amt;
           enhTotals.color = (enhTotals.color ?? 0) + amt;
         }
@@ -326,20 +303,9 @@ export function estimateQuote(adType: AdType, selection: Selection, size?: { lin
   });
 }
 
-/** Lowest per-unit headline rate for a publication, for listing cards. */
+/** Lowest published per-unit rate for a publication, or null when the admin hasn't published rates for it. */
 export function startingRate(paper: Newspaper, adType: AdType) {
-  const minWeight = Math.min(...paper.editions.map((e) => e.weight));
-  const r = paper.rates;
-  const perUnit =
-    adType === "classified-text"
-      ? r.textPerLine
-      : adType === "classified-display"
-        ? r.classifiedDisplayPerCm2
-        : r.commercialDisplayPerCm2;
-  return {
-    amount: Math.round(perUnit * minWeight),
-    unit: adType === "classified-text" ? "line" : "cm²",
-  };
+  return headlineRate(getActiveRates(), paper.name, adType, paper.rates.textMinLines);
 }
 
 /** The headline edition of a publication (first listed, weight-leading). */
@@ -347,10 +313,8 @@ export function flagshipEdition(paper: Newspaper) {
   return [...paper.editions].sort((a, b) => b.weight - a.weight)[0];
 }
 
-/** Per-unit headline rate for an ad type at the flagship edition. */
+/** Headline published rate for an ad type, tagged with the flagship edition; null when not published. */
 export function flagshipRate(paper: Newspaper, adType: AdType) {
-  const e = flagshipEdition(paper);
-  const r = paper.rates;
-  const base = adType === "classified-text" ? r.textPerLine : adType === "classified-display" ? r.classifiedDisplayPerCm2 : r.commercialDisplayPerCm2;
-  return { amount: Math.round(base * e.weight), unit: adType === "classified-text" ? "line" : "cm²", edition: e };
+  const r = startingRate(paper, adType);
+  return r ? { ...r, edition: flagshipEdition(paper) } : null;
 }

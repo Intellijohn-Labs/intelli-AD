@@ -12,6 +12,7 @@ import { brandFor } from "@/data/brand-colors";
 import { bookHref } from "@/lib/booking-params";
 import { cutoffFor, earliestRelease, formatClock } from "@/lib/cutoff";
 import { flagshipRate, flagshipEdition } from "@/lib/pricing";
+import { useRateAvailability } from "@/lib/use-rates";
 import { usePublication } from "@/lib/publication";
 import { formatDateTime, formatINR } from "@/lib/utils";
 
@@ -26,6 +27,8 @@ export function ActiveRateCard() {
     return () => clearInterval(t);
   }, []);
   const flagship = flagshipEdition(paper);
+  const { loaded, hasRates } = useRateAvailability();
+  const available = hasRates(paper.name);
 
   return (
     <section id="rates" className="mx-auto max-w-[1500px] scroll-mt-32 px-4 sm:px-6 lg:px-8">
@@ -39,9 +42,16 @@ export function ActiveRateCard() {
               <p className="mt-2 text-sm text-zinc-600">
                 {t("{lang} · {n} editions · Rates for {ed}", { lang: t(paper.language), n: paper.editions.length, ed: place(flagship.name) })}
               </p>
-              <ButtonLink href={bookHref({ paper: paper.id, eds: [flagship.id] })} className="mt-5" shimmer>
-                {t("Book in {name}", { name: pn(paper) })} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </ButtonLink>
+              {available ? (
+                <ButtonLink href={bookHref({ paper: paper.id, eds: [flagship.id] })} className="mt-5" shimmer>
+                  {t("Book in {name}", { name: pn(paper) })} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </ButtonLink>
+              ) : (
+                <>
+                  <button type="button" disabled className="mt-5 inline-flex h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md bg-zinc-200 px-5 text-sm font-semibold text-zinc-500">{t("Book in {name}", { name: pn(paper) })}</button>
+                  <p className="mt-2 text-xs font-semibold text-amber-800">{t(loaded ? "Rates not yet published by admin" : "Checking rates…")}</p>
+                </>
+              )}
             </div>
             <div className="grid gap-px bg-zinc-200 sm:grid-cols-3">
               {AD_TYPES.map((a) => {
@@ -51,10 +61,14 @@ export function ActiveRateCard() {
                 return (
                   <div key={a.id} className="bg-white p-5">
                     <p className="text-sm font-bold text-zinc-950">{t(a.short)}</p>
-                    <p className="mt-3 text-3xl font-bold tabular-nums text-zinc-950">
-                      <AnimatedNumber value={rate.amount} format={(n) => formatINR(n)} />
-                      <span className="text-sm font-normal text-zinc-500"> / {t(rate.unit)}</span>
-                    </p>
+                    {rate ? (
+                      <p className="mt-3 text-3xl font-bold tabular-nums text-zinc-950">
+                        <AnimatedNumber value={rate.amount} format={(n) => formatINR(n)} />
+                        <span className="text-sm font-normal text-zinc-500"> / {t(rate.unit)}</span>
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-base font-semibold text-amber-800">{t(loaded ? "Rates Updating / Unavailable" : "Checking rates…")}</p>
+                    )}
                     <p className="mt-1 text-xs text-zinc-500">
                       {a.id === "classified-text" ? t("Minimum {n} lines · excl. GST", { n: paper.rates.textMinLines }) : t("Minimum {n} cm² · excl. GST", { n: paper.rates.minDisplayCm2 })}
                     </p>

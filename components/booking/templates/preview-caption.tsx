@@ -25,7 +25,7 @@ export function PreviewCaption({ state }: { state: BookingState }) {
   const widthCm = displayWidth(state.display, paper?.rates.colWidthCm ?? 4);
   const area = widthCm * h;
   const size = isText
-    ? `${m.lines} lines · ${tier} tier (${minLines} base${extra ? ` + ${extra} extra at ${formatINR(quote.lines[0]?.rate ?? 0)}/line` : ""})`
+    ? `${m.lines} lines · ${tier} tier (${minLines} base${extra ? ` + ${extra} extra at ${formatINR(quote.lines[0] && quote.lines[0].extraUnits ? quote.lines[0].extra / quote.lines[0].extraUnits : 0)}/line` : ""})`
     : `${widthCm} × ${h} cm = ${area.toFixed(1)} cm²`;
   return (
     <figcaption className="mt-2 space-y-0.5 text-center text-xs text-zinc-500">

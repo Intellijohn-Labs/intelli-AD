@@ -36,6 +36,10 @@ export function Step4Checkout() {
 
   const onSubmit = async (values: CheckoutValues) => {
     setSaveError(null);
+    if (quote.editionCount === 0 || quote.totals.total <= 0) {
+      setSaveError("Rates for this ad aren't published yet. Go back and choose a publication with published rates.");
+      return;
+    }
     // The ad's photo / artwork must already be in storage, or the saved booking would point at nothing.
     if (supabaseConfigured && state.artwork && !state.artwork.url) {
       setSaveError("Your artwork is still uploading or the upload failed. Go back to Compose and wait for “saved”, or upload it again.");

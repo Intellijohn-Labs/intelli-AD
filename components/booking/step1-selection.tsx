@@ -29,15 +29,22 @@ export function Step1Selection() {
   const [error, setError] = useState<string | null>(null);
   const { activeId, setActive } = usePublication();
   const firstRun = useRef(true);
-  const { loaded, hasRates } = useRateAvailability();
+  const { loaded, canPrice } = useRateAvailability();
+  const edOk = (paper: (typeof newspapers)[number], editionName: string) => canPrice(paper.name, editionName, state.categoryId, state.adType);
+  const availableFor = (paper: (typeof newspapers)[number]) => paper.editions.some((e) => edOk(paper, e.name));
 
   // Drop papers that lost their rate sheet (e.g. from a saved draft) so they can't be booked.
   useEffect(() => {
     if (!loaded) return;
-    const stale = Object.keys(state.selection).filter((id) => { const p = newspapers.find((n) => n.id === id); return !p || !hasRates(p.name); });
-    if (stale.length) update({ selection: Object.fromEntries(Object.entries(state.selection).filter(([id]) => !stale.includes(id))) });
+    const cleaned: Record<string, string[]> = {};
+    for (const [id, eds] of Object.entries(state.selection)) {
+      const p = newspapers.find((n) => n.id === id);
+      const ok = p ? eds.filter((eid) => { const e = p.editions.find((x) => x.id === eid); return !!e && edOk(p, e.name); }) : [];
+      if (ok.length) cleaned[id] = ok;
+    }
+    if (JSON.stringify(cleaned) !== JSON.stringify(state.selection)) update({ selection: cleaned });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, state.selection]);
+  }, [loaded, state.selection, state.adType, state.categoryId]);
 
   // Masthead bar switched the active paper: open its panel and make sure it has an edition.
   useEffect(() => {
@@ -154,7 +161,7 @@ export function Step1Selection() {
             const isOpen = open === paper.id;
             const rate = startingRate(paper, state.adType);
             const suggestions = comboSuggestions(paper.id, selected);
-            const locked = !hasRates(paper.name);
+            const locked = !availableFor(paper);
             return (
               <motion.div key={paper.id} aria-disabled={locked || undefined} className={cn("overflow-hidden rounded-md border transition-shadow duration-300", locked && "pointer-events-none cursor-not-allowed opacity-50", selected.length ? "ring-2 ring-[var(--c)]" : "hover:ring-1 hover:ring-[var(--c)]")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: `color-mix(in srgb, ${brandFor(paper.id).primary} 6%, var(--surface))`, borderColor: `color-mix(in srgb, ${brandFor(paper.id).primary} ${selected.length ? 70 : 28}%, var(--surface))`, boxShadow: selected.length ? `0 0 22px color-mix(in srgb, ${brandFor(paper.id).primary} 25%, transparent)` : undefined }}>
                 <button type="button" aria-expanded={isOpen} aria-controls={`panel-${paper.id}`} disabled={locked} tabIndex={locked ? -1 : undefined} onClick={() => { setOpen(isOpen ? null : paper.id); if (!isOpen) setActive(paper.id); }} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
@@ -163,10 +170,10 @@ export function Step1Selection() {
                     <span className="ml-2 inline-flex gap-1.5 align-middle">
                       <Badge tone="slate">{t(paper.language)}</Badge>
                       <Badge tone={paper.scope === "national" ? "navy" : "green"}>{t(paper.scope)}</Badge>
-                      {locked && <Badge tone="amber">{t("Temporarily Unavailable")} · {t("Rates updating")}</Badge>}
+                      {locked && <Badge tone="amber">{t(loaded ? "Rates Updating / Unavailable" : "Checking rates…")}</Badge>}
                     </span>
                     <span className="block text-xs text-zinc-500">
-                      {t("{n}M readers", { n: parseFloat(paper.readership) })} · {t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) })}
+                      {t("{n}M readers", { n: parseFloat(paper.readership) })} · {rate ? t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) }) : t(loaded ? "Rates not yet published by admin" : "Checking rates…")}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
@@ -203,8 +210,8 @@ export function Step1Selection() {
                             {eds.map((e) => {
                               const on = selected.includes(e.id);
                               return (
-                                <label key={e.id} className={cn("cursor-pointer rounded border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
-                                  <input type="checkbox" className="sr-only" checked={on} onChange={() => setEditions(paper.id, on ? selected.filter((id) => id !== e.id) : [...selected, e.id])} />
+                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rates not yet published by admin")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
+                                  <input type="checkbox" className="sr-only" checked={on} disabled={!edOk(paper, e.name)} onChange={() => setEditions(paper.id, on ? selected.filter((id) => id !== e.id) : [...selected, e.id])} />
                                   {place(e.name)}
                                 </label>
                               );

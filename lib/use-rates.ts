@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getActiveRates, getRatesVersion, paperHasRates, setActiveRates, subscribeRates, type RateRow } from "./rates";
+import { getActiveRates, getRatesVersion, headlineRate, matchRate, paperHasRates, setActiveRates, subscribeRates, type RateRow } from "./rates";
 import { createClient } from "./supabase/client";
 
 /** Re-renders the caller whenever the active rate book changes; include the value in useMemo deps of quote calculations. */
@@ -13,7 +13,8 @@ export function useRatesVersion() {
 export async function loadRates(): Promise<RateRow[] | null> {
   const sb = createClient();
   if (!sb) {
-    console.warn("[rates] Supabase isn't configured: using built-in default rates.");
+    console.warn("[rates] Supabase isn't configured: no rates are published.");
+    if (!getActiveRates()) setActiveRates([]); // strict: nothing is bookable without published rates
     return null;
   }
   try {
@@ -27,17 +28,24 @@ export async function loadRates(): Promise<RateRow[] | null> {
     setActiveRates(rows);
     return rows;
   } catch (e) {
-    console.warn("[rates] Couldn't load publication_rates (offline or table missing): using built-in default rates.", e instanceof Error ? e.message : e);
+    console.warn("[rates] Couldn't load publication_rates (offline or table missing): no rates are published.", e instanceof Error ? e.message : e);
+    if (!getActiveRates()) setActiveRates([]); // strict: no placeholder rates; keep any rates already loaded
     return null;
   }
 }
 
 /**
- * Booking availability per newspaper. Only once rates have loaded successfully: if they couldn't be loaded (offline,
- * not configured) nothing is locked and the calculator uses built-in rates instead.
+ * Rate availability. `loaded` is false only until the first fetch settles (cards show "checking"); after that a
+ * newspaper is available only if the database has a usable rule for it. There are no built-in fallback rates.
  */
 export function useRateAvailability() {
   useRatesVersion();
   const book = getActiveRates();
-  return { loaded: book !== null, hasRates: (paperName: string) => book === null || paperHasRates(book, paperName) };
+  return {
+    loaded: book !== null,
+    hasRates: (paperName: string, adType?: Parameters<typeof paperHasRates>[2]) => book !== null && paperHasRates(book, paperName, adType),
+    /** True when this exact edition has a published rate for the ad type and category (what the calculator needs). */
+    canPrice: (paperName: string, editionName: string, categoryId: string | null | undefined, adType: Parameters<typeof matchRate>[4]) => matchRate(book, paperName, editionName, categoryId, adType) !== null,
+    headline: (paperName: string, adType: Parameters<typeof headlineRate>[2], minLines: number) => headlineRate(book, paperName, adType, minLines),
+  };
 }

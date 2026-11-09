@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition, flagshipRate } from "@/lib/pricing";
+import { useRatesVersion } from "@/lib/use-rates";
 import { formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
@@ -138,6 +139,7 @@ function MiniSummary({ state }: { state: BookingState }) {
   const { t, tl, pn, place } = useI18n();
   const { paper } = usePublication();
   const quote = useBookingQuote(state);
+  useRatesVersion();
   const rate = flagshipRate(paper, state.adType);
   const rule = paper.cutoffs[state.adType];
   return (
@@ -157,7 +159,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       )}
       <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
-        <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p>
+        {rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : <p>{t("Rates not yet published by admin")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
     </Card>
