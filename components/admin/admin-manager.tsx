@@ -5,6 +5,7 @@ import { useActionState, useState, useTransition } from "react";
 import { createAdmin, promoteToAdmin, revokeAdmin, type ActionResult, type AdminRow } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/components/ui/toast";
 
 const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700";
@@ -45,7 +46,7 @@ export function AdminManager({ admins, serviceKey }: { admins: AdminRow[]; servi
             <div><label className={lbl} htmlFor="email">Email</label><Input id="email" name="email" type="email" required /></div>
             <div>
               <label className={lbl} htmlFor="password">Initial password <span className="font-normal text-slate-500">(optional)</span></label>
-              <Input id="password" name="password" type="password" minLength={10} autoComplete="new-password" placeholder="Leave blank to email an invitation" />
+              <PasswordInput id="password" name="password" minLength={10} autoComplete="new-password" placeholder="Leave blank to email an invitation" />
               <p className="mt-1 text-xs text-slate-500">10+ characters. With a password the account is active immediately; without one, an invitation email is sent.</p>
             </div>
             <Button type="submit" disabled={creating || !serviceKey}>{creating && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />} Add admin</Button>

@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, MailCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Field, Input } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { homeFor, useAuth } from "@/lib/auth";
 import { register, sendPhoneOtp, signInWithPassword, userFromSupabase, verifyPhoneOtp } from "@/lib/supabase/auth";
 import { cn } from "@/lib/utils";
@@ -120,7 +121,7 @@ export function AuthForm({ mode, notice = false }: { mode: "signin" | "register"
             </Field>
           )}
           <Field id="cu-pass" label="Password" required error={err.password} hint={mode === "register" ? "At least 8 characters." : undefined}>
-            <Input id="cu-pass" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} value={password} aria-invalid={!!err.password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput id="cu-pass" autoComplete={mode === "register" ? "new-password" : "current-password"} value={password} aria-invalid={!!err.password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
           {err.form && <p role="alert" className="text-sm font-medium text-red-700 dark:text-red-300">{err.form}</p>}
           <button type="submit" disabled={busy} className={primary}>{busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}{mode === "register" ? "Create account" : "Sign in"}</button>

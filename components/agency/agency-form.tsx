@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, MailCheck, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Field, Input } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { homeFor, useAuth, type AuthUser } from "@/lib/auth";
 import { OPENING_WALLET } from "@/lib/agency";
 import { register, signInWithPassword, userFromSupabase } from "@/lib/supabase/auth";
@@ -107,7 +108,7 @@ export function AgencyForm({ mode }: { mode: "signin" | "register" }) {
       )}
       <Field id="ag-email" label="Email" required error={err.email}><Input id="ag-email" type="email" autoComplete="email" value={email} aria-invalid={!!err.email} onChange={(e) => setEmail(e.target.value)} /></Field>
       <Field id="ag-pass" label="Password" required error={err.password} hint={mode === "register" ? "At least 8 characters." : undefined}>
-        <Input id="ag-pass" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} value={password} aria-invalid={!!err.password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordInput id="ag-pass" autoComplete={mode === "register" ? "new-password" : "current-password"} value={password} aria-invalid={!!err.password} onChange={(e) => setPassword(e.target.value)} />
       </Field>
       <p className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"><ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Partner Commission &amp; Instant RO Dispatch Enabled</p>
       {err.form && <p role="alert" className="text-sm font-medium text-red-700 dark:text-red-300">{err.form}</p>}

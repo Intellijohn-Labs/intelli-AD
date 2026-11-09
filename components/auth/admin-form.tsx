@@ -4,6 +4,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Field, Input } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/components/ui/toast";
 import { signInWithPassword, signOutSupabase } from "@/lib/supabase/auth";
 
@@ -43,7 +44,7 @@ export function AdminForm() {
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       <Field id="ad-email" label="Admin email" required><Input id="ad-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-      <Field id="ad-pass" label="Password" required><Input id="ad-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+      <Field id="ad-pass" label="Password" required><PasswordInput id="ad-pass" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
       {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">{error}</p>}
       <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-4 w-4" aria-hidden="true" />} Sign in as admin
