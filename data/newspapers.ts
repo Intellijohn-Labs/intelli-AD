@@ -1,3 +1,4 @@
+import { PUBLICATION_IDS } from "@/lib/publications";
 import type { AdType, CutoffRule, Edition, Newspaper } from "@/lib/types";
 
 const slug = (s: string) =>
@@ -29,7 +30,7 @@ function cutoffs(
  * Illustrative rate cards. Rates are in INR for a weight-1.0 edition and
  * exclude GST. Not actual publisher tariffs.
  */
-export const newspapers: Newspaper[] = [
+const allNewspapers: Newspaper[] = [
   {
     id: "the-hindu",
     name: "The Hindu",
@@ -546,7 +547,41 @@ export const newspapers: Newspaper[] = [
     },
     cutoffs: cutoffs([1, "15:00"], [2, "15:30"], [3, "15:00"]),
   },
+  {
+    id: "deepika",
+    name: "Deepika",
+    nameMl: "ദീപിക",
+    tagline: "Malayalam daily newspaper",
+    taglineMl: "മലയാള ദിനപത്രം",
+    language: "Malayalam",
+    scope: "regional",
+    readership: "1.2M readers",
+    groups: [{ id: "kl", name: "Kerala", bundleDiscountPct: 20 }],
+    editions: editions("deepika", [
+      ["Kottayam", "kl", 1.0],
+      ["Kochi", "kl", 0.85],
+      ["Thiruvananthapuram", "kl", 0.8],
+      ["Thrissur", "kl", 0.6],
+      ["Kozhikode", "kl", 0.55],
+      ["Kannur", "kl", 0.4],
+    ]),
+    rates: {
+      textPerLine: 190,
+      textMinLines: 3,
+      charsPerLine: 28,
+      incremental: "line",
+      classifiedDisplayPerCm2: 380,
+      commercialDisplayPerCm2: 850,
+      minDisplayCm2: 12,
+      colWidthCm: 3.8,
+      colorPremiumPct: 30,
+    },
+    cutoffs: cutoffs([1, "15:30"], [2, "16:00"], [3, "15:00"]),
+  },
 ];
+
+/** The supported publications, in the order given by lib/publications.ts. */
+export const newspapers: Newspaper[] = PUBLICATION_IDS.map((id) => allNewspapers.find((n) => n.id === id)!);
 
 export function getNewspaper(id: string | null | undefined): Newspaper | undefined {
   return newspapers.find((n) => n.id === id);

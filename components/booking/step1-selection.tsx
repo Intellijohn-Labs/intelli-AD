@@ -5,6 +5,7 @@ import { Check, ChevronDown, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AD_TYPES, categories, getCategory } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
+import { useRateAvailability } from "@/lib/use-rates";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/field";
@@ -28,6 +29,15 @@ export function Step1Selection() {
   const [error, setError] = useState<string | null>(null);
   const { activeId, setActive } = usePublication();
   const firstRun = useRef(true);
+  const { loaded, hasRates } = useRateAvailability();
+
+  // Drop papers that lost their rate sheet (e.g. from a saved draft) so they can't be booked.
+  useEffect(() => {
+    if (!loaded) return;
+    const stale = Object.keys(state.selection).filter((id) => { const p = newspapers.find((n) => n.id === id); return !p || !hasRates(p.name); });
+    if (stale.length) update({ selection: Object.fromEntries(Object.entries(state.selection).filter(([id]) => !stale.includes(id))) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, state.selection]);
 
   // Masthead bar switched the active paper: open its panel and make sure it has an edition.
   useEffect(() => {
@@ -144,14 +154,16 @@ export function Step1Selection() {
             const isOpen = open === paper.id;
             const rate = startingRate(paper, state.adType);
             const suggestions = comboSuggestions(paper.id, selected);
+            const locked = !hasRates(paper.name);
             return (
-              <motion.div key={paper.id} className={cn("overflow-hidden rounded-md border transition-shadow duration-300", selected.length ? "ring-2 ring-[var(--c)]" : "hover:ring-1 hover:ring-[var(--c)]")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: `color-mix(in srgb, ${brandFor(paper.id).primary} 6%, var(--surface))`, borderColor: `color-mix(in srgb, ${brandFor(paper.id).primary} ${selected.length ? 70 : 28}%, var(--surface))`, boxShadow: selected.length ? `0 0 22px color-mix(in srgb, ${brandFor(paper.id).primary} 25%, transparent)` : undefined }}>
-                <button type="button" aria-expanded={isOpen} aria-controls={`panel-${paper.id}`} onClick={() => { setOpen(isOpen ? null : paper.id); if (!isOpen) setActive(paper.id); }} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+              <motion.div key={paper.id} aria-disabled={locked || undefined} className={cn("overflow-hidden rounded-md border transition-shadow duration-300", locked && "pointer-events-none cursor-not-allowed opacity-50", selected.length ? "ring-2 ring-[var(--c)]" : "hover:ring-1 hover:ring-[var(--c)]")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: `color-mix(in srgb, ${brandFor(paper.id).primary} 6%, var(--surface))`, borderColor: `color-mix(in srgb, ${brandFor(paper.id).primary} ${selected.length ? 70 : 28}%, var(--surface))`, boxShadow: selected.length ? `0 0 22px color-mix(in srgb, ${brandFor(paper.id).primary} 25%, transparent)` : undefined }}>
+                <button type="button" aria-expanded={isOpen} aria-controls={`panel-${paper.id}`} disabled={locked} tabIndex={locked ? -1 : undefined} onClick={() => { setOpen(isOpen ? null : paper.id); if (!isOpen) setActive(paper.id); }} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
                   <span>
                     <span className="text-lg font-bold">{pn(paper)}</span>
                     <span className="ml-2 inline-flex gap-1.5 align-middle">
                       <Badge tone="slate">{t(paper.language)}</Badge>
                       <Badge tone={paper.scope === "national" ? "navy" : "green"}>{t(paper.scope)}</Badge>
+                      {locked && <Badge tone="amber">{t("Temporarily Unavailable")} · {t("Rates updating")}</Badge>}
                     </span>
                     <span className="block text-xs text-zinc-500">
                       {t("{n}M readers", { n: parseFloat(paper.readership) })} · {t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) })}
@@ -162,7 +174,7 @@ export function Step1Selection() {
                     <ChevronDown className={cn("h-5 w-5 transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
                   </span>
                 </button>
-                {isOpen && (
+                {isOpen && !locked && (
                   <div id={`panel-${paper.id}`} className="border-t border-zinc-200/80 px-4 py-3">
                     {suggestions.length > 0 && (
                       <div className="mb-3 flex flex-wrap gap-2">

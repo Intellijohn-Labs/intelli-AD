@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getRatesVersion, setActiveRates, subscribeRates, type RateRow } from "./rates";
+import { getActiveRates, getRatesVersion, paperHasRates, setActiveRates, subscribeRates, type RateRow } from "./rates";
 import { createClient } from "./supabase/client";
 
 /** Re-renders the caller whenever the active rate book changes; include the value in useMemo deps of quote calculations. */
@@ -30,4 +30,14 @@ export async function loadRates(): Promise<RateRow[] | null> {
     console.warn("[rates] Couldn't load publication_rates (offline or table missing): using built-in default rates.", e instanceof Error ? e.message : e);
     return null;
   }
+}
+
+/**
+ * Booking availability per newspaper. Only once rates have loaded successfully: if they couldn't be loaded (offline,
+ * not configured) nothing is locked and the calculator uses built-in rates instead.
+ */
+export function useRateAvailability() {
+  useRatesVersion();
+  const book = getActiveRates();
+  return { loaded: book !== null, hasRates: (paperName: string) => book === null || paperHasRates(book, paperName) };
 }

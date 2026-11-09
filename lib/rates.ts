@@ -149,3 +149,7 @@ export function findRate(rates: RateBook | null, paperName: string, editionName:
   if (!best) warnOnce(`${paperName}|${editionName}|${categoryId}|${adType}`, `No rate for ${paperName} / ${editionName} / ${categoryId ?? "any category"} / ${adType}: using built-in default rate.`);
   return best;
 }
+
+/** True when the rate book has at least one usable rule (a base rate or a per-cm² rate) for the newspaper. */
+export const paperHasRates = (rates: RateBook, paperName: string) =>
+  rates.some((r) => norm(r.newspaper_name) === norm(paperName) && (r.base_rate > 0 || r.sq_cm_rate > 0));

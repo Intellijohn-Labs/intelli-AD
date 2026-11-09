@@ -20,6 +20,7 @@ export const BRAND: Record<string, Brand> = {
   chandrika: { primary: "#15803D", accent: "#84CC16" }, // green
   mangalam: { primary: "#7E22CE", accent: "#EC4899" }, // violet / magenta
   suprabhaatham: { primary: "#4338CA", accent: "#38BDF8" }, // indigo
+  deepika: { primary: "#B91C1C", accent: "#1D4ED8" }, // red / blue
   "the-hindu": { primary: "#1E3A8A", accent: "#64748B" },
   "times-of-india": { primary: "#C8102E", accent: "#F59E0B" },
   "new-indian-express": { primary: "#0F6B4F", accent: "#EAB308" },
