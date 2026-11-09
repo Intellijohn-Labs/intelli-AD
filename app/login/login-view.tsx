@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, User } from "lucide-react";
+import { Building2, ShieldAlert, User } from "lucide-react";
+import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,10 +38,12 @@ const TABS: { id: Tab; label: string; icon: typeof User }[] = [
 ];
 
 export function LoginView() {
-  const { user, ready } = useAuth();
+  const { user, ready, signOut } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const notice = params.get("auth") === "required";
+  const pendingNotice = params.get("notice") === "pending_approval";
+  const unauthorized = params.get("notice") === "unauthorized";
   const authFailed = params.get("error") === "auth_failed" || params.get("auth") === "error";
   const [tab, setTab] = useState<Tab>(params.get("tab") === "agency" ? "agency" : "user");
 
@@ -51,10 +54,12 @@ export function LoginView() {
 
   // Already signed in: partners go to their dashboard, customers Home (unless they came to switch to the partner tab).
   useEffect(() => {
-    if (!ready || !user) return;
-    if (user.is_agency) router.replace(homeFor(user));
-    else if (tab !== "agency" || user.partner_status === "pending") router.replace("/");
-  }, [ready, user, tab, router]);
+    if (!ready || !user || unauthorized) return; // bounced from /admin: stay and explain
+    if (user.is_admin) router.replace(homeFor(user));
+    else if (user.is_agency) router.replace(homeFor(user));
+    else if (user.partner_status === "pending") { if (!pendingNotice) router.replace("/"); } // pending partners stay for the notice
+    else if (tab !== "agency") router.replace("/");
+  }, [ready, user, tab, pendingNotice, unauthorized, router]);
 
   const agency = tab === "agency";
   return (
@@ -90,6 +95,19 @@ export function LoginView() {
           </div>
 
           <div id="login-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+            {pendingNotice && user?.partner_status === "pending" ? (
+              <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-center dark:border-amber-500/40 dark:bg-amber-500/10">
+                <ShieldAlert className="mx-auto h-8 w-8 text-amber-600" aria-hidden="true" />
+                <h2 className="mt-2 text-lg font-extrabold text-amber-950 dark:text-amber-100">Partner account pending</h2>
+                <p className="mt-2 text-sm text-amber-900 dark:text-amber-100">Your partner account is pending admin verification. You will be able to access the dashboard once approved.</p>
+                <p className="mt-1 text-sm text-amber-900 dark:text-amber-100">നിങ്ങളുടെ പാർട്ണർ അക്കൗണ്ട് പരിശോധനയിലാണ്. അഡ്മിൻ അംഗീകാരം ലഭിച്ച ഉടൻ ഡാഷ്‌ബോർഡ് ലഭ്യമാകും.</p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Link href="/book" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Book an ad meanwhile</Link>
+                  <button type="button" onClick={() => void signOut()} className="rounded-lg border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-500/20">Sign out</button>
+                </div>
+              </div>
+            ) : (<>
+            {unauthorized && <p role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-100">{user ? "This account doesn't have admin access. Sign in with an admin account to continue." : "Admin sign-in required. Please sign in with an admin account."}</p>}
             {authFailed && <p role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">That confirmation link didn't work or has expired. Sign in, or register again to get a new link.</p>}
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
@@ -109,6 +127,7 @@ export function LoginView() {
                 {agency ? <AgencyForm mode={mode} /> : <AuthForm mode={mode} notice={notice} />}
               </motion.div>
             </AnimatePresence>
+            </>)}
           </div>
         </div>
         <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to IntelliAd&apos;s Terms &amp; Privacy Policy.</p>

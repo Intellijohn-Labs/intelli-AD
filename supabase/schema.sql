@@ -54,3 +54,41 @@ create policy "anon can upload artwork" on storage.objects
 --      set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "akshaya"}'::jsonb   -- or "agency"
 --    where email = 'partner@example.com';
 -- The user signs out and in again to pick up the new role. To revoke: remove the "role" key from raw_app_meta_data.
+
+-- ── Publication rates (admin-managed rate card) ────────────────────────────────────────────────────────────────────
+-- The booking calculator reads these rows (public read). Only a user whose app_metadata.role is 'admin' may write.
+-- edition / category may be 'all' to cover every edition / category; the most specific match wins.
+create table if not exists public.publication_rates (
+  id uuid primary key default gen_random_uuid(),
+  newspaper_name text not null,
+  edition text not null default 'all',
+  category text not null default 'all',
+  ad_type text not null check (ad_type in ('classified-text', 'classified-display', 'commercial-display')),
+  base_rate numeric(12,2) not null default 0 check (base_rate >= 0),
+  extra_line_rate numeric(12,2) not null default 0 check (extra_line_rate >= 0),
+  sq_cm_rate numeric(12,2) not null default 0 check (sq_cm_rate >= 0),
+  color_surcharge_percent numeric(6,2) not null default 0 check (color_surcharge_percent between 0 and 500),
+  updated_at timestamptz not null default now(),
+  unique (newspaper_name, edition, category, ad_type)
+);
+
+alter table public.publication_rates enable row level security;
+
+drop policy if exists "rates are public" on public.publication_rates;
+create policy "rates are public" on public.publication_rates for select to anon, authenticated using (true);
+
+drop policy if exists "admins insert rates" on public.publication_rates;
+create policy "admins insert rates" on public.publication_rates for insert to authenticated
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+drop policy if exists "admins update rates" on public.publication_rates;
+create policy "admins update rates" on public.publication_rates for update to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+drop policy if exists "admins delete rates" on public.publication_rates;
+create policy "admins delete rates" on public.publication_rates for delete to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+-- Make someone an admin (they sign out and in again to pick it up):
+--   update auth.users
+--      set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+--    where email = 'you@example.com';

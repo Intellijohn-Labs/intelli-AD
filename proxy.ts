@@ -7,6 +7,8 @@ const SESSION_COOKIE = "intelliad_session";
 const DEV = process.env.NODE_ENV !== "production";
 
 interface Session {
+  /** Admin (app_metadata.role = "admin", set only by you in Supabase). */
+  admin?: boolean;
   /** Approved partner (app_metadata.role set by an admin). */
   agency: boolean;
   /** Registered as a partner and waiting for approval: may see the "pending" page, nothing more. */
@@ -16,9 +18,13 @@ interface Session {
 const isPartnerRole = (r: unknown) => r === "agency" || r === "akshaya";
 
 function sessionOf(u: User): Session {
+  const appRole = (u.app_metadata as { role?: string } | undefined)?.role;
+  const agency = isPartnerRole(appRole);
   return {
-    agency: isPartnerRole((u.app_metadata as { role?: string } | undefined)?.role),
-    pendingPartner: isPartnerRole((u.user_metadata as { role?: string } | undefined)?.role),
+    admin: appRole === "admin",
+    agency,
+    // Explicit "pending_approval", or a partner type requested at sign-up and not yet approved.
+    pendingPartner: !agency && (appRole === "pending_approval" || isPartnerRole((u.user_metadata as { role?: string } | undefined)?.role)),
   };
 }
 
@@ -71,16 +77,28 @@ export async function proxy(request: NextRequest) {
 
   // Partners go straight to their workspace; customers land on Home, unless they opened the partner tab to switch accounts.
   if (session && onLogin) {
+    // Bounced here from /admin: show the "not authorised" notice instead of redirecting again.
+    if (searchParams.get("notice") === "unauthorized") return response;
+    if (session.admin) return go("/admin/rates");
     if (session.agency) return go("/agency/dashboard");
+    // Pending partners stay on the login page when sent here with the notice; otherwise they are treated as customers.
+    if (session.pendingPartner && searchParams.get("notice") === "pending_approval") return response;
     if (searchParams.get("tab") !== "agency" || session.pendingPartner) return go("/");
   }
   if (onLogin) return response;
 
-  // The partner area: approved partners, plus pending partners (who only see the "awaiting approval" page).
-  if (inAgency && !(session && (session.agency || session.pendingPartner))) {
+  // The partner area is for approved partners only. Pending ones are sent to the notice; the rest to partner sign-in.
+  if (inAgency && !session?.agency) {
     const to = new URL("/login", request.url);
     to.searchParams.set("tab", "agency");
-    if (!session) to.searchParams.set("auth", "required");
+    if (session?.pendingPartner) to.searchParams.set("notice", "pending_approval");
+    else if (!session) to.searchParams.set("auth", "required");
+    return go(to);
+  }
+  // The admin area is for admins only; everyone else is sent to sign-in with a notice.
+  if ((pathname === "/admin" || pathname.startsWith("/admin/")) && !session?.admin) {
+    const to = new URL("/login", request.url);
+    to.searchParams.set("notice", "unauthorized");
     return go(to);
   }
   if (session) return response;

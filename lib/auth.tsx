@@ -14,6 +14,8 @@ export interface AuthUser {
   method: "phone" | "email" | "google";
   /** Agency / Akshaya partner profile. Absent or false for regular customers. */
   is_agency?: boolean;
+  /** Admin (app_metadata.role = "admin"). */
+  is_admin?: boolean;
   agency_name?: string;
   akshaya_code?: string;
   /** Opening wallet balance in INR. The live balance is kept in the agency ledger (lib/agency.ts). */
@@ -28,7 +30,7 @@ export interface AuthUser {
 }
 
 /** Where a signed-in user lands: partners go to their workspace, customers to Home. */
-export const homeFor = (u: Pick<AuthUser, "is_agency"> | null | undefined) => (u?.is_agency ? "/agency/dashboard" : "/");
+export const homeFor = (u: Pick<AuthUser, "is_agency" | "is_admin"> | null | undefined) => (u?.is_admin ? "/admin/rates" : u?.is_agency ? "/agency/dashboard" : "/");
 
 /** Cookie read by proxy.ts to gate routes. Keep the name in sync with it. */
 export const SESSION_COOKIE = "intelliad_session";

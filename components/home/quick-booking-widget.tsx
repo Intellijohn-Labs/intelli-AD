@@ -12,6 +12,7 @@ import { bookHref } from "@/lib/booking-params";
 import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
 import { comboSuggestions, estimateQuote, flagshipEdition } from "@/lib/pricing";
+import { useRatesVersion } from "@/lib/use-rates";
 import type { AdType } from "@/lib/types";
 import { cn, formatINR } from "@/lib/utils";
 
@@ -32,9 +33,10 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
   const [lines, setLines] = useState(5);
   const [height, setHeight] = useState(10);
   const isText = adType === "classified-text";
+  const ratesVersion = useRatesVersion();
   const quote = useMemo(
     () => estimateQuote(adType, eds.length ? { [paperId]: eds } : {}, isText ? { lines } : { heightCm: height }),
-    [adType, paperId, eds, lines, height, isText],
+    [adType, paperId, eds, lines, height, isText, ratesVersion], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const hint = comboSuggestions(paperId, eds)[0];
   const minLabel = adType === "classified-text" ? `${paper.rates.textMinLines} ${t("lines")}` : `${paper.rates.minDisplayCm2} cm²`;

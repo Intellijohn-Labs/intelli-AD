@@ -3,6 +3,7 @@ import { getNewspaper, newspapers } from "@/data/newspapers";
 import type { AdType, CategoryId, DisplaySpec, Enhancements, Newspaper } from "./types";
 import { displayWidth } from "./display";
 import { countWords, round2, wrapText } from "./utils";
+import { findRate, getActiveRates, type RateBook } from "./rates";
 
 export const GST_RATE = 0.18;
 
@@ -38,6 +39,8 @@ export interface QuoteInput {
   text?: string;
   enhancements?: Enhancements;
   display?: DisplaySpec;
+  /** Database rate book; defaults to the one loaded from `publication_rates` (null/missing rule → built-in rates). */
+  rates?: RateBook | null;
 }
 
 export interface EditionLine {
@@ -114,6 +117,7 @@ export function calculateQuote(input: QuoteInput): Quote {
   const display = input.display ?? DEFAULT_DISPLAY;
   const text = input.text ?? "";
   const isText = input.adType === "classified-text";
+  const rates = input.rates === undefined ? getActiveRates() : input.rates;
 
   const lines: EditionLine[] = [];
   const enhTotals: Record<string, number> = {};
@@ -148,11 +152,27 @@ export function calculateQuote(input: QuoteInput): Quote {
 
     for (const e of selected) {
       const w = e.weight * catMult;
+      const rule = findRate(rates, paper.name, e.name, input.category, input.adType);
       let unitLabel: string, extraUnitLabel: string;
       let baseUnits: number, extraUnits: number, rate: number, base: number, extra: number;
       let enhancements = 0;
 
-      if (isText) {
+      if (isText && rule) {
+        // Database rule: base_rate covers the minimum lines, then extra_line_rate per additional line.
+        baseUnits = r.textMinLines;
+        unitLabel = "lines";
+        rate = round2(rule.base_rate / Math.max(1, baseUnits));
+        base = round2(rule.base_rate);
+        extraUnits = Math.max(0, m.lines - baseUnits);
+        extraUnitLabel = "lines";
+        extra = round2(extraUnits * rule.extra_line_rate);
+        for (const key of ["bold", "border", "tint"] as const) {
+          if (!enh[key]) continue;
+          const amt = round2((base + extra) * ENHANCEMENT_PCT[key]);
+          enhancements += amt;
+          enhTotals[key] = (enhTotals[key] ?? 0) + amt;
+        }
+      } else if (isText) {
         rate = round2(r.textPerLine * w);
         baseUnits = r.textMinLines;
         unitLabel = "lines";
@@ -175,7 +195,8 @@ export function calculateQuote(input: QuoteInput): Quote {
         }
       } else {
         const perCm2 = input.adType === "classified-display" ? r.classifiedDisplayPerCm2 : r.commercialDisplayPerCm2;
-        rate = round2(perCm2 * w);
+        // Database rule: sq_cm_rate is final for this edition/category (no weight or category multiplier on top).
+        rate = rule ? round2(rule.sq_cm_rate) : round2(perCm2 * w);
         baseUnits = r.minDisplayCm2;
         unitLabel = "cm²";
         base = round2(baseUnits * rate);
@@ -183,7 +204,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         extraUnitLabel = "cm²";
         extra = round2(extraUnits * rate);
         if (display.colorMode === "color") {
-          const amt = round2((base + extra) * (r.colorPremiumPct / 100));
+          const amt = round2((base + extra) * ((rule ? rule.color_surcharge_percent : r.colorPremiumPct) / 100));
           enhancements += amt;
           enhTotals.color = (enhTotals.color ?? 0) + amt;
         }

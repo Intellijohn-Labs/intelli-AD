@@ -14,6 +14,7 @@ import { SIZE_PRESETS } from "@/lib/display";
 import { applySpacing, type ParagraphSpacing } from "@/lib/paragraphs";
 import { ParagraphField } from "@/components/booking/paragraph-field";
 import { calculateQuote } from "@/lib/pricing";
+import { useRatesVersion } from "@/lib/use-rates";
 import type { AdType, CategoryId, ColorMode } from "@/lib/types";
 import { cn, formatDate, formatINR } from "@/lib/utils";
 
@@ -184,9 +185,10 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
   const releaseDate = date || minDate;
 
   const printText = isDisplay ? text : applySpacing(text, spacing);
+  const ratesVersion = useRatesVersion();
   const quote = useMemo(
     () => calculateQuote({ adType: kind.adType, category, selection: { [paperId]: [editionId] }, text: printText, display: { columns: Math.max(1, Math.round(preset.widthCm / paper.rates.colWidthCm)), widthCm: preset.widthCm, heightCm: preset.heightCm, colorMode: color } }),
-    [kind, category, paperId, editionId, printText, preset, color, paper],
+    [kind, category, paperId, editionId, printText, preset, color, paper, ratesVersion], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const t = quote.totals;
   const commission = Math.round(t.taxable * rate) / 100;

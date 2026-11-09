@@ -8,6 +8,9 @@ export const isPartnerRole = (r: unknown): r is "akshaya" | "agency" => r === "a
 /** Default commission by partner type. */
 const COMMISSION: Record<"akshaya" | "agency", number> = { akshaya: 15, agency: 10 };
 
+/** Registered as a partner but not yet approved. */
+export const isPendingApproval = (u: User) => !isPartnerRole((u.app_metadata as { role?: string } | undefined)?.role) && (isPartnerRole((u.user_metadata as { role?: string } | undefined)?.role) || (u.app_metadata as { role?: string } | undefined)?.role === "pending_approval");
+
 /**
  * Supabase user -> app user.
  * Trust model: `user_metadata` is written by the user at sign-up (anyone can claim role=agency), so it only records
@@ -16,8 +19,10 @@ const COMMISSION: Record<"akshaya" | "agency", number> = { akshaya: 15, agency: 
  */
 export function userFromSupabase(u: User): AuthUser {
   const meta = (u.user_metadata ?? {}) as Record<string, string | undefined>;
-  const approved = isPartnerRole((u.app_metadata as { role?: string } | undefined)?.role) ? ((u.app_metadata as { role: "akshaya" | "agency" }).role) : null;
-  const requested = isPartnerRole(meta.role) ? meta.role : null;
+  const appRole = (u.app_metadata as { role?: string } | undefined)?.role;
+  const approved = isPartnerRole(appRole) ? appRole : null;
+  // "pending_approval" (set explicitly by an admin) or a partner type the user asked for at sign-up: both wait for approval.
+  const requested = isPartnerRole(meta.role) ? meta.role : appRole === "pending_approval" ? "agency" : null;
   const type = approved ?? requested;
   const name = meta.agency_name || meta.full_name || u.email?.split("@")[0] || u.phone || "Account";
   return {
@@ -25,6 +30,7 @@ export function userFromSupabase(u: User): AuthUser {
     identifier: u.email ?? u.phone ?? "",
     method: u.email ? "email" : "phone",
     is_agency: !!approved,
+    is_admin: appRole === "admin",
     partner_status: approved ? "approved" : requested ? "pending" : undefined,
     contact_name: meta.full_name,
     agency_name: type ? meta.agency_name : undefined,

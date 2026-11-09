@@ -12,6 +12,7 @@ import { getCategory } from "@/data/categories";
 import { useI18n } from "@/context/language-context";
 import { bookHref } from "@/lib/booking-params";
 import { calculateQuote, flagshipEdition } from "@/lib/pricing";
+import { useRatesVersion } from "@/lib/use-rates";
 import { usePublication } from "@/lib/publication";
 import type { Template } from "@/lib/types";
 import { formatINR, wrapText } from "@/lib/utils";
@@ -39,6 +40,7 @@ export function TemplateCard({ tpl, index = 0 }: { tpl: Template; index?: number
   const { paper } = usePublication();
   const cat = getCategory(tpl.categoryId)!;
   const flagship = flagshipEdition(paper);
+  useRatesVersion();
   const estimate = calculateQuote({ adType: "classified-text", category: tpl.categoryId, selection: { [paper.id]: [flagship.id] }, text: tpl.body }).totals.total;
 
   return (

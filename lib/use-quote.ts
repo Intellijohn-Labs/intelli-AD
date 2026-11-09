@@ -4,13 +4,16 @@ import { useMemo } from "react";
 import { calculateQuote, type QuoteInput } from "./pricing";
 import type { BookingState } from "./booking-store";
 import { applySpacing } from "./paragraphs";
+import { useRatesVersion } from "./use-rates";
 
 /** Reactive wrapper around the pure rate calculator. */
 export function useQuote(input: QuoteInput) {
   const { adType, category, selection, text, enhancements, display } = input;
+  const ratesVersion = useRatesVersion(); // recompute when database rates load or change
   return useMemo(
     () => calculateQuote({ adType, category, selection, text, enhancements, display }),
-    [adType, category, selection, text, enhancements, display],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [adType, category, selection, text, enhancements, display, ratesVersion],
   );
 }
 

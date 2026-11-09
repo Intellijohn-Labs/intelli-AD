@@ -7,6 +7,7 @@ import { Field, Input } from "@/components/ui/field";
 import { homeFor, useAuth, type AuthUser } from "@/lib/auth";
 import { OPENING_WALLET } from "@/lib/agency";
 import { register, signInWithPassword, userFromSupabase } from "@/lib/supabase/auth";
+import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 
 const DEV = process.env.NODE_ENV !== "production";
@@ -34,6 +35,13 @@ export function AgencyForm({ mode }: { mode: "signin" | "register" }) {
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const meta = TYPES.find((t) => t.id === type)!;
 
+  // Approved partners go to the dashboard. Anyone still pending stays here and sees the verification notice instead.
+  const land = (user: User) => {
+    const u = userFromSupabase(user);
+    if (u.is_agency) { celebrate(); router.push(homeFor(u)); } else router.replace("/login?tab=agency&notice=pending_approval");
+    router.refresh();
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const next: Record<string, string> = {};
@@ -52,14 +60,12 @@ export function AgencyForm({ mode }: { mode: "signin" | "register" }) {
       setBusy(false);
       if (r.error) return setErr({ form: r.error });
       if (r.needsConfirm) return setConfirmEmail(email.trim());
-      if (r.user) { celebrate(); router.push(homeFor(userFromSupabase(r.user))); router.refresh(); }
+      if (r.user) land(r.user);
     } else {
       const r = await signInWithPassword(email.trim(), password);
       setBusy(false);
       if (r.error || !r.user) return setErr({ form: r.error ?? "Could not sign in." });
-      celebrate();
-      router.push(homeFor(userFromSupabase(r.user)));
-      router.refresh();
+      land(r.user);
     }
   };
 
