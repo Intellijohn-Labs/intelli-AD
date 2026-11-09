@@ -1,27 +1,23 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-// Keep in sync with SESSION_COOKIE in lib/auth.tsx.
-const SESSION_COOKIE = "intelliad_session";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * A partner's bookings, read with the server-only service-role key (the browser key cannot read the table).
- * NOTE: the partner code comes from the session cookie, which is set by the browser and can be forged until real
- * authentication (e.g. Supabase Auth) replaces it. Do not treat this as access control for real customer data.
+ * Access is limited to approved partners and to their own centre code, taken from the verified session.
  */
 export async function GET() {
   const admin = createAdminClient();
   // No service-role key: not an error, the dashboard simply runs on this device's own bookings.
   if (!admin) return NextResponse.json({ bookings: [], localMode: true });
 
-  const raw = (await cookies()).get(SESSION_COOKIE)?.value;
-  let code: string | undefined;
-  try {
-    const u = raw ? JSON.parse(decodeURIComponent(raw)) : null;
-    if (u?.is_agency === true && typeof u.akshaya_code === "string") code = u.akshaya_code;
-  } catch { /* malformed cookie */ }
-  if (!code) return NextResponse.json({ error: "Partner session required" }, { status: 401 });
+  // The partner is identified by the verified Supabase session, and must be an approved partner (app_metadata.role).
+  const supabase = await createClient();
+  const { data: auth } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
+  const u = auth.user;
+  const role = (u?.app_metadata as { role?: string } | undefined)?.role;
+  const code = (u?.user_metadata as { center_code?: string } | undefined)?.center_code;
+  if (!u || (role !== "agency" && role !== "akshaya") || !code) return NextResponse.json({ error: "Approved partner session required" }, { status: 401 });
 
   const { data, error } = await admin
     .from("bookings")

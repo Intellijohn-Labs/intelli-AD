@@ -82,6 +82,7 @@ export function useAgencyLedger(user: AuthUser | null) {
     let cancelled = false;
     fetch("/api/agency/bookings", { cache: "no-store" })
       .then(async (r) => {
+        if (r.status === 401) return { status: "local" as const, note: "" }; // demo / not-yet-approved session: no server data
         if (!r.ok) return { status: "error" as const, note: `Could not load bookings (${r.status}).` };
         const body = (await r.json()) as { bookings: BookingRow[]; localMode?: boolean };
         if (body.localMode) return { status: "local" as const, note: "" };

@@ -3,6 +3,8 @@
 import { AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { MalayalamRainLoader } from "@/components/ui/malayalam-rain-loader";
+import { createClient } from "@/lib/supabase/client";
+import { signOutSupabase, userFromSupabase } from "@/lib/supabase/auth";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 export interface AuthUser {
@@ -19,6 +21,10 @@ export interface AuthUser {
   /** Partner commission as a percentage of the pre-GST booking value. */
   commission_rate?: number;
   partner_type?: "akshaya" | "csc" | "agency";
+  /** "approved" once an admin has set app_metadata.role; "pending" right after a partner registers. */
+  partner_status?: "approved" | "pending";
+  contact_name?: string;
+  phone?: string;
 }
 
 /** Where a signed-in user lands: partners go to their workspace, customers to Home. */
@@ -28,7 +34,7 @@ export const homeFor = (u: Pick<AuthUser, "is_agency"> | null | undefined) => (u
 export const SESSION_COOKIE = "intelliad_session";
 const REMEMBER_DAYS = 30;
 
-export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/");
+export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/") || p.startsWith("/auth/");
 
 function readSession(): AuthUser | null {
   try {
@@ -48,20 +54,24 @@ function clearSession() {
   document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
+const DEV = process.env.NODE_ENV !== "production";
+
 interface Ctx {
   user: AuthUser | null;
   /** False until the saved session has been read. */
   ready: boolean;
+  /** Development-only quick sign-in helper (a local cookie, not a real account). Does nothing in production. */
   signIn: (user: AuthUser, remember: boolean) => void;
-  signOut: () => void;
+  /** Plays the welcome animation after a real sign-in. */
+  celebrate: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<Ctx | null>(null);
 
 /**
- * Front-end-only session kept in a cookie so proxy.ts can gate routes server-side.
- * There is no backend yet, so every sign-in method is simulated and the cookie is NOT
- * tamper-proof: swap it for a signed, httpOnly session set by a real auth API.
+ * Session state from Supabase Auth (cookie session, refreshed by proxy.ts), kept in sync through
+ * onAuthStateChange. In development only, a local "demo" cookie can stand in for a signed-in user.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -71,12 +81,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUser(readSession());
-    setReady(true);
+    const supabase = createClient();
+    const fallback = () => (DEV ? readSession() : null); // demo cookie, development only
+    if (!supabase) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUser(fallback());
+      setReady(true);
+      return;
+    }
+    void supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session ? userFromSupabase(data.session.user) : fallback());
+      setReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session ? userFromSupabase(session.user) : fallback());
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Client-side guard (backs up proxy.ts, e.g. when the cookie expires mid-visit).
+  // Client-side guard (backs up proxy.ts, e.g. when the session expires mid-visit).
   useEffect(() => {
     if (ready && !user && !isPublicPath(pathname)) {
       router.replace(pathname.startsWith("/agency") ? "/login?tab=agency&auth=required" : "/login?auth=required");
@@ -84,18 +107,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [ready, user, pathname, router]);
 
   const signIn = useCallback((u: AuthUser, remember: boolean) => {
+    if (!DEV) return;
     writeSession(u, remember);
     setUser(u);
-    setCelebrating(true); // Malayalam letter-rain celebration, shown only on a fresh sign-in
+    setCelebrating(true);
   }, []);
-  const signOut = useCallback(() => {
+  const celebrate = useCallback(() => setCelebrating(true), []);
+  const signOut = useCallback(async () => {
+    const wasPartner = !!user && (!!user.is_agency || !!user.partner_status);
     clearSession();
     try { sessionStorage.removeItem("intelliad.booking.v1"); } catch { /* ignore */ } // drop the in-progress draft
+    await signOutSupabase();
     setUser(null);
-    router.replace(user?.is_agency ? "/login?tab=agency" : "/login?tab=user");
+    router.replace(wasPartner ? "/login?tab=agency" : "/login?tab=user");
   }, [router, user]);
 
-  const value = useMemo(() => ({ user, ready, signIn, signOut }), [user, ready, signIn, signOut]);
+  const value = useMemo(() => ({ user, ready, signIn, celebrate, signOut }), [user, ready, signIn, celebrate, signOut]);
   const blocked = ready && !user && !isPublicPath(pathname);
   return (
     <AuthContext.Provider value={value}>

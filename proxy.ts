@@ -1,50 +1,94 @@
+import { createServerClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Keep in sync with SESSION_COOKIE in lib/auth.tsx (proxy must not import client modules).
+// Legacy demo cookie (development only). Keep the name in sync with SESSION_COOKIE in lib/auth.tsx.
 const SESSION_COOKIE = "intelliad_session";
+const DEV = process.env.NODE_ENV !== "production";
 
-/** Reads the (client-set, not tamper-proof) session cookie: null when absent or malformed. */
-function readSession(request: NextRequest): { is_agency: boolean } | null {
+interface Session {
+  /** Approved partner (app_metadata.role set by an admin). */
+  agency: boolean;
+  /** Registered as a partner and waiting for approval: may see the "pending" page, nothing more. */
+  pendingPartner: boolean;
+}
+
+const isPartnerRole = (r: unknown) => r === "agency" || r === "akshaya";
+
+function sessionOf(u: User): Session {
+  return {
+    agency: isPartnerRole((u.app_metadata as { role?: string } | undefined)?.role),
+    pendingPartner: isPartnerRole((u.user_metadata as { role?: string } | undefined)?.role),
+  };
+}
+
+function demoSession(request: NextRequest): Session | null {
+  if (!DEV) return null; // never honoured in production
   const raw = request.cookies.get(SESSION_COOKIE)?.value;
   if (!raw) return null;
   try {
     const u = JSON.parse(decodeURIComponent(raw));
-    return typeof u?.name === "string" ? { is_agency: u.is_agency === true } : null;
+    return typeof u?.name === "string" ? { agency: u.is_agency === true, pendingPartner: false } : null;
   } catch {
     return null;
   }
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
-  const session = readSession(request);
+  let response = NextResponse.next({ request });
+  let session: Session | null = null;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (url && key) {
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll(list) {
+          // Refreshed tokens must reach both this request and the browser.
+          list.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          list.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    });
+    // getUser() validates the token with Supabase (getSession() would trust the cookie).
+    const { data } = await supabase.auth.getUser();
+    if (data.user) session = sessionOf(data.user);
+  }
+  session ??= demoSession(request);
+
+  const go = (to: string | URL) => {
+    const res = NextResponse.redirect(typeof to === "string" ? new URL(to, request.url) : to);
+    response.cookies.getAll().forEach((c) => res.cookies.set(c)); // keep any refreshed session cookies
+    return res;
+  };
+
   const onLogin = pathname === "/login" || pathname.startsWith("/login/");
   const inAgency = pathname === "/agency" || pathname.startsWith("/agency/");
+  if (pathname.startsWith("/auth/")) return response; // email-confirmation callback
 
   // Partners go straight to their workspace; customers land on Home, unless they opened the partner tab to switch accounts.
   if (session && onLogin) {
-    if (session.is_agency) return NextResponse.redirect(new URL("/agency/dashboard", request.url));
-    if (searchParams.get("tab") !== "agency") return NextResponse.redirect(new URL("/", request.url));
+    if (session.agency) return go("/agency/dashboard");
+    if (searchParams.get("tab") !== "agency" || session.pendingPartner) return go("/");
   }
-  if (onLogin) return NextResponse.next();
+  if (onLogin) return response;
 
-  // The partner area is for agency sessions only; /agency/login forwards to the unified login's partner tab.
-  if (inAgency && !session?.is_agency) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = "";
-    url.searchParams.set("tab", "agency");
-    if (!session) url.searchParams.set("auth", "required");
-    return NextResponse.redirect(url);
+  // The partner area: approved partners, plus pending partners (who only see the "awaiting approval" page).
+  if (inAgency && !(session && (session.agency || session.pendingPartner))) {
+    const to = new URL("/login", request.url);
+    to.searchParams.set("tab", "agency");
+    if (!session) to.searchParams.set("auth", "required");
+    return go(to);
   }
-  if (session) return NextResponse.next();
+  if (session) return response;
 
-  // Guests: everything else requires a session. Login always lands on Home afterwards, so no return path is kept.
-  const url = request.nextUrl.clone();
-  url.pathname = "/login";
-  url.search = "";
-  url.searchParams.set("auth", "required");
-  return NextResponse.redirect(url);
+  // Guests: everything else requires a session.
+  const to = new URL("/login", request.url);
+  to.searchParams.set("auth", "required");
+  return go(to);
 }
 
 export const config = {

@@ -43,6 +43,16 @@ export function AgencyDashboard() {
   const [last, setLast] = useState<AgencyBooking | null>(null);
 
   if (!ready || !user) return null;
+  if (!user.is_agency && user.partner_status === "pending") {
+    return (
+      <div className="mx-auto max-w-lg px-6 py-20 text-center">
+        <Building2 className="mx-auto h-10 w-10 text-amber-600" aria-hidden="true" />
+        <h1 className="mt-4 text-xl font-extrabold">Partner account awaiting approval</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-200">Thanks for registering{user.agency_name ? ` ${user.agency_name}` : ""}. IntelliAd verifies every centre and agency before switching on the partner dashboard. You can keep booking ads as a customer meanwhile.</p>
+        <Link href="/book" className="mt-5 inline-block rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-bold text-white">Book an ad</Link>
+      </div>
+    );
+  }
   if (!user.is_agency) {
     return (
       <div className="mx-auto max-w-lg px-6 py-20 text-center">

@@ -41,18 +41,19 @@ export function LoginView() {
   const router = useRouter();
   const params = useSearchParams();
   const notice = params.get("auth") === "required";
+  const authFailed = params.get("error") === "auth_failed" || params.get("auth") === "error";
   const [tab, setTab] = useState<Tab>(params.get("tab") === "agency" ? "agency" : "user");
 
-  const pick = (t: Tab) => {
-    setTab(t);
-    window.history.replaceState(null, "", `/login?tab=${t}`); // keeps the link shareable without a server round-trip
-  };
+  const [mode, setMode] = useState<"signin" | "register">(params.get("mode") === "register" ? "register" : "signin");
+  const sync = (t: Tab, m: "signin" | "register") => window.history.replaceState(null, "", `/login?tab=${t}${m === "register" ? "&mode=register" : ""}`); // shareable, no server round-trip
+  const pick = (t: Tab) => { setTab(t); sync(t, mode); };
+  const pickMode = (m: "signin" | "register") => { setMode(m); sync(tab, m); };
 
   // Already signed in: partners go to their dashboard, customers Home (unless they came to switch to the partner tab).
   useEffect(() => {
     if (!ready || !user) return;
     if (user.is_agency) router.replace(homeFor(user));
-    else if (tab !== "agency") router.replace("/");
+    else if (tab !== "agency" || user.partner_status === "pending") router.replace("/");
   }, [ready, user, tab, router]);
 
   const agency = tab === "agency";
@@ -89,13 +90,23 @@ export function LoginView() {
           </div>
 
           <div id="login-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+            {authFailed && <p role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">That confirmation link didn't work or has expired. Sign in, or register again to get a new link.</p>}
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
-                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{agency ? "Partner & Agency Portal" : "Welcome Back"}</h2>
-                <p className="mt-1 mb-5 text-sm text-slate-600 dark:text-slate-200">
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                  {agency ? (mode === "register" ? "Register as a Partner" : "Partner & Agency Portal") : mode === "register" ? "Create your account" : "Welcome Back"}
+                </h2>
+                <p className="mt-1 mb-4 text-sm text-slate-600 dark:text-slate-200">
                   {agency ? "Official gateway for Akshaya Centres, Jan Seva Kendras, and Registered Agencies" : "Book and manage your newspaper and media advertisements"}
                 </p>
-                {agency ? <AgencyForm /> : <AuthForm notice={notice} />}
+                <div role="group" aria-label="Sign in or register" className="mb-5 flex gap-4 border-b border-slate-200 text-sm font-bold dark:border-slate-700">
+                  {(["signin", "register"] as const).map((m) => (
+                    <button key={m} type="button" aria-pressed={mode === m} onClick={() => pickMode(m)} className={cn("-mb-px border-b-2 pb-2 transition-colors", mode === m ? "border-blue-600 text-blue-700 dark:text-sky-300" : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-300")}>
+                      {m === "signin" ? "Sign In" : "Create Account"}
+                    </button>
+                  ))}
+                </div>
+                {agency ? <AgencyForm mode={mode} /> : <AuthForm mode={mode} notice={notice} />}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -46,3 +46,11 @@ create policy "anon can upload artwork" on storage.objects
 
 -- Check there is no leftover policy that lets the public key READ bookings (this must return no rows for anon / public):
 --   select policyname, roles, cmd, qual from pg_policies where tablename = 'bookings';
+
+-- ── Partner approval (Supabase Auth) ───────────────────────────────────────────
+-- Anyone can register asking to be a partner: sign-up stores role/center_code/agency_name in user_metadata, which the
+-- user controls. Partner access follows app_metadata.role, which only you can set. Approve a partner by email:
+--   update auth.users
+--      set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "akshaya"}'::jsonb   -- or "agency"
+--    where email = 'partner@example.com';
+-- The user signs out and in again to pick up the new role. To revoke: remove the "role" key from raw_app_meta_data.

@@ -31,8 +31,8 @@ export function Header() {
   // Partners (or anyone already inside the partner area) never see a link to the page they are on.
   const inPartnerArea = !!user?.is_agency || pathname.startsWith("/agency") || pathname.startsWith("/partner");
   const logout = (
-    <button type="button" onClick={signOut} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black dark:border-[#2B3D6B] dark:text-white dark:hover:border-white">
-      <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> {t("Logout")}
+    <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black dark:border-[#2B3D6B] dark:text-white dark:hover:border-white">
+      <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> Sign Out
     </button>
   );
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
