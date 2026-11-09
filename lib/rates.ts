@@ -38,7 +38,10 @@ export interface PaperSettings {
   enabled_editions: string[] | null;
 }
 
-export const RATE_COLUMNS = ["newspaper_name", "edition", "category", "ad_type", "min_lines", "min_sq_cm", "cutoff_days", "cutoff_time", "gst_included", "base_rate", "extra_line_rate", "sq_cm_rate", "color_surcharge_percent"] as const;
+/** Field keys in template column order. */
+export const RATE_COLUMNS = ["newspaper_name", "edition", "category", "ad_type", "base_rate", "extra_line_rate", "sq_cm_rate", "min_lines", "min_sq_cm", "cutoff_days", "cutoff_time", "color_surcharge_percent", "gst_included"] as const;
+/** Header text of each template column (the first column is headed "newspaper"). */
+export const TEMPLATE_HEADERS: string[] = RATE_COLUMNS.map((c) => (c === "newspaper_name" ? "newspaper" : c));
 /** Locked (identity) columns of the template; everything after them is editable. */
 export const LOCKED_COLUMNS = 4;
 export const CONFLICT_KEY = "newspaper_name,edition,category,ad_type";
@@ -66,7 +69,7 @@ export const HEADER_ERROR = "Invalid template format: Column headers must not be
 export function headersValid(headers: unknown[]): boolean {
   const h = headers.map((x) => String(x ?? "").trim());
   while (h.length && h[h.length - 1] === "") h.pop(); // ignore trailing empty cells
-  return h.length === RATE_COLUMNS.length && RATE_COLUMNS.every((c, i) => h[i] === c);
+  return h.length === TEMPLATE_HEADERS.length && TEMPLATE_HEADERS.every((c, i) => h[i] === c);
 }
 
 export interface Permutation {

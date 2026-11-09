@@ -1,6 +1,6 @@
 "use client";
 
-import { LOCKED_COLUMNS, permutations, RATE_COLUMNS, type RateRow } from "./rates";
+import { editionEnabled, LOCKED_COLUMNS, permutations, RATE_COLUMNS, TEMPLATE_HEADERS, type RateRow } from "./rates";
 import type { Newspaper } from "./types";
 
 /** Advisory only: sheet protection can be removed in Excel, so the upload parser re-checks headers and every row. */
@@ -16,13 +16,14 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
   const ws = wb.addWorksheet("rates", { views: [{ state: "frozen", ySplit: 1 }] });
   const current = new Map(existing.filter((r) => r.newspaper_name === paper.name).map((r) => [`${r.edition}|${r.category}|${r.ad_type}`, r]));
 
-  ws.columns = RATE_COLUMNS.map((key) => ({ header: key, key, width: key === "newspaper_name" ? 22 : key === "ad_type" ? 20 : key === "category" ? 18 : 16 }));
+  ws.columns = RATE_COLUMNS.map((key, i) => ({ header: TEMPLATE_HEADERS[i], key, width: key === "newspaper_name" ? 22 : key === "ad_type" ? 20 : key === "category" ? 18 : 16 }));
   const header = ws.getRow(1);
   header.font = { bold: true, color: { argb: "FFFFFFFF" } };
   header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A8A" } };
 
   const num = (v: number | null | undefined) => (v ? v : null);
-  for (const p of permutations(paper)) {
+  // "all" plus every edition currently offered for booking, for each ad type
+  for (const p of permutations(paper).filter((x) => x.edition === "all" || editionEnabled(paper.name, x.edition))) {
     const cur = current.get(`${p.edition}|${p.category}|${p.ad_type}`);
     const row = ws.addRow({
       newspaper_name: paper.name, edition: p.edition, category: p.category, ad_type: p.ad_type,
@@ -50,7 +51,7 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
   const help = wb.addWorksheet("help");
   help.addRows([
     ["IntelliAd rate template for " + paper.name],
-    ["Fill the yellow cells only. Headings, newspaper_name, edition, category and ad_type are locked; do not rename or reorder columns."],
+    ["Fill the yellow cells only. Headings, newspaper, edition, category and ad_type are locked; do not rename or reorder columns."],
     ["Leave every yellow cell of a row empty for combinations you don't want to publish."],
     ["classified-text rows: base_rate (price for the minimum lines) is required; extra_line_rate is the price per extra line; min_lines is the minimum billable lines."],
     ["classified-display / commercial-display rows: sq_cm_rate is required; min_sq_cm is the minimum billable area; color_surcharge_percent is the extra % for colour."],
@@ -69,7 +70,7 @@ export async function downloadProtectedTemplate(paper: Newspaper, existing: Rate
   const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = `intelliad-rates-${paper.id}.xlsx`;
+  a.download = `IntelliAd_${paper.name.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "")}_Rate_Template.xlsx`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

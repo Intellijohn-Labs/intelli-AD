@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { newspapers } from "@/data/newspapers";
 import { downloadProtectedTemplate } from "@/lib/rate-template";
-import { getActiveRates, HEADER_ERROR, RATE_COLUMNS, headersValid, validateRows, type RowResult } from "@/lib/rates";
+import { getActiveRates, HEADER_ERROR, RATE_COLUMNS, TEMPLATE_HEADERS, headersValid, validateRows, type RowResult } from "@/lib/rates";
 import { loadRates } from "@/lib/use-rates";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +116,7 @@ export function RateManager({ paper: paperName }: { paper: string }) {
             <div className="mt-3 max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="w-full min-w-[1100px] text-left text-xs">
                 <thead className="sticky top-0 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>
-                  <th className="px-2 py-2">Row</th>{RATE_COLUMNS.map((c) => <th key={c} className="px-2 py-2 font-semibold">{c}</th>)}<th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2">Row</th>{TEMPLATE_HEADERS.map((c) => <th key={c} className="px-2 py-2 font-semibold">{c}</th>)}<th className="px-2 py-2">Status</th>
                 </tr></thead>
                 <tbody>
                   {results.filter((r) => !r.skipped).map((r) => (

@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircle2, FileSpreadsheet, Newspaper, Settings, Table2, TriangleAlert, X } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, Newspaper, Settings, Table2, TriangleAlert, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BRAND, DEFAULT_BRAND } from "@/data/brand-colors";
 import { newspapers } from "@/data/newspapers";
+import { downloadProtectedTemplate } from "@/lib/rate-template";
 import { getActiveRates, paperHasRates } from "@/lib/rates";
 import { loadRates, useRatesVersion } from "@/lib/use-rates";
 import { RateManager } from "./rate-manager";
@@ -62,12 +63,11 @@ export function NewspaperDirectory() {
                 <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />Missing · no rate sheet uploaded</p>
               )}
               <div className="mt-2 flex flex-wrap gap-1">{FORMATS.map((f) => <span key={f} className="rounded-full border border-slate-300 px-2 py-0.5 text-[11px] text-slate-600 dark:border-slate-600 dark:text-slate-300">{f}</span>)}</div>
-              <div className="mt-4 pt-1">
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setOpen({ id: n.id, mode: "upload" })} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel / Update Rates</button>
-                  <button type="button" onClick={() => setOpen({ id: n.id, mode: "table" })} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Table2 className="h-3.5 w-3.5" aria-hidden="true" />Edit Rates in Table</button>
-                  <button type="button" onClick={() => setOpen({ id: n.id, mode: "settings" })} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Settings className="h-3.5 w-3.5" aria-hidden="true" />Publication Settings</button>
-                </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 pt-1">
+                <button type="button" onClick={() => void downloadProtectedTemplate(n, getActiveRates() ?? [])} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"><Download className="h-3.5 w-3.5" aria-hidden="true" />Download Template</button>
+                <button type="button" onClick={() => setOpen({ id: n.id, mode: "upload" })} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><Upload className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel</button>
+                <button type="button" onClick={() => setOpen({ id: n.id, mode: "table" })} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Table2 className="h-3.5 w-3.5" aria-hidden="true" />Edit in Table</button>
+                <button type="button" onClick={() => setOpen({ id: n.id, mode: "settings" })} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Settings className="h-3.5 w-3.5" aria-hidden="true" />Settings</button>
               </div>
             </li>
           );
