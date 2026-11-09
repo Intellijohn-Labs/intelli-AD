@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { RateManager } from "@/components/admin/rate-manager";
+import { NewspaperDirectory } from "@/components/admin/newspaper-directory";
 
-export const metadata: Metadata = { title: "Rate Cards" };
+export const metadata: Metadata = { title: "Newspapers & Rates" };
 
 export default function RatesPage() {
-  return <RateManager />;
+  return <NewspaperDirectory />;
 }

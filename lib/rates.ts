@@ -31,8 +31,8 @@ const normAdType = (s: unknown) => norm(s).replace(/[_\s]+/g, "-");
 const isAll = (s: unknown) => ["all", "*", "any", ""].includes(norm(s));
 
 /** Sample rows for the downloadable template (real newspaper, edition and category names from the app). */
-export function sampleRows(): RateRow[] {
-  const p = newspapers[0];
+export function sampleRows(paperName?: string): RateRow[] {
+  const p = newspapers.find((n) => n.name === paperName) ?? newspapers[0];
   return [
     { newspaper_name: p.name, edition: p.editions[0].name, category: "matrimonial", ad_type: "classified-text", base_rate: 450, extra_line_rate: 150, sq_cm_rate: 0, color_surcharge_percent: 0 },
     { newspaper_name: p.name, edition: ALL, category: ALL, ad_type: "classified-display", base_rate: 0, extra_line_rate: 0, sq_cm_rate: 380, color_surcharge_percent: 25 },

@@ -18,10 +18,15 @@ const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 d
 /** Excel header → canonical column key ("Base Rate", "base-rate" → base_rate). */
 const headerKey = (h: string) => h.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
-export function RateManager() {
+/**
+ * Rate sheet upload + rate list. With `paper`, everything is scoped to that publication: the template is pre-filled for
+ * it, a blank newspaper_name is filled in, rows for other publications are rejected, and only its rates are listed.
+ */
+export function RateManager({ paper, focus }: { paper?: string; focus?: "upload" | "rates" }) {
   const toast = useToast();
   const sb = createClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLElement>(null);
 
   const [fileName, setFileName] = useState("");
   const [results, setResults] = useState<RowResult[] | null>(null);
@@ -42,11 +47,12 @@ export function RateManager() {
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { if (focus === "rates") listRef.current?.scrollIntoView({ block: "start" }); }, [focus, loading]);
 
   // ── Template ────────────────────────────────────────────────────────────────────────────────────────────────────
   async function downloadTemplate() {
     const XLSX = await import("xlsx");
-    const ws = XLSX.utils.json_to_sheet(sampleRows(), { header: [...RATE_COLUMNS] });
+    const ws = XLSX.utils.json_to_sheet(sampleRows(paper), { header: [...RATE_COLUMNS] });
     ws["!cols"] = RATE_COLUMNS.map((c) => ({ wch: Math.max(14, c.length + 2) }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "rates");
@@ -63,7 +69,7 @@ export function RateManager() {
     ]);
     notes["!cols"] = [{ wch: 26 }, { wch: 110 }];
     XLSX.utils.book_append_sheet(wb, notes, "help");
-    XLSX.writeFile(wb, "intelliad-rate-card-template.xlsx");
+    XLSX.writeFile(wb, `intelliad-rate-template${paper ? `-${paper.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""}.xlsx`);
   }
 
   // ── Parse ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -80,11 +86,17 @@ export function RateManager() {
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
       if (!rows.length) return setParseError("No data rows found under the header row.");
       if (rows.length > MAX_ROWS) return setParseError(`Too many rows (${rows.length}); the limit is ${MAX_ROWS} per upload.`);
-      const normalised = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [headerKey(k), v])));
+      const normalised = rows.map((r) => {
+        const o = Object.fromEntries(Object.entries(r).map(([k, v]) => [headerKey(k), v]));
+        if (paper && !String(o.newspaper_name ?? "").trim()) o.newspaper_name = paper; // blank → this publication
+        return o;
+      });
       const have = new Set(Object.keys(normalised[0]));
-      const missing = RATE_COLUMNS.filter((c) => !have.has(c));
+      const missing = RATE_COLUMNS.filter((c) => !have.has(c) && !(paper && c === "newspaper_name"));
       if (missing.length) return setParseError(`Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}. Download the template for the expected headers.`);
-      setResults(validateRows(normalised));
+      const res = validateRows(normalised);
+      // Scoped upload: never let a sheet touch another publication's rates.
+      setResults(paper ? res.map((r) => (r.row && r.row.newspaper_name !== paper ? { line: r.line, errors: [`This row is for ${r.row.newspaper_name}, not ${paper}`] } : r)) : res);
     } catch (e) {
       console.warn("[rates] could not read file", e);
       setParseError("Couldn't read that file. Make sure it's a valid Excel or CSV file.");
@@ -116,11 +128,12 @@ export function RateManager() {
   }
 
   // ── Active list: filter / edit / delete ─────────────────────────────────────────────────────────────────────────
+  const scoped = useMemo(() => (paper ? rates.filter((r) => r.newspaper_name === paper) : rates), [rates, paper]);
   const papers = useMemo(() => [...new Set(rates.map((r) => r.newspaper_name))].sort(), [rates]);
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return rates.filter((r) => (!paperFilter || r.newspaper_name === paperFilter) && (!s || [r.newspaper_name, r.edition, r.category, r.ad_type].some((v) => v.toLowerCase().includes(s))));
-  }, [rates, q, paperFilter]);
+    return scoped.filter((r) => (!paperFilter || r.newspaper_name === paperFilter) && (!s || [r.newspaper_name, r.edition, r.category, r.ad_type].some((v) => v.toLowerCase().includes(s))));
+  }, [scoped, q, paperFilter]);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -152,8 +165,8 @@ export function RateManager() {
 
   return (
     <div>
-      <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Rate Card Manager</h1>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload publication rates from Excel. Saved rates apply to the live booking calculator straight away; anything not covered keeps using the built-in default rates.</p>
+      {!paper && <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Rate Card Manager</h1>}
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{paper ? `Upload ${paper} rates from Excel or CSV; other publications are never touched. ` : "Upload publication rates from Excel. "}Saved rates apply to the live booking calculator straight away; anything not covered keeps using the built-in default rates.</p>
       {!sb && <p role="alert" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">Supabase isn't configured (.env.local), so rates can't be saved.</p>}
 
       <section className={cn(card, "mt-6")}>
@@ -213,14 +226,14 @@ export function RateManager() {
         )}
       </section>
 
-      <section className={cn(card, "mt-6")}>
+      <section ref={listRef} className={cn(card, "mt-6")}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Active rates <span className="text-sm font-normal text-slate-500">({shown.length}{shown.length !== rates.length ? ` of ${rates.length}` : ""})</span></h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">2. Active rates <span className="text-sm font-normal text-slate-500">({shown.length}{shown.length !== scoped.length ? ` of ${scoped.length}` : ""})</span></h2>
           <div className="flex flex-wrap gap-2">
             <div className="relative"><Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><Input aria-label="Search rates" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} className="w-48 pl-8" /></div>
-            <Select aria-label="Filter by newspaper" value={paperFilter} onChange={(e) => setPaperFilter(e.target.value)} className="w-48">
+            {!paper && <Select aria-label="Filter by newspaper" value={paperFilter} onChange={(e) => setPaperFilter(e.target.value)} className="w-48">
               <option value="">All newspapers</option>{papers.map((p) => <option key={p}>{p}</option>)}
-            </Select>
+            </Select>}
           </div>
         </div>
         {rowError && <p role="alert" className="mt-3 text-sm font-medium text-red-700 dark:text-red-300">{rowError}</p>}
@@ -231,7 +244,7 @@ export function RateManager() {
             </tr></thead>
             <tbody>
               {loading && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500"><Loader2 className="mx-auto h-4 w-4 animate-spin" aria-label="Loading" /></td></tr>}
-              {!loading && !shown.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">{rates.length ? "No rates match." : "No rates saved yet. Upload a file above. Until then, built-in default rates are used."}</td></tr>}
+              {!loading && !shown.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">{scoped.length ? "No rates match." : "No rates saved yet. Upload a file above. Until then, built-in default rates are used."}</td></tr>}
               {shown.map((r) => {
                 const editing = editId === r.id;
                 return (
