@@ -1,12 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, ShieldAlert, User } from "lucide-react";
+import { Building2, Lock, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AgencyForm } from "@/components/agency/agency-form";
+import { AdminForm } from "@/components/auth/admin-form";
 import { AuthForm } from "@/components/auth/auth-form";
 import { homeFor, useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -30,9 +31,9 @@ function Broadsheet() {
   );
 }
 
-type Tab = "user" | "agency";
+type Tab = "user" | "agency" | "admin";
 
-const TABS: { id: Tab; label: string; icon: typeof User }[] = [
+const TABS: { id: "user" | "agency"; label: string; icon: typeof User }[] = [
   { id: "user", label: "Individual / Customer", icon: User },
   { id: "agency", label: "Akshaya & Agency Partner", icon: Building2 },
 ];
@@ -45,23 +46,26 @@ export function LoginView() {
   const pendingNotice = params.get("notice") === "pending_approval";
   const unauthorized = params.get("notice") === "unauthorized";
   const authFailed = params.get("error") === "auth_failed" || params.get("auth") === "error";
-  const [tab, setTab] = useState<Tab>(params.get("tab") === "agency" ? "agency" : "user");
+  const [tab, setTab] = useState<Tab>(["agency", "admin"].includes(params.get("tab") ?? "") ? (params.get("tab") as Tab) : params.get("notice") === "unauthorized" ? "admin" : "user");
+  const lastSite = useRef<"user" | "agency">(tab === "agency" ? "agency" : "user");
 
   const [mode, setMode] = useState<"signin" | "register">(params.get("mode") === "register" ? "register" : "signin");
   const sync = (t: Tab, m: "signin" | "register") => window.history.replaceState(null, "", `/login?tab=${t}${m === "register" ? "&mode=register" : ""}`); // shareable, no server round-trip
-  const pick = (t: Tab) => { setTab(t); sync(t, mode); };
+  const pick = (t: Tab) => { if (t !== "admin") lastSite.current = t; setTab(t); sync(t, t === "admin" ? "signin" : mode); };
   const pickMode = (m: "signin" | "register") => { setMode(m); sync(tab, m); };
 
   // Already signed in: partners go to their dashboard, customers Home (unless they came to switch to the partner tab).
   useEffect(() => {
     if (!ready || !user || unauthorized) return; // bounced from /admin: stay and explain
     if (user.is_admin) router.replace(homeFor(user));
+    else if (tab === "admin") return; // non-admin on the admin tab: the form handles it (sign-out + message)
     else if (user.is_agency) router.replace(homeFor(user));
     else if (user.partner_status === "pending") { if (!pendingNotice) router.replace("/"); } // pending partners stay for the notice
     else if (tab !== "agency") router.replace("/");
   }, [ready, user, tab, pendingNotice, unauthorized, router]);
 
   const agency = tab === "agency";
+  const admin = tab === "admin";
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8FAFC] px-4 py-10 dark:bg-[#0B132B]">
       <Broadsheet />
@@ -80,7 +84,11 @@ export function LoginView() {
         </div>
 
         <div className="mx-auto w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-          <div role="tablist" aria-label="Sign-in type" className="relative mb-6 grid grid-cols-2 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+          <div role="group" aria-label="Sign-in area" className="mb-4 grid grid-cols-2 rounded-lg border border-slate-200 p-0.5 text-xs font-bold dark:border-slate-700">
+            <button type="button" aria-pressed={!admin} onClick={() => pick(lastSite.current)} className={cn("rounded-md px-2 py-1.5 transition-colors", !admin ? "bg-blue-600 text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-300")}>User / Agency</button>
+            <button type="button" aria-pressed={admin} onClick={() => pick("admin")} className={cn("flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 transition-colors", admin ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" : "text-slate-600 hover:text-slate-900 dark:text-slate-300")}><Lock className="h-3 w-3" aria-hidden="true" />Admin</button>
+          </div>
+          {!admin && <div role="tablist" aria-label="Sign-in type" className="relative mb-6 grid grid-cols-2 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
             {TABS.map((t) => {
               const on = tab === t.id;
               return (
@@ -92,9 +100,9 @@ export function LoginView() {
                 </button>
               );
             })}
-          </div>
+          </div>}
 
-          <div id="login-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+          <div id="login-panel" role="tabpanel" aria-labelledby={admin ? undefined : `tab-${tab}`}>
             {pendingNotice && user?.partner_status === "pending" ? (
               <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-center dark:border-amber-500/40 dark:bg-amber-500/10">
                 <ShieldAlert className="mx-auto h-8 w-8 text-amber-600" aria-hidden="true" />
@@ -111,6 +119,12 @@ export function LoginView() {
             {authFailed && <p role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">That confirmation link didn't work or has expired. Sign in, or register again to get a new link.</p>}
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                {admin ? (<>
+                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-bold tracking-wide text-white uppercase dark:bg-slate-100 dark:text-slate-900"><ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />Restricted</div>
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Admin Access</h2>
+                  <p className="mt-1 mb-5 text-sm text-slate-600 dark:text-slate-200">Sign in to manage rate cards and administrator accounts. Accounts without admin privileges are signed out.</p>
+                  <AdminForm />
+                </>) : (<>
                 <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
                   {agency ? (mode === "register" ? "Register as a Partner" : "Partner & Agency Portal") : mode === "register" ? "Create your account" : "Welcome Back"}
                 </h2>
@@ -125,6 +139,7 @@ export function LoginView() {
                   ))}
                 </div>
                 {agency ? <AgencyForm mode={mode} /> : <AuthForm mode={mode} notice={notice} />}
+                </>)}
               </motion.div>
             </AnimatePresence>
             </>)}

@@ -79,6 +79,7 @@ export async function proxy(request: NextRequest) {
   if (session && onLogin) {
     // Bounced here from /admin: show the "not authorised" notice instead of redirecting again.
     if (searchParams.get("notice") === "unauthorized") return response;
+    if (searchParams.get("tab") === "admin" && !session.admin) return response; // non-admin opened the Admin tab (switching accounts)
     if (session.admin) return go("/admin/rates");
     if (session.agency) return go("/agency/dashboard");
     // Pending partners stay on the login page when sent here with the notice; otherwise they are treated as customers.
