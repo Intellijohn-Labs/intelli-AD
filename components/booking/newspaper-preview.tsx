@@ -56,7 +56,7 @@ function InlineEditor({ value, onChange, onDone, className }: { value: string; o
       onInput={(e) => { const v = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " "); last.current = v; onChange(v); }}
       onBlur={onDone}
       onKeyDown={(e) => { if (e.key === "Escape") e.currentTarget.blur(); }}
-      className={cn("min-h-[3em] whitespace-pre-wrap outline-2 outline-offset-2 outline-blue-500", className)}
+      className={cn("min-h-[3em] cursor-text whitespace-pre-wrap outline-2 outline-offset-2 outline-blue-500", className)}
     />
   );
 }

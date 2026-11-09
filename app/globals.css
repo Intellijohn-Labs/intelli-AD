@@ -177,15 +177,14 @@ html.dark { color-scheme: dark; }
 /* Static fallbacks: no looping motion when the user prefers reduced motion. */
 @media (prefers-reduced-motion: reduce) { .art-anim { animation: none !important; } .art-ring, .art-halo { display: none; } }
 
-/* ───────────── Editorial fountain-pen cursors ───────────── */
-/* Default: ink-black nib with a soft blue barrel. Hotspot is the nib tip (2 2). */
-html, body {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%230246f1' fill-opacity='0.15'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1' fill='%230246f1'/%3E%3C/svg%3E") 2 2, auto !important;
-}
-
-/* Interactive: a bolder, blue writing nib over buttons, cards, links and form fields. */
-a, button, [role="button"], input, select, textarea, .cursor-pointer {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%230246f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%230246f1' fill-opacity='0.3'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1.5' fill='%230246f1'/%3E%3C/svg%3E") 2 2, pointer !important;
+/* ───────────── Standard cursors ─────────────
+   System cursors everywhere. Tailwind v4's reset makes buttons `cursor: default`, so clickable things opt back in
+   here (in the base layer, so any `cursor-*` utility on an element still wins). */
+@layer base {
+  a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"]), summary, select,
+  input[type="range"], input[type="checkbox"], input[type="radio"], label[for] { cursor: pointer; }
+  button:disabled, input:disabled, select:disabled { cursor: not-allowed; }
+  textarea, input:not([type="range"], [type="checkbox"], [type="radio"], [type="file"], [type="submit"], [type="button"]) { cursor: text; }
 }
 
 /* ───────────── Newspaper booking surface ───────────── */
@@ -212,30 +211,6 @@ input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; bor
 .dark input[type="range"].range-ink::-moz-range-progress { background: #F8FAFC; }
 .dark input[type="range"].range-ink::-moz-range-track { background: #2B3D6B; }
 .dark input[type="range"].range-ink::-webkit-slider-thumb, .dark input[type="range"].range-ink::-moz-range-thumb { background: #F8FAFC; border-color: #0B132B; }
-
-/* ───────────── Dark theme cursors: crisp white pen, luminous cyan accent ─────────────
-   `.dark` is set on <html> by next-themes; these out-rank the light rules above on specificity. */
-.dark,
-.dark body,
-html.dark,
-html[data-theme="dark"],
-html[data-theme="dark"] body {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%2338bdf8' fill-opacity='0.3'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1' fill='%2338bdf8'/%3E%3C/svg%3E") 2 2, auto !important;
-}
-
-.dark a,
-.dark button,
-.dark [role="button"],
-.dark input,
-.dark select,
-.dark textarea,
-.dark .cursor-pointer,
-html.dark a,
-html.dark button,
-html[data-theme="dark"] a,
-html[data-theme="dark"] button {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 19 7-7 3 3-7 7-3-3z' fill='%2338bdf8' fill-opacity='0.45'/%3E%3Cpath d='m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z'/%3E%3Cpath d='m2 2 7.586 7.586'/%3E%3Ccircle cx='11' cy='11' r='1.5' fill='%23ffffff'/%3E%3C/svg%3E") 2 2, pointer !important;
-}
 
 /* ───────────── Dark-mode typography: crisp, high-contrast white ─────────────
    Base layer: sets the default for un-coloured text but loses to any explicit text-* class, so badges,
