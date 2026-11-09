@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: { default: "Admin", template: "%s | IntelliAd Admin" }, robots: { index: false } };
@@ -14,5 +15,5 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const { data } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
   const role = (data.user?.app_metadata as { role?: string } | undefined)?.role;
   if (role !== "admin") redirect("/login?notice=unauthorized");
-  return <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">{children}</div>;
+  return <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6"><AdminNav />{children}</div>;
 }
