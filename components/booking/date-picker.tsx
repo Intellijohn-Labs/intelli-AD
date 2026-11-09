@@ -13,6 +13,7 @@ export function DatePicker({
   onChange,
   now,
   isDisabled,
+  isNonPrint,
   earliest,
   max,
 }: {
@@ -20,6 +21,8 @@ export function DatePicker({
   onChange: (iso: string) => void;
   now: Date;
   isDisabled: (iso: string) => boolean;
+  /** Date falls on a weekday a selected paper doesn't print (disabled, labelled differently from "closed"). */
+  isNonPrint?: (iso: string) => boolean;
   earliest: string;
   max: string;
 }) {
@@ -62,14 +65,16 @@ export function DatePicker({
         {cells.map((iso, i) => {
           if (!iso) return <span key={`e${i}`} />;
           const disabled = isDisabled(iso) || iso > max;
+          const noPrint = isNonPrint?.(iso) ?? false;
           const selected = iso === value;
           return (
             <button
               key={iso}
               type="button"
               disabled={disabled}
+              title={noPrint ? "No print edition that day" : undefined}
               aria-pressed={selected}
-              aria-label={new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(parseISODate(iso)) + (iso === earliest ? " (earliest available)" : "") + (disabled ? " (closed)" : "")}
+              aria-label={new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(parseISODate(iso)) + (iso === earliest ? " (earliest available)" : "") + (noPrint ? " (no print edition that day)" : disabled ? " (closed)" : "")}
               onClick={() => onChange(iso)}
               className={cn(
                 "relative aspect-square rounded text-sm font-medium transition-colors",

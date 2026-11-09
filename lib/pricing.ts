@@ -3,7 +3,7 @@ import { getNewspaper, newspapers } from "@/data/newspapers";
 import type { AdType, CategoryId, DisplaySpec, Enhancements, Newspaper } from "./types";
 import { displayWidth } from "./display";
 import { countWords, round2, wrapText } from "./utils";
-import { findRate, getActiveRates, headlineRate, paperConfig, type RateBook } from "./rates";
+import { findRate, getActiveRates, headlineRate, paperConfig, visibleEditions, type RateBook } from "./rates";
 
 export const GST_RATE = 0.18;
 
@@ -142,7 +142,7 @@ export function calculateQuote(input: QuoteInput): Quote {
     const volumePct = volumeDiscountPct(selected.length);
     const bundlePct = new Map<string, { pct: number; name: string }>();
     for (const g of paper.groups) {
-      const size = paper.editions.filter((e) => e.groupId === g.id).length;
+      const size = visibleEditions(paper).filter((e) => e.groupId === g.id).length;
       const chosen = selected.filter((e) => e.groupId === g.id).length;
       if (size >= 2 && chosen === size && g.bundleDiscountPct > 0) {
         bundlePct.set(g.id, { pct: g.bundleDiscountPct, name: g.name });
@@ -277,7 +277,7 @@ export function comboSuggestions(newspaperId: string, selectedIds: string[]): Co
   if (!paper || !selectedIds.length) return [];
   const out: ComboSuggestion[] = [];
   for (const g of paper.groups) {
-    const all = paper.editions.filter((e) => e.groupId === g.id);
+    const all = visibleEditions(paper).filter((e) => e.groupId === g.id);
     if (all.length < 2 || g.bundleDiscountPct <= 0) continue;
     const missing = all.filter((e) => !selectedIds.includes(e.id));
     if (!missing.length) continue;
@@ -312,7 +312,8 @@ export function startingRate(paper: Newspaper, adType: AdType) {
 
 /** The headline edition of a publication (first listed, weight-leading). */
 export function flagshipEdition(paper: Newspaper) {
-  return [...paper.editions].sort((a, b) => b.weight - a.weight)[0];
+  const list = visibleEditions(paper);
+  return [...(list.length ? list : paper.editions)].sort((a, b) => b.weight - a.weight)[0];
 }
 
 /** Headline published rate for an ad type, tagged with the flagship edition; null when not published. */

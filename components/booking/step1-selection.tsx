@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AD_TYPES, categories, getCategory } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
 import { useRateAvailability } from "@/lib/use-rates";
-import { editionEnabled } from "@/lib/rates";
+import { editionEnabled, visibleEditions } from "@/lib/rates";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/field";
@@ -32,7 +32,7 @@ export function Step1Selection() {
   const firstRun = useRef(true);
   const { loaded, canPrice } = useRateAvailability();
   const edOk = (paper: (typeof newspapers)[number], editionName: string) => editionEnabled(paper.name, editionName) && canPrice(paper.name, editionName, state.categoryId, state.adType);
-  const availableFor = (paper: (typeof newspapers)[number]) => paper.editions.some((e) => edOk(paper, e.name));
+  const availableFor = (paper: (typeof newspapers)[number]) => visibleEditions(paper).some((e) => edOk(paper, e.name));
 
   // Drop papers that lost their rate sheet (e.g. from a saved draft) so they can't be booked.
   useEffect(() => {
@@ -68,7 +68,7 @@ export function Step1Selection() {
       newspapers.filter(
         (n) =>
           (scope === "all" || n.scope === scope) &&
-          (!query || (n.name + n.nameMl + n.language + n.editions.map((e) => e.name).join(" ")).toLowerCase().includes(query.toLowerCase())),
+          (!query || (n.name + n.nameMl + n.language + visibleEditions(n).map((e) => e.name).join(" ")).toLowerCase().includes(query.toLowerCase())),
       ),
     [scope, query],
   );
@@ -195,7 +195,8 @@ export function Step1Selection() {
                       </div>
                     )}
                     {paper.groups.map((g) => {
-                      const eds = paper.editions.filter((e) => e.groupId === g.id);
+                      const eds = visibleEditions(paper).filter((e) => e.groupId === g.id);
+                      if (!eds.length) return null; // group with no enabled editions: hidden
                       const all = eds.every((e) => selected.includes(e.id));
                       return (
                         <div key={g.id} className="mb-3 last:mb-0">

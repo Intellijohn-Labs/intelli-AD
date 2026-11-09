@@ -12,7 +12,7 @@ import { useI18n } from "@/context/language-context";
 import { bookHref } from "@/lib/booking-params";
 import { flagshipEdition } from "@/lib/pricing";
 import { useRateAvailability } from "@/lib/use-rates";
-import { paperConfig } from "@/lib/rates";
+import { paperConfig, visibleEditions } from "@/lib/rates";
 import { usePublication } from "@/lib/publication";
 import { cn, formatINR } from "@/lib/utils";
 import { TemplateCard } from "./template-card";
@@ -45,7 +45,7 @@ export function Publications() {
                   </span>
                   {(!isMl || pn(n) !== n.nameMl) && isMl && <span className="mt-0.5 block text-xs text-zinc-500">{n.name}</span>}
                   <span className="mt-2 block text-xs text-zinc-500">
-                    {t(n.language)} · {n.editions.length} {t("Editions")}
+                    {t(n.language)} · {visibleEditions(n).length} {t("Editions")}
                   </span>
                 </button>
                 <div className="mt-4 border-t border-zinc-200 pt-3">

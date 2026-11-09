@@ -7,13 +7,17 @@ import { useBooking } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
 import { earliestRelease, formatClock, formatCountdown, isBookable, latestRelease, paperCutoffs } from "@/lib/cutoff";
 import { validateStep3 } from "@/lib/validation";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, parseISODate } from "@/lib/utils";
+import { getNewspaper } from "@/data/newspapers";
+import { printsOn } from "@/lib/rates";
+import { useRatesVersion } from "@/lib/use-rates";
 import { DatePicker } from "./date-picker";
 import { StepNav } from "./step-nav";
 
 export function Step3Schedule() {
   const { state, update } = useBooking();
   const { t, pn } = useI18n();
+  useRatesVersion(); // print days / cut-offs may arrive after first render
   const [now, setNow] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const paperIds = useMemo(() => Object.keys(state.selection).filter((k) => state.selection[k].length), [state.selection]);
@@ -42,7 +46,7 @@ export function Step3Schedule() {
       <p className="mb-5 text-sm text-zinc-600">{t("Dates close at each publication's cut-off. Your ad runs on the date you pick if every selected paper is still open.")}</p>
 
       <div className="grid gap-6 md:grid-cols-[auto_1fr]">
-        <DatePicker value={state.releaseDate} onChange={(iso) => update({ releaseDate: iso })} now={now} earliest={earliest} max={max} isDisabled={(iso) => !isBookable(iso, paperIds, state.adType, now)} />
+        <DatePicker value={state.releaseDate} onChange={(iso) => update({ releaseDate: iso })} now={now} earliest={earliest} max={max} isDisabled={(iso) => !isBookable(iso, paperIds, state.adType, now)} isNonPrint={(iso) => paperIds.some((id) => { const p = getNewspaper(id); return !!p && !printsOn(p.name, parseISODate(iso)); })} />
 
         <div className="space-y-4">
           <div className="rounded-md border border-amber-300/80 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-500/20 p-4">

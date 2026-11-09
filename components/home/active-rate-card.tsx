@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { brandFor } from "@/data/brand-colors";
 import { bookHref } from "@/lib/booking-params";
 import { cutoffFor, cutoffRuleFor, earliestRelease, formatClock } from "@/lib/cutoff";
-import { paperConfig } from "@/lib/rates";
+import { paperConfig, visibleEditions } from "@/lib/rates";
 import { flagshipRate, flagshipEdition } from "@/lib/pricing";
 import { useRateAvailability } from "@/lib/use-rates";
 import { usePublication } from "@/lib/publication";
@@ -41,7 +41,7 @@ export function ActiveRateCard() {
               <h2 className="mt-2 text-3xl leading-tight font-black text-zinc-950">{pn(paper)}</h2>
               <p className="font-clipping mt-1 text-lg text-zinc-700">{paper.nameMl}</p>
               <p className="mt-2 text-sm text-zinc-600">
-                {t("{lang} · {n} editions · Rates for {ed}", { lang: t(paper.language), n: paper.editions.length, ed: place(flagship.name) })}
+                {t("{lang} · {n} editions · Rates for {ed}", { lang: t(paper.language), n: visibleEditions(paper).length, ed: place(flagship.name) })}
               </p>
               {available ? (
                 <ButtonLink href={bookHref({ paper: paper.id, eds: [flagship.id] })} className="mt-5" shimmer>

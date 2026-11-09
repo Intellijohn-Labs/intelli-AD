@@ -103,12 +103,13 @@ alter table public.publication_rates add column if not exists cutoff_time text c
 -- true = the entered rates already include 18% GST (cards say "incl. GST"; the calculator backs GST out before adding it once).
 alter table public.publication_rates add column if not exists gst_included boolean not null default false;
 
--- Per-newspaper settings: which weekdays it prints (0 = Sunday … 6 = Saturday; null = every day) and which of its
--- editions are offered for booking (null = all).
+-- Per-newspaper settings read by the booking flow: print_days = weekdays it prints (0 = Sunday … 6 = Saturday; null = every
+-- day, so the release-date picker disables the other days); enabled_editions = editions shown for booking (null = all).
+-- (If this table already exists with newspaper_name as PRIMARY KEY, that is equivalent to NOT NULL UNIQUE: nothing to change.)
 create table if not exists public.newspaper_settings (
-  newspaper_name text primary key,
-  print_days integer[] check (print_days is null or print_days <@ array[0,1,2,3,4,5,6]),
-  enabled_editions text[],
+  newspaper_name text not null unique,
+  print_days integer[] default null check (print_days is null or print_days <@ array[0,1,2,3,4,5,6]),
+  enabled_editions text[] default null,
   updated_at timestamptz not null default now()
 );
 alter table public.newspaper_settings enable row level security;

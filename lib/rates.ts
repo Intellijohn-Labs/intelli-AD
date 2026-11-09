@@ -275,6 +275,11 @@ export function editionEnabled(paperName: string, editionName: string): boolean 
   return !list || list.length === 0 || list.some((e) => norm(e) === norm(editionName));
 }
 
+/** The editions customers can see and book: the paper's list filtered by its `enabled_editions` setting (null/empty = all). */
+export function visibleEditions<E extends { name: string }>(paper: { name: string; editions: E[] }): E[] {
+  return paper.editions.filter((e) => editionEnabled(paper.name, e.name));
+}
+
 export interface PaperConfig {
   minLines: number;
   minSqCm: number;

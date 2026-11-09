@@ -13,7 +13,7 @@ import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
 import { comboSuggestions, estimateQuote, flagshipEdition } from "@/lib/pricing";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
-import { paperConfig } from "@/lib/rates";
+import { paperConfig, visibleEditions } from "@/lib/rates";
 import type { AdType } from "@/lib/types";
 import { cn, formatINR } from "@/lib/utils";
 
@@ -74,7 +74,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
             placeholder={t("Choose editions")}
             value={eds}
             onChange={setEds}
-            options={paper.editions.map((e) => ({ value: e.id, label: place(e.name), group: place(paper.groups.find((g) => g.id === e.groupId)?.name ?? "") }))}
+            options={visibleEditions(paper).map((e) => ({ value: e.id, label: place(e.name), group: place(paper.groups.find((g) => g.id === e.groupId)?.name ?? "") }))}
           />
         </div>
       </div>
