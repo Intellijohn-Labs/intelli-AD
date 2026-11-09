@@ -116,12 +116,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const celebrate = useCallback(() => setCelebrating(true), []);
   const signOut = useCallback(async () => {
+    const wasAdmin = !!user?.is_admin;
     const wasPartner = !!user && (!!user.is_agency || !!user.partner_status);
     clearSession();
     try { sessionStorage.removeItem("intelliad.booking.v1"); } catch { /* ignore */ } // drop the in-progress draft
     await signOutSupabase();
     setUser(null);
-    router.replace(wasPartner ? "/login?tab=agency" : "/login?tab=user");
+    router.replace(wasAdmin ? "/login?tab=admin" : wasPartner ? "/login?tab=agency" : "/login?tab=user");
   }, [router, user]);
 
   const value = useMemo(() => ({ user, ready, signIn, celebrate, signOut }), [user, ready, signIn, celebrate, signOut]);

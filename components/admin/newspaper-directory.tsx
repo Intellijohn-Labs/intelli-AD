@@ -22,6 +22,8 @@ export function NewspaperDirectory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tableRows = useMemo(() => getActiveRates() ?? [], [version]);
   const ordered = newspapers; // same list, same order as the booking wizard (lib/publications.ts)
   const paper = open ? newspapers.find((n) => n.id === open)! : null;
 
@@ -53,18 +55,36 @@ export function NewspaperDirectory() {
                 </div>
               </div>
               {configured ? (
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Rates Configured - {count} active {count === 1 ? "entry" : "entries"}</p>
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Configured · {count} active {count === 1 ? "entry" : "entries"}</p>
               ) : (
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />No Rate Sheet Uploaded</p>
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900"><TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />Missing · no rate sheet uploaded</p>
               )}
               <div className="mt-2 flex flex-wrap gap-1">{FORMATS.map((f) => <span key={f} className="rounded-full border border-slate-300 px-2 py-0.5 text-[11px] text-slate-600 dark:border-slate-600 dark:text-slate-300">{f}</span>)}</div>
               <div className="mt-4 pt-1">
-                <button type="button" onClick={() => setOpen(n.id)} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel / Manage Rates</button>
+                <button type="button" onClick={() => setOpen(n.id)} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel / Update Rates</button>
               </div>
             </li>
           );
         })}
       </ul>
+
+      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Current database rates</h2>
+        <div className="mt-3 max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>{["Newspaper", "Edition", "Category", "Ad type", "Base rate (₹)", "Line rate (₹)", "Sq.cm rate (₹)"].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
+            <tbody>
+              {!tableRows.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">No rates uploaded yet.</td></tr>}
+              {tableRows.map((r) => (
+                <tr key={r.id ?? `${r.newspaper_name}|${r.edition}|${r.category}|${r.ad_type}`} className="border-t border-slate-200 dark:border-slate-700">
+                  <td className="px-3 py-2">{r.newspaper_name}</td><td className="px-3 py-2">{r.edition}</td><td className="px-3 py-2">{r.category}</td><td className="px-3 py-2">{r.ad_type}</td>
+                  <td className="px-3 py-2">{r.base_rate}</td><td className="px-3 py-2">{r.extra_line_rate}</td><td className="px-3 py-2">{r.sq_cm_rate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {paper && open && (
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`${paper.name} rates`}>

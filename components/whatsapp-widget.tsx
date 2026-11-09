@@ -10,9 +10,11 @@ const WHATSAPP_URL = `https://wa.me/${PHONE_NUMBER}?text=${DEFAULT_MESSAGE}`;
 /** Floating WhatsApp support shortcut, fixed bottom-right on every page. */
 export function WhatsAppWidget() {
   const { lang } = useI18n();
-  const lift = usePathname().startsWith("/book"); // clear the mobile proof bar
+  const path = usePathname();
+  const lift = path.startsWith("/book"); // clear the mobile proof bar
   const label = lang === "ml" ? "പരസ്യങ്ങൾ ബുക്ക് ചെയ്യാൻ സഹായം വേണോ?" : "Need help booking an ad? Chat with us!";
 
+  if (path === "/admin" || path.startsWith("/admin/")) return null; // customer support widget: not in the admin portal
   return (
     <div className={`group fixed right-6 z-50 flex items-center gap-3 ${lift ? "bottom-24 lg:bottom-6" : "bottom-6"}`}>
       <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 shadow-lg transition-all group-hover:scale-105 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 sm:flex">
