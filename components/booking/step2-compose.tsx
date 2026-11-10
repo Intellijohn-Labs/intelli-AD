@@ -23,6 +23,9 @@ import { columnsFor, displayWidth, isDisplayOnlyCategory, type CreativeMode } fr
 import { ObituaryComposer } from "./templates/obituary-template";
 import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
+import { NewspaperPreviewModal } from "./newspaper-preview-modal";
+import { Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TemplateComposer } from "./template-composer";
 import { applySpacing } from "@/lib/paragraphs";
 import { getActiveRates, matchRate, paperConfig } from "@/lib/rates";
@@ -104,6 +107,7 @@ export function Step2Compose() {
 
   // A failed "Continue" must always say why, never fail silently.
   const [issues, setIssues] = useState<string[]>([]);
+  const [previewing, setPreviewing] = useState(false);
   const [tried, setTried] = useState(false); // has the user pressed Continue yet?
   const toast = useToast();
   // Leftover [placeholders] are a normal part of editing a template: the amber chips guide the user, and the red
@@ -324,7 +328,18 @@ export function Step2Compose() {
           <ul className="mt-1 list-disc space-y-0.5 pl-5">{issues.map((i) => <li key={i}>{i}</li>)}</ul>
         </div>
       )}
-      <StepNav onBack={returning ? undefined : () => update({ step: 1 })} onNext={() => void handleSubmit(() => { setIssues([]); update(next); }, onInvalid)()} nextLabel={returning ? "Save Changes & Return to Checkout" : undefined} />
+      <StepNav
+        onBack={returning ? undefined : () => update({ step: 1 })}
+        onNext={() => void handleSubmit(() => { setIssues([]); update(next); }, onInvalid)()}
+        nextLabel={returning ? "Save Changes & Return to Checkout" : undefined}
+        beforeNext={<Button type="button" variant="secondary" onClick={() => setPreviewing(true)}><Eye className="h-4 w-4" aria-hidden="true" /> {t("Preview Ad")}</Button>}
+      />
+      {previewing && (
+        <NewspaperPreviewModal
+          onClose={() => setPreviewing(false)}
+          onContinue={() => { setPreviewing(false); void handleSubmit(() => { setIssues([]); update(next); }, onInvalid)(); }}
+        />
+      )}
     </form>
   );
 }

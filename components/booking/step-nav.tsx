@@ -1,8 +1,9 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/context/language-context";
 
-export function StepNav({ onBack, onNext, nextLabel = "Continue", error }: { onBack?: () => void; onNext: () => void; nextLabel?: string; error?: string | null }) {
+export function StepNav({ onBack, onNext, nextLabel = "Continue", error, beforeNext }: { onBack?: () => void; onNext: () => void; nextLabel?: string; error?: string | null; beforeNext?: ReactNode }) {
   const { t } = useI18n();
   return (
     <div className="mt-8 border-t border-zinc-200/70 pt-5 dark:border-zinc-700">
@@ -19,9 +20,12 @@ export function StepNav({ onBack, onNext, nextLabel = "Continue", error }: { onB
         ) : (
           <span />
         )}
-        <Button onClick={onNext}>
-          {t(nextLabel)} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {beforeNext}
+          <Button onClick={onNext}>
+            {t(nextLabel)} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
     </div>
   );
