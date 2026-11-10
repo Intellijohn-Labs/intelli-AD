@@ -116,3 +116,9 @@ alter table public.newspaper_settings enable row level security;
 drop policy if exists "settings are public" on public.newspaper_settings;
 create policy "settings are public" on public.newspaper_settings for select to anon, authenticated using (true);
 -- Writes happen only through the admin server action (service-role key); no insert/update/delete policy for anon or authenticated.
+
+-- ── Ad enhancement charges (classified text): flat extra cost per booking line ──────────────────────────────────────
+-- bold first line / heading, tick mark (✔) at the beginning, border box. 0 = free.
+ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS bold_heading_rate NUMERIC DEFAULT 0;
+ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS tick_rate NUMERIC DEFAULT 0;
+ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS border_rate NUMERIC DEFAULT 0;

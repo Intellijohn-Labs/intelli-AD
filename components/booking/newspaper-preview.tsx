@@ -113,7 +113,7 @@ export function NewspaperPreview({
       )}
       {editor && (
         <div role="toolbar" aria-label="Text formatting" className="mb-2 flex flex-wrap items-center justify-center gap-0.5 rounded-lg border border-slate-200 bg-white p-1 shadow-sm transition-opacity dark:border-slate-700 dark:bg-slate-800 [@media(hover:hover)]:opacity-40 [@media(hover:hover)]:group-focus-within/proof:opacity-100 [@media(hover:hover)]:group-hover/proof:opacity-100">
-          <button type="button" aria-label="Bold (billed +15%)" title="Bold: +15% of the text charge" aria-pressed={enhancements.bold} onClick={() => editor.onEnhancements({ bold: !enhancements.bold })} className={cn(tool, enhancements.bold && on)}><Bold className="h-3.5 w-3.5" /></button>
+          <button type="button" aria-label="Bold first line" title="Bold first line (billed at the published bold rate)" aria-pressed={enhancements.bold} onClick={() => editor.onEnhancements({ bold: !enhancements.bold })} className={cn(tool, enhancements.bold && on)}><Bold className="h-3.5 w-3.5" /></button>
           <button type="button" aria-label="Italic" title="Italic" aria-pressed={textStyle.italic} onClick={() => editor.onStyle({ italic: !textStyle.italic })} className={cn(tool, textStyle.italic && on)}><Italic className="h-3.5 w-3.5" /></button>
           <span aria-hidden="true" className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-600" />
           {([["left", AlignLeft], ["center", AlignCenter], ["justify", AlignJustify]] as const).map(([a, Icon]) => (
@@ -123,7 +123,7 @@ export function NewspaperPreview({
           {([["none", "None"], ["single", "Single"], ["double", "Double"], ...(floralAllowed ? [["floral", "Floral"]] : [])] as [string, string][]).map(([k, label]) => {
             const active = k === "none" ? !enhancements.border : enhancements.border && bs === k;
             return (
-              <button key={k} type="button" aria-pressed={active} title={k === "none" ? "No border" : `${label} border: +25% of the text charge`} onClick={() => (k === "none" ? editor.onEnhancements({ border: false }) : (editor.onEnhancements({ border: true }), editor.onStyle({ borderStyle: k as TextStyle["borderStyle"] })))} className={cn(tool, "w-auto px-1.5 text-[10px] font-bold uppercase", active && on)}>{label}</button>
+              <button key={k} type="button" aria-pressed={active} title={k === "none" ? "No border" : `${label} border (billed at the published border rate)`} onClick={() => (k === "none" ? editor.onEnhancements({ border: false }) : (editor.onEnhancements({ border: true }), editor.onStyle({ borderStyle: k as TextStyle["borderStyle"] })))} className={cn(tool, "w-auto px-1.5 text-[10px] font-bold uppercase", active && on)}>{label}</button>
             );
           })}
         </div>
@@ -144,7 +144,7 @@ export function NewspaperPreview({
               <span aria-hidden="true" className={cn("absolute inset-0 border-slate-900 dark:border-slate-200", bs === "double" ? "border-[5px] border-double" : "border-2")} />
             )}
             {enhancements.border && bs === "floral" && <><FloralBand className="absolute inset-x-0 -top-1.5" /><FloralBand className="absolute inset-x-0 -bottom-1.5" /></>}
-            <div lang={ml ? "ml" : "en"} className={cn("relative transition-[font-weight] duration-300", ALIGN[textStyle.align], "hyphens-auto [overflow-wrap:anywhere]", enhancements.bold && "font-bold", textStyle.italic && "italic")}>
+            <div lang={ml ? "ml" : "en"} className={cn("relative transition-[font-weight] duration-300", ALIGN[textStyle.align], "hyphens-auto [overflow-wrap:anywhere]", textStyle.italic && "italic")}>
               {editor && editing ? (
                 <InlineEditor value={editor.rawText} onChange={editor.onText} onDone={() => setEditing(false)} />
               ) : lines.length === 0 ? (
@@ -157,9 +157,16 @@ export function NewspaperPreview({
                   className={cn(editor && "cursor-text rounded-sm hover:bg-blue-500/5 focus-visible:outline-2 focus-visible:outline-blue-500")}
                   {...(editor ? { role: "button", tabIndex: 0, "aria-label": "Edit the ad text in place", onClick: () => setEditing(true), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") setEditing(true); } } : {})}
                 >
-                  {splitParagraphs(text).map((para, i) =>
-                    para.trim() ? <p key={i} className="mb-1.5 whitespace-pre-wrap last:mb-0">{para}</p> : <div key={i} aria-hidden="true" className="h-3" />,
-                  )}
+                  {(() => {
+                    const firstIdx = splitParagraphs(text).findIndex((p) => p.trim());
+                    return splitParagraphs(text).map((para, i) =>
+                      para.trim() ? (
+                        <p key={i} className={cn("mb-1.5 whitespace-pre-wrap last:mb-0", enhancements.bold && i === firstIdx && "font-bold")}>
+                          {enhancements.tick && i === firstIdx && "✔ "}{para}
+                        </p>
+                      ) : <div key={i} aria-hidden="true" className="h-3" />,
+                    );
+                  })()}
                 </div>
               )}
             </div>

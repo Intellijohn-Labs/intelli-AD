@@ -45,7 +45,10 @@ export function createReceipt(
   const paperIds = Object.keys(s.selection).filter((k) => s.selection[k].length);
   const isText = s.adType === "classified-text";
   const enh = isText
-    ? (Object.keys(s.enhancements) as (keyof typeof s.enhancements)[]).filter((k) => s.enhancements[k]).map((k) => ENHANCEMENT_LABEL[k])
+    ? (Object.keys(s.enhancements) as (keyof typeof s.enhancements)[]).filter((k) => s.enhancements[k]).map((k) => {
+        const amt = quote.enhancementItems.find((i) => i.key === k)?.amount;
+        return `${ENHANCEMENT_LABEL[k]} (${amt ? formatINR(amt, { decimals: true }) : "Free"})`;
+      })
     : s.display.colorMode === "color"
       ? ["Colour printing"]
       : [];

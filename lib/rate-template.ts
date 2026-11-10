@@ -30,6 +30,7 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
       min_lines: cur?.min_lines ?? null, min_sq_cm: cur?.min_sq_cm ?? null, cutoff_days: cur?.cutoff_days ?? null, cutoff_time: cur?.cutoff_time ?? null,
       gst_included: cur ? (cur.gst_included ? "TRUE" : "FALSE") : null,
       base_rate: num(cur?.base_rate), extra_line_rate: num(cur?.extra_line_rate), sq_cm_rate: num(cur?.sq_cm_rate), color_surcharge_percent: num(cur?.color_surcharge_percent),
+      bold_heading_rate: num(cur?.bold_heading_rate), tick_rate: num(cur?.tick_rate), border_rate: num(cur?.border_rate),
     });
     // Identity columns (1-4) stay locked (the default); every other cell is unlocked, tinted and validated.
     for (let c = LOCKED_COLUMNS + 1; c <= RATE_COLUMNS.length; c++) {
@@ -56,6 +57,7 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
     ["classified-text rows: base_rate (price for the minimum lines) is required; extra_line_rate is the price per extra line; min_lines is the minimum billable lines."],
     ["classified-display / commercial-display rows: sq_cm_rate is required; min_sq_cm is the minimum billable area; color_surcharge_percent is the extra % for colour."],
     ["cutoff_days + cutoff_time (set together, e.g. 1 and 16:00): booking closes that many days before the print date at that time."],
+    ["bold_heading_rate / tick_rate / border_rate (optional, classified-text): flat extra charge for a bold first line, a tick mark and a border box. Blank or 0 = free."],
     ["gst_included: TRUE if the rates you entered already include GST (cards then say incl. GST); FALSE (default) means excl. GST."],
     ["Blank min_lines / min_sq_cm / cutoff cells use the publication's standard values. 'all' in edition or category means every edition / category; the most specific row wins."],
   ]);

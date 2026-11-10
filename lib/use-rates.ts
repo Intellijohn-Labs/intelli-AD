@@ -33,6 +33,7 @@ export async function loadRates(): Promise<RateRow[] | null> {
       sq_cm_rate: Number(r.sq_cm_rate), color_surcharge_percent: Number(r.color_surcharge_percent),
       min_lines: r.min_lines ?? null, min_sq_cm: r.min_sq_cm == null ? null : Number(r.min_sq_cm),
       cutoff_days: r.cutoff_days ?? null, cutoff_time: r.cutoff_time ?? null, gst_included: r.gst_included === true,
+      bold_heading_rate: Number(r.bold_heading_rate ?? 0), tick_rate: Number(r.tick_rate ?? 0), border_rate: Number(r.border_rate ?? 0),
     })) as RateRow[];
     await loadSettings(sb);
     setActiveRates(rows);

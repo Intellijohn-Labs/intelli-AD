@@ -64,7 +64,7 @@ export function Step2Compose() {
       widthCm: displayWidth(state.display, colW),
       heightCm: state.display.heightCm,
       colorMode: state.display.colorMode,
-      enhancements: state.enhancements,
+      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick },
       artwork: state.artwork,
       documents: state.documents ?? {},
     },
@@ -80,7 +80,7 @@ export function Step2Compose() {
     if (state.text !== cur.text) setValue("text", state.text, { shouldValidate: true });
     if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null) || (state.artwork?.url ?? null) !== (cur.artwork?.url ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
     const e = state.enhancements, c = cur.enhancements;
-    if (e.bold !== c.bold || e.border !== c.border || e.tint !== c.tint) setValue("enhancements", e);
+    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint) setValue("enhancements", e);
   }, [state.text, state.artwork, state.enhancements, getValues, setValue]);
 
   // Keep the shared booking state (and therefore the live quote) in sync with the form.
@@ -88,7 +88,7 @@ export function Step2Compose() {
     const sub = watch((val) => {
       update({
         text: val.text ?? "",
-        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tint: !!val.enhancements?.tint },
+        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint },
         display: {
           columns: val.columns ?? 2,
           widthCm: Number.isFinite(val.widthCm) ? (val.widthCm as number) : undefined,
@@ -223,10 +223,21 @@ export function Step2Compose() {
                 }
               />
 
-              <fieldset className="space-y-2">
-                <legend className="mb-1 text-sm font-bold">{t("Visual enhancements")}</legend>
-                <Controller control={control} name="enhancements.bold" render={({ field }) => <Switch id="enh-bold" label={t("Bold text")} description={t("+{pct}% of text charge", { pct: ENHANCEMENT_PCT.bold * 100 })} checked={field.value} onChange={field.onChange} />} />
-                <Controller control={control} name="enhancements.border" render={({ field }) => <Switch id="enh-border" label={t("Border box")} description={t("+{pct}% of text charge", { pct: ENHANCEMENT_PCT.border * 100 })} checked={field.value} onChange={field.onChange} />} />
+              <fieldset className="space-y-2 rounded-lg border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#0F1D3D]">
+                <legend className="px-1 text-sm font-bold">{t("Ad Enhancements / Styling")}</legend>
+                {([
+                  ["bold", "enh-bold", "Bold First Line / Heading", rule?.bold_heading_rate ?? 0],
+                  ["tick", "enh-tick", "Tick Mark (✔) at Beginning", rule?.tick_rate ?? 0],
+                  ["border", "enh-border", "Border / Box Outline", rule?.border_rate ?? 0],
+                ] as const).map(([name, id, label, price]) => (
+                  <Controller key={name} control={control} name={`enhancements.${name}`} render={({ field }) => (
+                    <label htmlFor={id} className="flex cursor-pointer items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-white/10 dark:hover:bg-white/5">
+                      <input id={id} type="checkbox" className="h-4 w-4 accent-navy-700" checked={!!field.value} onChange={(e) => field.onChange(e.target.checked)} />
+                      <span className="flex-1 text-sm font-medium">{t(label)}</span>
+                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", price > 0 ? "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200")}>{price > 0 ? `+ ${formatINR(price)}` : t("Free")}</span>
+                    </label>
+                  )} />
+                ))}
                 <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: ENHANCEMENT_PCT.tint * 100 })} checked={field.value} onChange={field.onChange} />} />
               </fieldset>
             </>

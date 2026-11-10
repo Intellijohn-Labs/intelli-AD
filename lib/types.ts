@@ -14,6 +14,8 @@ export type CategoryId =
 export interface Enhancements {
   bold: boolean;
   border: boolean;
+  /** Tick mark (✔) at the beginning of the ad. */
+  tick: boolean;
   tint: boolean;
 }
 

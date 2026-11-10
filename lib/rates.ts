@@ -27,6 +27,10 @@ export interface RateRow {
   cutoff_time: string | null;
   /** True when the rates above already include GST (cards say "incl. GST"). */
   gst_included: boolean;
+  /** Classified text enhancements: flat extra charge (0 = free). */
+  bold_heading_rate: number;
+  tick_rate: number;
+  border_rate: number;
 }
 
 /** Per-newspaper settings (table `newspaper_settings`). */
@@ -39,7 +43,7 @@ export interface PaperSettings {
 }
 
 /** Field keys in template column order. */
-export const RATE_COLUMNS = ["newspaper_name", "edition", "category", "ad_type", "base_rate", "extra_line_rate", "sq_cm_rate", "min_lines", "min_sq_cm", "cutoff_days", "cutoff_time", "color_surcharge_percent", "gst_included"] as const;
+export const RATE_COLUMNS = ["newspaper_name", "edition", "category", "ad_type", "base_rate", "extra_line_rate", "sq_cm_rate", "min_lines", "min_sq_cm", "cutoff_days", "cutoff_time", "color_surcharge_percent", "gst_included", "bold_heading_rate", "tick_rate", "border_rate"] as const;
 /** Header text of each template column (the first column is headed "newspaper"). */
 export const TEMPLATE_HEADERS: string[] = RATE_COLUMNS.map((c) => (c === "newspaper_name" ? "newspaper" : c));
 /** Locked (identity) columns of the template; everything after them is editable. */
@@ -156,6 +160,11 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       if (v === null) errors.push(`${name} must be a number`);
       else if (v < 0) errors.push(`${name} can't be negative`);
     }
+    const bold = num(r.bold_heading_rate), tick = num(r.tick_rate), border = num(r.border_rate);
+    for (const [name, v] of [["bold_heading_rate", bold], ["tick_rate", tick], ["border_rate", border]] as const) {
+      if (v === null) errors.push(`${name} must be a number`);
+      else if (v < 0) errors.push(`${name} can't be negative`);
+    }
     if (color !== null && color > 500) errors.push("color_surcharge_percent looks too high (max 500)");
     const minLines = optNum(r.min_lines), minSq = optNum(r.min_sq_cm), cutDays = optNum(r.cutoff_days);
     const cutTime = parseCutoffTime(r.cutoff_time), gst = parseBool(r.gst_included);
@@ -165,7 +174,7 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
     if (cutTime === "bad") errors.push('cutoff_time must be a time like "16:00" or "4:00 PM"');
     if ((cutDays === null) !== (cutTime === null)) errors.push("cutoff_days and cutoff_time must be set together");
     if (gst === "bad") errors.push("gst_included must be TRUE or FALSE");
-    const empty = !base && !extra && !sq && !color && minLines === null && minSq === null && cutDays === null && cutTime === null && gst === false;
+    const empty = !base && !extra && !sq && !color && minLines === null && minSq === null && cutDays === null && cutTime === null && gst === false && !bold && !tick && !border;
     if (!empty && adType === "classified-text" && !(base && base > 0)) errors.push("base_rate is required (> 0) for classified-text");
     if (!empty && adType && adType !== "classified-text" && AD_TYPE_IDS.includes(adType) && !(sq && sq > 0)) errors.push("sq_cm_rate is required (> 0) for display ads");
 
@@ -183,7 +192,8 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       line,
       errors,
       row: { newspaper_name: paper.name, edition, category, ad_type: adType, base_rate: base!, extra_line_rate: extra!, sq_cm_rate: sq!, color_surcharge_percent: color!,
-        min_lines: minLines as number | null, min_sq_cm: minSq as number | null, cutoff_days: cutDays as number | null, cutoff_time: cutTime as string | null, gst_included: gst as boolean },
+        min_lines: minLines as number | null, min_sq_cm: minSq as number | null, cutoff_days: cutDays as number | null, cutoff_time: cutTime as string | null, gst_included: gst as boolean,
+        bold_heading_rate: bold!, tick_rate: tick!, border_rate: border! },
     };
   });
 }

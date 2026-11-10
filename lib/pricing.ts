@@ -7,15 +7,14 @@ import { findRate, getActiveRates, headlineRate, paperConfig, visibleEditions, t
 
 export const GST_RATE = 0.18;
 
-/** Text enhancements, as a fraction of the text charge. */
-export const ENHANCEMENT_PCT: Record<keyof Enhancements, number> = {
-  bold: 0.15,
-  border: 0.25,
-  tint: 0.3,
-};
+/** Background tint is still a fraction of the text charge; bold, tick and border are flat rates from the rate sheet. */
+export const ENHANCEMENT_PCT = { tint: 0.3 } as const;
+/** Rate-sheet column holding each flat enhancement charge. */
+export const ENHANCEMENT_RATE_KEY = { bold: "bold_heading_rate", tick: "tick_rate", border: "border_rate" } as const;
 
 export const ENHANCEMENT_LABEL: Record<keyof Enhancements, string> = {
-  bold: "Bold text",
+  bold: "Bold first line",
+  tick: "Tick mark ✔",
   border: "Border box",
   tint: "Background tint",
 };
@@ -27,7 +26,7 @@ export const VOLUME_TIERS = [
   { minEditions: 2, pct: 5 },
 ];
 
-export const DEFAULT_ENHANCEMENTS: Enhancements = { bold: false, border: false, tint: false };
+export const DEFAULT_ENHANCEMENTS: Enhancements = { bold: false, border: false, tick: false, tint: false };
 export const DEFAULT_DISPLAY: DisplaySpec = { columns: 2, heightCm: 10, colorMode: "bw" };
 
 export type Selection = Record<string, string[]>;
@@ -167,9 +166,11 @@ export function calculateQuote(input: QuoteInput): Quote {
         extraUnits = Math.max(0, m.lines - baseUnits);
         extraUnitLabel = "lines";
         extra = round2(extraUnits * rule.extra_line_rate * net);
-        for (const key of ["bold", "border", "tint"] as const) {
+        // total = base/lines + bold + tick + border (flat, from the rate row) [+ tint %]; GST is added once afterwards.
+        for (const key of ["bold", "tick", "border", "tint"] as const) {
           if (!enh[key]) continue;
-          const amt = round2((base + extra) * ENHANCEMENT_PCT[key]);
+          const amt = key === "tint" ? round2((base + extra) * ENHANCEMENT_PCT.tint) : round2(rule[ENHANCEMENT_RATE_KEY[key]] * net);
+          if (!amt) continue;
           enhancements += amt;
           enhTotals[key] = (enhTotals[key] ?? 0) + amt;
         }

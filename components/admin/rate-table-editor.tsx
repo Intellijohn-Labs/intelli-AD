@@ -10,11 +10,14 @@ import { AD_TYPE_IDS, getActiveRates, permutations } from "@/lib/rates";
 import { loadRates, useRatesVersion } from "@/lib/use-rates";
 import type { AdType, Newspaper } from "@/lib/types";
 
-type Key = "min_lines" | "min_sq_cm" | "cutoff_days" | "cutoff_time" | "base_rate" | "extra_line_rate" | "sq_cm_rate" | "color_surcharge_percent";
+type Key = "min_lines" | "min_sq_cm" | "cutoff_days" | "cutoff_time" | "base_rate" | "extra_line_rate" | "sq_cm_rate" | "color_surcharge_percent" | "bold_heading_rate" | "tick_rate" | "border_rate";
 const COLS: { key: Key; label: string; types: AdType[]; type: "number" | "time"; step?: string }[] = [
   { key: "min_lines", label: "Min Lines", types: ["classified-text"], type: "number", step: "1" },
   { key: "base_rate", label: "Base Rate", types: ["classified-text"], type: "number", step: "0.01" },
   { key: "extra_line_rate", label: "Extra Line Rate", types: ["classified-text"], type: "number", step: "0.01" },
+  { key: "bold_heading_rate", label: "Bold Rate (₹)", types: ["classified-text"], type: "number", step: "0.01" },
+  { key: "tick_rate", label: "Tick Rate (₹)", types: ["classified-text"], type: "number", step: "0.01" },
+  { key: "border_rate", label: "Border Rate (₹)", types: ["classified-text"], type: "number", step: "0.01" },
   { key: "min_sq_cm", label: "Min Sq.cm", types: ["classified-display", "commercial-display"], type: "number", step: "0.01" },
   { key: "sq_cm_rate", label: "Sq.cm Rate", types: ["classified-display", "commercial-display"], type: "number", step: "0.01" },
   { key: "color_surcharge_percent", label: "Surcharge %", types: ["classified-display", "commercial-display"], type: "number", step: "0.01" },
