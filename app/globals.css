@@ -139,10 +139,6 @@ html.dark { color-scheme: dark; }
 .rule-double { border-top: 3px double #111; }
 .dark .rule-double { border-top-color: #2B3D6B; }
 
-/* Footer tide: slow horizontal drift of the layered waves (each layer sets its own duration/delay). */
-@keyframes wave { 0% { transform: translateX(0); } 100% { transform: translateX(-6%); } }
-.wave-layer { animation: wave 12s ease-in-out infinite alternate; will-change: transform; }
-@media (prefers-reduced-motion: reduce) { .wave-layer { animation: none !important; } }
 
 /* ───────────── Media-card illustrations: transform/opacity-only micro-animations ─────────────
    --amp scales every motion; it eases up when the card (.group) is hovered. */

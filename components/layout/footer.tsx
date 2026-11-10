@@ -1,10 +1,11 @@
 "use client";
 
-import { Mail, Phone, ShieldCheck, Stamp } from "lucide-react";
+import { Info, Mail, Phone, ScrollText, ShieldCheck, Stamp, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/context/language-context";
 import { bookHref } from "@/lib/booking-params";
 import { usePublication } from "@/lib/publication";
+import { cn } from "@/lib/utils";
 import { BrandLogo } from "./brand-logo";
 
 const linkCls = "text-sm text-slate-400 transition-colors hover:text-white";
@@ -30,7 +31,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="mt-20 w-full border-t border-slate-700/60 bg-slate-950 pt-16 pb-12 text-slate-400">
+    <footer className="mt-20 w-full border-t border-slate-800 bg-slate-950 pt-16 pb-12 text-slate-400">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:px-6 md:grid-cols-4 lg:px-8">
         {/* Brand */}
         <div>
@@ -69,9 +70,9 @@ export function Footer() {
         <div>
           <p className={headCls}>{t("Company & Support")}</p>
           <ul className="space-y-2.5">
-            <li><a href="mailto:help@intelliad.example" className={linkCls}>{t("Contact")}</a></li>
-            {["About", "Terms", "Privacy"].map((l) => (
-              <li key={l} title={t("Coming soon")} className="cursor-default text-sm text-slate-500">{t(l)}</li>
+            <li><a href="mailto:help@intelliad.example" className={cn(linkCls, "inline-flex items-center gap-2")}><Mail className="h-4 w-4 text-slate-500" aria-hidden="true" /> {t("Contact")}</a></li>
+            {([["About", Info], ["Terms", ScrollText], ["Privacy", UserRoundCheck]] as const).map(([l, Icon]) => (
+              <li key={l} title={t("Coming soon")} className="flex cursor-default items-center gap-2 text-sm text-slate-500"><Icon className="h-4 w-4" aria-hidden="true" /> {t(l)}</li>
             ))}
           </ul>
           <div className="mt-5 space-y-2 text-sm text-slate-300">
@@ -83,7 +84,7 @@ export function Footer() {
 
       {/* Bottom bar */}
       <div className="mx-auto mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-2 border-t border-slate-800/80 pt-6 text-center text-xs text-slate-500 md:flex-row md:text-left">
+        <div className="flex flex-col items-center justify-between gap-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-500 md:flex-row md:text-left">
           <p>© {year} IntelliAd. {t("All rights reserved.")}</p>
           <p className="max-w-xl md:text-right">{t("Demo application. Rates are illustrative and payments are simulated. Publication names belong to their respective owners.")}</p>
         </div>
