@@ -60,19 +60,19 @@ export function FullScreenProofEditorModal({ onClose }: { onClose: () => void })
   const photoScale = Math.round((ob.photoScale ?? 1) * 100);
   const photoZoom = Math.round(ob.photoCrop.zoom * 100);
 
-  // Portal to <body> at z-[999]: escapes every sticky / transformed ancestor and covers the header, publication bar and WhatsApp button.
+  // Portal to <body> at z-[100] (site chrome tops out at z-50): escapes every sticky / transformed ancestor and covers the header, publication bar and WhatsApp button.
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/85 p-4 backdrop-blur-md" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <button type="button" aria-label="Close editor" title="Close (Esc)" onClick={onClose} className="fixed top-4 right-4 z-50 rounded-full border border-stone-300 bg-white/90 p-2 text-stone-700 shadow-md hover:bg-white focus-visible:outline-2 focus-visible:outline-blue-600"><X className="h-5 w-5" /></button>
       <div role="dialog" aria-modal="true" aria-labelledby="fse-title" className="flex h-full max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-zinc-100 text-zinc-900 shadow-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-300 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-300 bg-white py-3 pr-16 pl-4">
           <h2 id="fse-title" className="font-serif text-lg font-bold">Edit your proof</h2>
           <div className="flex items-center gap-2">
             <Button type="button" variant="secondary" onClick={reset}><RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset Layout</Button>
-            <button ref={doneRef} type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-              <Check className="h-4 w-4" aria-hidden="true" /> Done / Save &amp; Close
+            <button ref={doneRef} type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg bg-stone-900 px-4 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-stone-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+              <Check className="h-4 w-4" aria-hidden="true" /> Done / സേവ് &amp; ക്ലോസ്
             </button>
-            <button type="button" aria-label="Close" onClick={onClose} className="rounded p-1.5 text-zinc-600 hover:bg-zinc-200"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
