@@ -2,6 +2,7 @@
 
 import { AlignCenter, AlignJustify, AlignLeft, Check, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { composeObituary, DEFAULT_OBITUARY, FRAME_STYLES, type FrameStyle, type ObituaryFields } from "@/data/obituary";
 import { useBooking, type TextStyle } from "@/lib/booking-store";
@@ -59,8 +60,10 @@ export function FullScreenProofEditorModal({ onClose }: { onClose: () => void })
   const photoScale = Math.round((ob.photoScale ?? 1) * 100);
   const photoZoom = Math.round(ob.photoCrop.zoom * 100);
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  // Portal to <body> at z-[999]: escapes every sticky / transformed ancestor and covers the header, publication bar and WhatsApp button.
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div role="dialog" aria-modal="true" aria-labelledby="fse-title" className="flex h-full max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-zinc-100 text-zinc-900 shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-300 bg-white px-4 py-3">
           <h2 id="fse-title" className="font-serif text-lg font-bold">Edit your proof</h2>
@@ -136,6 +139,7 @@ export function FullScreenProofEditorModal({ onClose }: { onClose: () => void })
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition, flagshipRate } from "@/lib/pricing";
-import { useRatesVersion } from "@/lib/use-rates";
+import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
 import { getActiveRates, matchRate } from "@/lib/rates";
 import { cutoffRuleFor, formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
@@ -67,6 +67,7 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
 /** Sticky newsprint proof beside the form; editable in place, with the price recalculating under it. */
 function LivePreview({ state }: { state: BookingState }) {
   const quote = useBookingQuote(state);
+  const { loaded } = useRateAvailability();
   const isText = state.adType === "classified-text";
   const [open, setOpen] = useState(false);
   return (
@@ -86,7 +87,7 @@ function LivePreview({ state }: { state: BookingState }) {
       {open && <FullScreenProofEditorModal onClose={() => setOpen(false)} />}
       <div className="mt-4 flex items-baseline justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-400/30 dark:bg-emerald-500/10" aria-live="polite">
         <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{isText ? `${quote.metrics.lines} lines` : `${quote.metrics.areaCm2} cm²`} · estimated cost</span>
-        <span className="font-mono text-lg font-black tabular-nums text-emerald-700 dark:text-emerald-300"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
+        <span className="font-mono text-lg font-black tabular-nums text-emerald-700 dark:text-emerald-300">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-6 w-20 animate-pulse rounded bg-emerald-200 align-middle dark:bg-emerald-400/30" />}</span>
       </div>
     </Card>
   );
@@ -157,6 +158,7 @@ function MiniSummary({ state }: { state: BookingState }) {
   const quote = useBookingQuote(state);
   const { user } = useAuth();
   const toast = useToast();
+  const { loaded } = useRateAvailability(); // false until the first rate fetch resolves
   useRatesVersion();
   const floor = flagshipRate(paper, state.adType);
   // Once a category is picked, show the resolved rate row's per-unit rate (extra line / cm²) for the chosen edition
@@ -169,7 +171,7 @@ function MiniSummary({ state }: { state: BookingState }) {
   return (
     <Card className="p-5 sm:p-6">
       <p className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>
-      <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#0F172A] dark:text-zinc-50"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></p>
+      <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#0F172A] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
       <p className="text-xs text-zinc-500">{t("incl. 18% GST")}</p>
       <dl className="mt-4 space-y-1.5 border-t border-dashed border-zinc-400 pt-4 text-sm">
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Type")}</dt><dd className="font-medium">{t(getAdType(state.adType).short)}</dd></div>
@@ -183,7 +185,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       )}
       <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
-        {rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : <p>{t("Rates not yet published by admin")}</p>}
+        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : <p>{t("Rates not yet published by admin")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
       {user && (
