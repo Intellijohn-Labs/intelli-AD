@@ -77,14 +77,15 @@ export function NewspaperDirectory() {
       <section className="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Current database rates</h2>
         <div className="mt-3 max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>{["Newspaper", "Edition", "Category", "Ad type", "Min", "Cut-off", "Base rate (₹)", "Line rate (₹)", "Sq.cm rate (₹)"].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
+          <table className="w-full min-w-[1100px] text-left text-sm">
+            <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>{["Newspaper", "Edition", "Category", "Ad type", "Min", "Cut-off", "Base rate (₹)", "Line rate (₹)", "Sq.cm rate (₹)", "Bold (₹)", "Tick (₹)", "Border (₹)"].map((h) => <th key={h} className="px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
             <tbody>
-              {!tableRows.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No rates uploaded yet.</td></tr>}
+              {!tableRows.length && <tr><td colSpan={12} className="px-3 py-6 text-center text-slate-500">No rates uploaded yet.</td></tr>}
               {tableRows.map((r) => (
                 <tr key={r.id ?? `${r.newspaper_name}|${r.edition}|${r.category}|${r.ad_type}`} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-3 py-2">{r.newspaper_name}</td><td className="px-3 py-2">{r.edition}</td><td className="px-3 py-2">{r.category}</td><td className="px-3 py-2">{r.ad_type}</td>
                   <td className="px-3 py-2">{r.min_lines ?? (r.min_sq_cm ? `${r.min_sq_cm} cm²` : "—")}</td><td className="px-3 py-2 whitespace-nowrap">{r.cutoff_days !== null && r.cutoff_time ? `${r.cutoff_days}d · ${r.cutoff_time}` : "—"}</td><td className="px-3 py-2">{r.base_rate}</td><td className="px-3 py-2">{r.extra_line_rate}</td><td className="px-3 py-2">{r.sq_cm_rate}</td>
+                  {(["bold_heading_rate", "tick_rate", "border_rate"] as const).map((k) => <td key={k} className="px-3 py-2" title={r.ad_type === "classified-text" ? undefined : "Enhancements apply to classified text ads only"}>{r.ad_type === "classified-text" ? (r[k] || "Free") : "—"}</td>)}
                 </tr>
               ))}
             </tbody>

@@ -24,6 +24,7 @@ const COLS: { key: Key; label: string; types: AdType[]; type: "number" | "time";
   { key: "cutoff_days", label: "Cutoff Days", types: AD_TYPE_IDS, type: "number", step: "1" },
   { key: "cutoff_time", label: "Cutoff Time", types: AD_TYPE_IDS, type: "time" },
 ];
+const ENH_KEYS: Key[] = ["bold_heading_rate", "tick_rate", "border_rate"];
 interface Cell { vals: Record<Key, string>; gst: boolean }
 const keyOf = (p: { edition: string; category: string; ad_type: string }) => `${p.edition}|${p.category}|${p.ad_type}`;
 const str = (v: number | string | null | undefined) => (v === null || v === undefined || v === 0 ? "" : String(v));
@@ -100,9 +101,15 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
         </div>
       </div>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`mt-3 text-sm font-medium ${msg.ok ? "text-emerald-700" : "text-red-700"}`}>{msg.text}</p>}
+      {adType === "classified-text" && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p className="font-bold">Ad Enhancement Charges (ക്ലാസിഫൈഡ് എൻഹാൻസ്‌മെന്റ് നിരക്കുകൾ)</p>
+          <p className="text-xs">The highlighted Bold, Tick and Border columns are flat extra charges per booking (₹). Leave them empty or 0 to offer the option free. Background tint stays a fixed 30% of the text charge.</p>
+        </div>
+      )}
       <div className="mt-3 max-h-[60vh] overflow-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700">
         <table className="w-full min-w-[900px] text-left text-sm">
-          <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700"><tr><th className="px-3 py-2">Edition</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Ad Type</th>{cols.map((c) => <th key={c.key} className="px-3 py-2">{c.label}</th>)}<th className="px-3 py-2">Rates incl. GST</th></tr></thead>
+          <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700"><tr><th className="px-3 py-2">Edition</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Ad Type</th>{cols.map((c) => <th key={c.key} className={`px-3 py-2 ${ENH_KEYS.includes(c.key) ? "bg-amber-100 text-amber-900" : ""}`}>{c.label}</th>)}<th className="px-3 py-2">Rates incl. GST</th></tr></thead>
           <tbody>
             {shown.map((p) => {
               const k = keyOf(p);
