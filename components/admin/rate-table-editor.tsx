@@ -28,6 +28,14 @@ const ENH_KEYS: Key[] = ["bold_heading_rate", "tick_rate", "border_rate"];
 interface Cell { vals: Record<Key, string>; gst: boolean }
 const keyOf = (p: { edition: string; category: string; ad_type: string }) => `${p.edition}|${p.category}|${p.ad_type}`;
 const str = (v: number | string | null | undefined) => (v === null || v === undefined || v === 0 ? "" : String(v));
+/** Strips leading zeros while typing ("050" → "50", "007.5" → "7.5"; "0", "0.5" and "" are kept). */
+const stripZeros = (v: string) => v.replace(/^0+(?=\d)/, "");
+/** Canonical form for comparing a typed number with the saved one ("50.0", "050" and "50" are equal; 0 equals blank). */
+const canon = (v: string, type: "number" | "time") => {
+  if (type === "time" || v.trim() === "") return v.trim();
+  const n = Number(v);
+  return Number.isFinite(n) ? (n === 0 ? "" : String(n)) : v.trim();
+};
 
 /** Fixed-structure table: Edition / Category / Ad type are read-only; only the setting and rate inputs can be edited. */
 export function RateTableEditor({ paper }: { paper: Newspaper }) {
@@ -36,7 +44,12 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
   const ratesVersion = useRatesVersion();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const original = useMemo(() => new Map((getActiveRates() ?? []).filter((r) => r.newspaper_name === paper.name).map((r) => [keyOf(r), r])), [paper, ratesVersion]);
+  // Values just saved: the baseline for "unsaved changes" until the reloaded rate book catches up.
+  const [saved, setSaved] = useState<Record<string, Cell>>({});
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setSaved({}); }, [ratesVersion]);
   const initial = (k: string): Cell => {
+    if (saved[k]) return saved[k];
     const r = original.get(k);
     return { vals: Object.fromEntries(COLS.map((c) => [c.key, str(r?.[c.key])])) as Record<Key, string>, gst: r?.gst_included ?? false };
   };
@@ -51,7 +64,7 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
 
   const isDirty = (k: string) => {
     const a = cells[k], b = initial(k);
-    return a.gst !== b.gst || COLS.some((c) => (a.vals[c.key] || "") !== (b.vals[c.key] || ""));
+    return a.gst !== b.gst || COLS.some((c) => canon(a.vals[c.key] || "", c.type) !== canon(b.vals[c.key] || "", c.type));
   };
   const dirty = perms.filter((p) => isDirty(keyOf(p)));
   const cols = COLS.filter((c) => c.types.includes(adType));
@@ -62,7 +75,15 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
     const rows = dirty.map((p) => ({ newspaper_name: paper.name, ...p, ...cells[keyOf(p)].vals, gst_included: cells[keyOf(p)].gst }));
     const res = await saveRates(rows, true); // validated again on the server; fully empty rows clear an existing rate
     setSaving(false);
-    if (res.ok) { toast(res.message); setMsg({ ok: true, text: res.message }); await loadRates(); }
+    if (res.ok) {
+      // Everything sent is now stored: tidy the typed values and reset the unsaved tracking.
+      const tidy = (c: Cell): Cell => ({ gst: c.gst, vals: Object.fromEntries(COLS.map((col) => [col.key, canon(c.vals[col.key] || "", col.type)])) as Record<Key, string> });
+      const done = Object.fromEntries(dirty.map((p) => [keyOf(p), tidy(cells[keyOf(p)])]));
+      setSaved((s) => ({ ...s, ...done }));
+      setCells((all) => ({ ...all, ...done }));
+      toast(res.message); setMsg({ ok: true, text: res.message });
+      await loadRates();
+    }
     else setMsg({ ok: false, text: res.message + (res.errors.length ? " " + res.errors.slice(0, 3).map((e) => { const r = rows[e.line - 2]; return `${r?.edition}/${r?.category}/${r?.ad_type}: ${e.errors[0]}`; }).join("; ") : "") });
   }
 
@@ -80,6 +101,7 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
     setClearing(false);
     setConfirming(false);
     if (!res.ok) return setMsg({ ok: false, text: res.message });
+    setSaved({});
     setCells(Object.fromEntries(perms.map((p) => [keyOf(p), { vals: Object.fromEntries(COLS.map((c) => [c.key, ""])) as Record<Key, string>, gst: false }])));
     toast(res.message);
     setMsg({ ok: true, text: res.message });
@@ -95,7 +117,7 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
         <Select aria-label="Ad type" value={adType} onChange={(e) => setAdType(e.target.value as AdType)} className="w-52">{AD_TYPE_IDS.map((a) => <option key={a} value={a}>{a}</option>)}</Select>
         <Input aria-label="Filter rows" placeholder="Filter edition / category…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-56" />
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-xs text-slate-500">{dirty.length} unsaved change{dirty.length === 1 ? "" : "s"}</span>
+          <span className={`text-xs ${dirty.length ? "text-amber-700" : "text-emerald-700"}`}>{dirty.length ? `${dirty.length} unsaved change${dirty.length === 1 ? "" : "s"}` : "All changes saved"}</span>
           <button type="button" disabled={saving || clearing || original.size === 0} onClick={() => setConfirming(true)} title={original.size === 0 ? "No saved rates to clear" : undefined} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-red-400 px-3 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:pointer-events-none disabled:opacity-50"><Trash2 className="h-4 w-4" aria-hidden="true" />Clear All Rates</button>
           <Button size="sm" disabled={saving || !dirty.length} onClick={() => void save()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />} Save Rates</Button>
         </div>
@@ -108,7 +130,7 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
         </div>
       )}
       <div className="mt-3 max-h-[60vh] overflow-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700">
-        <table className="w-full min-w-[900px] text-left text-sm">
+        <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="sticky top-0 bg-slate-100 text-xs text-slate-700"><tr><th className="px-3 py-2">Edition</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Ad Type</th>{cols.map((c) => <th key={c.key} className={`px-3 py-2 ${ENH_KEYS.includes(c.key) ? "bg-amber-100 text-amber-900" : ""}`}>{c.label}</th>)}<th className="px-3 py-2">Rates incl. GST</th></tr></thead>
           <tbody>
             {shown.map((p) => {
@@ -118,7 +140,7 @@ export function RateTableEditor({ paper }: { paper: Newspaper }) {
                   <td className="px-3 py-1.5 text-slate-700">{p.edition}</td><td className="px-3 py-1.5 text-slate-700">{p.category}</td><td className="px-3 py-1.5 text-slate-700">{p.ad_type}</td>
                   {cols.map((c) => (
                     <td key={c.key} className="px-3 py-1.5">
-                      <Input aria-label={`${c.label}: ${p.edition} / ${p.category}`} type={c.type} min={0} step={c.step} inputMode={c.type === "number" ? "decimal" : undefined} value={cells[k].vals[c.key]} onChange={(e) => set(k, (cell) => ({ ...cell, vals: { ...cell.vals, [c.key]: e.target.value } }))} className={c.type === "time" ? "h-8 w-28 px-2 text-sm" : "h-8 w-24 px-2 text-sm"} />
+                      <Input aria-label={`${c.label}: ${p.edition} / ${p.category}`} type={c.type} min={0} step={c.step} inputMode={c.type === "number" ? "decimal" : undefined} value={cells[k].vals[c.key]} onChange={(e) => set(k, (cell) => ({ ...cell, vals: { ...cell.vals, [c.key]: c.type === "number" ? stripZeros(e.target.value) : e.target.value } }))} className={c.type === "time" ? "h-8 w-28 px-2 text-sm" : "h-8 min-w-[72px] w-full px-2 py-1 text-right font-mono text-sm"} />
                     </td>
                   ))}
                   <td className="px-3 py-1.5"><input type="checkbox" aria-label={`Rates include GST: ${p.edition} / ${p.category}`} checked={cells[k].gst} onChange={(e) => set(k, (cell) => ({ ...cell, gst: e.target.checked }))} className="h-4 w-4" /></td>
