@@ -122,3 +122,8 @@ create policy "settings are public" on public.newspaper_settings for select to a
 ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS bold_heading_rate NUMERIC DEFAULT 0;
 ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS tick_rate NUMERIC DEFAULT 0;
 ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS border_rate NUMERIC DEFAULT 0;
+
+-- ── Multi-date / repeat insertions ─────────────────────────────────────────────────────────────────────────────────
+-- release_date stays the first insertion date; insertion_dates lists all of them; multi_day_discount is the ₹ saved.
+alter table public.bookings add column if not exists insertion_dates date[] not null default '{}';
+alter table public.bookings add column if not exists multi_day_discount numeric(12,2) not null default 0;

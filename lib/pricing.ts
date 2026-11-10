@@ -26,6 +26,14 @@ export const VOLUME_TIERS = [
   { minEditions: 2, pct: 5 },
 ];
 
+/** Extra discount for running the same ad on several dates, on the taxable subtotal. */
+export const MULTI_DAY_TIERS = [
+  { minDays: 7, pct: 15 },
+  { minDays: 5, pct: 10 },
+  { minDays: 3, pct: 5 },
+];
+export const multiDayPct = (insertions: number) => MULTI_DAY_TIERS.find((t) => insertions >= t.minDays)?.pct ?? 0;
+
 export const DEFAULT_ENHANCEMENTS: Enhancements = { bold: false, border: false, tick: false, tint: false };
 export const DEFAULT_DISPLAY: DisplaySpec = { columns: 2, heightCm: 10, colorMode: "bw" };
 
@@ -38,6 +46,8 @@ export interface QuoteInput {
   text?: string;
   enhancements?: Enhancements;
   display?: DisplaySpec;
+  /** Number of publication dates (insertions) the ad runs on; default 1. */
+  insertions?: number;
   /** Database rate book; defaults to the one loaded from `publication_rates`. Editions without a published rule are not priced. */
   rates?: RateBook | null;
 }
@@ -77,6 +87,12 @@ export interface Quote {
   };
   enhancementItems: { key: string; label: string; amount: number }[];
   totals: {
+    /** Insertion count and the multi-day discount (a % of the taxable subtotal) applied on top of edition discounts. */
+    insertions: number;
+    multiDayPct: number;
+    multiDay: number;
+    /** Subtotal for one insertion, after edition discounts and before the multi-day discount. */
+    perInsertion: number;
     base: number;
     extra: number;
     enhancements: number;
@@ -112,6 +128,7 @@ export function displayArea(spec: DisplaySpec, paper: Newspaper) {
 export function calculateQuote(input: QuoteInput): Quote {
   const enh = input.enhancements ?? DEFAULT_ENHANCEMENTS;
   const display = input.display ?? DEFAULT_DISPLAY;
+  const count = Math.max(1, Math.floor(input.insertions ?? 1) || 1);
   const text = input.text ?? "";
   const isText = input.adType === "classified-text";
   const rates = input.rates === undefined ? getActiveRates() : input.rates;
@@ -200,6 +217,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         discountLabel = `All ${bundle.name} editions bundle`;
       }
       const discount = round2((gross * discountPct) / 100);
+      const k = count; // every insertion costs the same: line values below are for the whole run
 
       lines.push({
         newspaperId: paper.id,
@@ -211,14 +229,14 @@ export function calculateQuote(input: QuoteInput): Quote {
         extraUnits,
         extraUnitLabel,
         rate,
-        base,
-        extra,
-        enhancements,
-        gross,
+        base: round2(base * k),
+        extra: round2(extra * k),
+        enhancements: round2(enhancements * k),
+        gross: round2(gross * k),
         discountPct,
         discountLabel,
-        discount,
-        net: round2(gross - discount),
+        discount: round2(discount * k),
+        net: round2((gross - discount) * k),
       });
     }
   }
@@ -226,14 +244,17 @@ export function calculateQuote(input: QuoteInput): Quote {
   const sum = (f: (l: EditionLine) => number) => round2(lines.reduce((a, l) => a + f(l), 0));
   const gross = sum((l) => l.gross);
   const discount = sum((l) => l.discount);
-  const taxable = round2(gross - discount);
+  const subtotal = round2(gross - discount);
+  const mdPct = multiDayPct(count);
+  const multiDay = round2((subtotal * mdPct) / 100);
+  const taxable = round2(subtotal - multiDay);
   const gst = round2(taxable * GST_RATE);
 
   const colorLabel = "Colour printing";
   const enhancementItems = Object.entries(enhTotals).map(([key, amount]) => ({
     key,
     label: key === "color" ? colorLabel : ENHANCEMENT_LABEL[key as keyof Enhancements],
-    amount: round2(amount),
+    amount: round2(amount * count),
   }));
 
   return {
@@ -251,6 +272,10 @@ export function calculateQuote(input: QuoteInput): Quote {
       },
     enhancementItems,
     totals: {
+      insertions: count,
+      multiDayPct: mdPct,
+      multiDay,
+      perInsertion: round2(subtotal / count),
       base: sum((l) => l.base),
       extra: sum((l) => l.extra),
       enhancements: sum((l) => l.enhancements),

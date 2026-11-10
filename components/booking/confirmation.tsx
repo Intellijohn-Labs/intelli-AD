@@ -78,7 +78,7 @@ export function Confirmation({ receipt, onNew }: { receipt: ReceiptData; onNew: 
               {[
                 [t("RO number"), receipt.roNumber],
                 [t("Booking ID"), receipt.bookingId],
-                [t("Release date"), formatDate(receipt.releaseDate)],
+                [t("Release date"), (receipt.insertionDates?.length ? receipt.insertionDates : [receipt.releaseDate]).map((d) => formatDate(d)).join(", ")],
                 [t("Ad"), `${t(receipt.adTypeLabel)} · ${receipt.categoryName}`],
                 [t("Payment"), t(PAYMENT_LABEL[receipt.paymentMethod])],
                 [t("Paid on"), formatDateTime(receipt.paidAt)],

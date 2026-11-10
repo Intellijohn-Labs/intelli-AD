@@ -24,6 +24,8 @@ export interface ReceiptData {
   adTypeLabel: string;
   categoryName: string;
   releaseDate: string;
+  /** All publication dates (a single date for one-off ads). */
+  insertionDates: string[];
   cutoffs: { paper: string; cutoff: string }[];
   adText: string | null;
   displaySpec: string | null;
@@ -64,6 +66,7 @@ export function createReceipt(
     adTypeLabel: getAdType(s.adType).label,
     categoryName: getCategory(s.categoryId)?.name ?? "General",
     releaseDate: s.releaseDate!,
+    insertionDates: s.insertionDates?.length ? s.insertionDates : [s.releaseDate!],
     cutoffs: paperIds.map((id) => {
       const paper = getNewspaper(id)!;
       return { paper: paper.name, cutoff: cutoffFor(s.releaseDate!, cutoffRuleFor(paper, s.adType)).toISOString() };
@@ -104,7 +107,7 @@ th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}.n{text-align
 <header><div><h1>INTELLIAD</h1><div class="sub">Release Order · Newspaper advertising</div></div><div class="stamp">PAID</div></header>
 <div class="meta">
 <div><b>RO number</b>${esc(r.roNumber)}</div><div><b>Booking ID</b>${esc(r.bookingId)}</div>
-<div><b>Advertiser</b>${esc(r.contact.fullName)}${r.contact.company ? ", " + esc(r.contact.company) : ""}</div><div><b>Release date</b>${esc(formatDate(r.releaseDate))}</div>
+<div><b>Advertiser</b>${esc(r.contact.fullName)}${r.contact.company ? ", " + esc(r.contact.company) : ""}</div><div><b>Release date${(r.insertionDates?.length ?? 1) > 1 ? "s" : ""}</b>${esc((r.insertionDates?.length ? r.insertionDates : [r.releaseDate]).map((d) => formatDate(d)).join(", "))}</div>
 <div><b>Ad type</b>${esc(r.adTypeLabel)}</div><div><b>Category</b>${esc(r.categoryName)}</div>
 <div><b>Payment</b>${esc(PAYMENT_LABEL[r.paymentMethod])} · ${esc(r.transactionId)}</div><div><b>Paid on</b>${esc(formatDateTime(r.paidAt))}</div>
 ${r.contact.gstin ? `<div><b>GSTIN</b>${esc(r.contact.gstin.toUpperCase())}</div>` : ""}<div><b>Billing address</b>${esc(r.contact.address)}</div>
@@ -114,7 +117,7 @@ ${r.adText ? `<div class="ad">${esc(r.adText)}</div>` : `<p>${esc(r.displaySpec 
 ${r.enhancements.length ? `<p>Enhancements: ${r.enhancements.map(esc).join(", ")}</p>` : ""}
 <h3>Insertions &amp; charges</h3>
 <table><thead><tr><th>Publication / edition</th><th class="n">Charge</th><th class="n">Discount</th><th class="n">Net</th></tr></thead><tbody>${rows}
-${row("Subtotal after discounts", t.taxable)}${row("GST (18%)", t.gst)}${row("Total paid", t.total, true)}</tbody></table>
+${t.multiDay > 0 ? `<tr><td colspan="3">Multi-day savings (${t.multiDayPct}% for ${t.insertions} insertions)</td><td class="n">−${formatINR(t.multiDay, { decimals: true })}</td></tr>` : ""}${row("Subtotal after discounts", t.taxable)}${row("GST (18%)", t.gst)}${row("Total paid", t.total, true)}</tbody></table>
 <p style="font-family:Arial;font-size:11px;color:#666">This is a computer-generated Release Order for a demo booking. Booking cut-offs: ${r.cutoffs.map((c) => esc(c.paper) + " – " + esc(formatDateTime(c.cutoff))).join("; ")}.</p>
 </body></html>`;
 }

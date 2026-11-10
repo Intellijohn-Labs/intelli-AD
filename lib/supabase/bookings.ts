@@ -15,6 +15,9 @@ export interface BookingRow {
   publication: string;
   editions: Record<string, string[]>;
   release_date: string | null;
+  /** Every insertion date, and the multi-day discount amount (₹) applied to the booking. */
+  insertion_dates?: string[];
+  multi_day_discount?: number;
   ad_text: string | null;
   artwork_url: string | null;
   dimensions: { width: number | null; height: number | null; lines: number };
@@ -47,14 +50,16 @@ export function buildBookingRow(state: BookingState, quote: Quote, customer: Cus
     category: state.categoryId ?? "general", // the column is NOT NULL
     publication: paperIds.map((id) => getNewspaper(id)?.name ?? id).join(", "),
     editions: Object.fromEntries(paperIds.map((id) => [id, state.selection[id]])),
-    release_date: state.releaseDate,
+    release_date: state.insertionDates?.[0] ?? state.releaseDate,
+    insertion_dates: state.insertionDates?.length ? state.insertionDates : state.releaseDate ? [state.releaseDate] : [],
+    multi_day_discount: quote.totals.multiDay,
     ad_text: state.text.trim() ? (isText ? applySpacing(state.text, state.paragraphSpacing).trim() : state.text.trim()) : null,
     artwork_url: state.artwork?.url ?? null,
     dimensions: isText
       ? { width: null, height: null, lines: quote.metrics.lines }
       : { width: displayWidth(state.display, colW), height: state.display.heightCm, lines: quote.metrics.lines },
     enhancements: { ...state.enhancements, colorMode: state.display.colorMode },
-    pricing: { baseRate: quote.totals.base, gst: quote.totals.gst, total: quote.totals.total, extra: quote.totals.extra, discount: quote.totals.discount },
+    pricing: { baseRate: quote.totals.base, gst: quote.totals.gst, total: quote.totals.total, extra: quote.totals.extra, discount: quote.totals.discount, insertions: quote.totals.insertions, multiDayDiscount: quote.totals.multiDay, multiDayPct: quote.totals.multiDayPct },
     customer_details: { ...customer },
     status,
   };
@@ -68,7 +73,13 @@ export function buildBookingRow(state: BookingState, quote: Quote, customer: Cus
 export async function saveBooking(row: BookingRow): Promise<{ ok: boolean; ref?: string; skipped?: boolean; error?: string }> {
   const supabase = createClient();
   if (!supabase) return { ok: false, skipped: true, error: "Database is not configured." };
-  const { error } = await supabase.from("bookings").insert(row);
+  let { error } = await supabase.from("bookings").insert(row);
+  // The insertion_dates / multi_day_discount columns come from supabase/schema.sql; if that migration hasn't been run
+  // yet, keep the data inside the existing pricing JSON instead of failing the booking.
+  if (error && /insertion_dates|multi_day_discount/.test(error.message)) {
+    const { insertion_dates, multi_day_discount, ...rest } = row;
+    ({ error } = await supabase.from("bookings").insert({ ...rest, pricing: { ...rest.pricing, insertionDates: insertion_dates, multiDayDiscount: multi_day_discount } }));
+  }
   return error ? { ok: false, error: error.message } : { ok: true, ref: row.booking_ref };
 }
 

@@ -11,7 +11,7 @@ import { formatDate, formatDateTime, parseISODate } from "@/lib/utils";
 import { getNewspaper } from "@/data/newspapers";
 import { printsOn } from "@/lib/rates";
 import { useRatesVersion } from "@/lib/use-rates";
-import { DatePicker } from "./date-picker";
+import { MultiDateScheduler } from "./multi-date-scheduler";
 import { StepNav } from "./step-nav";
 
 export function Step3Schedule() {
@@ -33,8 +33,11 @@ export function Step3Schedule() {
 
   // Drop a previously chosen date that has since closed.
   useEffect(() => {
-    if (now && state.releaseDate && !isBookable(state.releaseDate, paperIds, state.adType, now)) update({ releaseDate: null });
-  }, [now, state.releaseDate, paperIds, state.adType, update]);
+    if (!now) return;
+    const all = state.insertionDates?.length ? state.insertionDates : state.releaseDate ? [state.releaseDate] : [];
+    const open = all.filter((d) => isBookable(d, paperIds, state.adType, now));
+    if (open.length !== all.length) update({ insertionDates: open, releaseDate: open[0] ?? null });
+  }, [now, state.releaseDate, state.insertionDates, paperIds, state.adType, update]);
 
   if (!now || !earliest || !max) return <p className="text-sm text-zinc-500">{t("Loading schedule…")}</p>;
 
@@ -46,7 +49,7 @@ export function Step3Schedule() {
       <p className="mb-5 text-sm text-zinc-600">{t("Dates close at each publication's cut-off. Your ad runs on the date you pick if every selected paper is still open.")}</p>
 
       <div className="grid gap-6 md:grid-cols-[auto_1fr]">
-        <DatePicker value={state.releaseDate} onChange={(iso) => update({ releaseDate: iso })} now={now} earliest={earliest} max={max} isDisabled={(iso) => !isBookable(iso, paperIds, state.adType, now)} isNonPrint={(iso) => paperIds.some((id) => { const p = getNewspaper(id); return !!p && !printsOn(p.name, parseISODate(iso)); })} />
+        <MultiDateScheduler now={now} earliest={earliest} max={max} isDisabled={(iso) => !isBookable(iso, paperIds, state.adType, now)} isNonPrint={(iso) => paperIds.some((id) => { const p = getNewspaper(id); return !!p && !printsOn(p.name, parseISODate(iso)); })} />
 
         <div className="space-y-4">
           <div className="rounded-md border border-amber-300/80 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-500/20 p-4">

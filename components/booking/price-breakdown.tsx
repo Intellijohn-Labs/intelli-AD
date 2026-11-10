@@ -32,6 +32,11 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
   });
   return (
     <div>
+      {t.insertions > 1 && (
+        <p className="mb-1 rounded bg-zinc-100 px-2 py-1 font-mono text-xs font-semibold dark:bg-white/10">
+          {formatINR(t.perInsertion, { decimals: true })} × {t.insertions} {tr("insertions")}
+        </p>
+      )}
       <Row label={tr("Base rate")} sub={baseSub} value={t.base} />
       <Row label={isText ? tr("Extra lines / words") : tr("Extra area")} sub={extraSub} value={t.extra} />
       <Row
@@ -40,6 +45,12 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
         value={t.enhancements}
       />
       {t.discount > 0 && <Row label={tr("Combo / bulk discount")} sub={tr("Multi-edition savings")} value={t.discount} negative />}
+      {t.multiDay > 0 && (
+        <div className="my-1 flex items-center justify-between gap-3 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-sm font-semibold text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-200">
+          <span>{tr("Multi-day Savings")} ({t.multiDayPct}%)</span>
+          <span className="font-mono tabular-nums">−{formatINR(t.multiDay, { decimals: true })}</span>
+        </div>
+      )}
       <Row label={tr("Taxable amount")} value={t.taxable} muted />
       <Row label={tr("GST ({pct}%)", { pct: GST_RATE * 100 })} value={t.gst} />
       <Row label={tr("Total payable")} value={t.total} strong />

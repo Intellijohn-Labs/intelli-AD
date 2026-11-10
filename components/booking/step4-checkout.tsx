@@ -84,7 +84,7 @@ export function Step4Checkout() {
           <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Ad type")}</dt><dd className="font-semibold">{t(getAdType(state.adType).label)}</dd></div>
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Category")}</dt><dd className="font-semibold">{(() => { const c = getCategory(state.categoryId); return c ? tl(c.name, c.nameMl) : ""; })()}</dd></div>
-            <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Release date")}</dt><dd className="font-semibold">{state.releaseDate && formatDate(state.releaseDate)}</dd></div>
+            <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Release date")}</dt><dd className="font-semibold">{(state.insertionDates?.length ? state.insertionDates : state.releaseDate ? [state.releaseDate] : []).map((d) => formatDate(d)).join(", ")}</dd></div>
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Editions")}</dt><dd className="font-semibold">{papers.map((p) => `${pn(getNewspaper(p)!)} (${state.selection[p].length})`).join(", ")}</dd></div>
           </dl>
           {(state.adType === "classified-text" || (!state.artwork && !!state.text.trim())) && <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-zinc-300 bg-paper p-3 font-clipping text-sm text-zinc-900">{applySpacing(state.text, state.paragraphSpacing).trim()}</pre>}

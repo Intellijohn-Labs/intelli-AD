@@ -23,6 +23,9 @@ export interface BookingState {
   artwork: FileMeta | null;
   documents: Record<string, FileMeta>;
   releaseDate: string | null;
+  /** Every publication date the ad runs on (sorted ISO dates). `releaseDate` is always the first of them. */
+  insertionDates: string[];
+  scheduleMode: "single" | "consecutive" | "custom";
   templateTitle: string | null;
   receipt: ReceiptData | null;
   /** Obituary / death-anniversary composer fields (only used by the obituary category). */
@@ -59,6 +62,8 @@ export const initialBookingState: BookingState = {
   artwork: null,
   documents: {},
   releaseDate: null,
+  insertionDates: [],
+  scheduleMode: "single",
   templateTitle: null,
   receipt: null,
   obituary: null,

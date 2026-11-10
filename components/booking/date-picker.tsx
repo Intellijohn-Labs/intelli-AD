@@ -10,6 +10,7 @@ const DOW_ML = ["തി", "ചൊ", "ബു", "വ്യാ", "വെ", "ശ", "
 
 export function DatePicker({
   value,
+  values,
   onChange,
   now,
   isDisabled,
@@ -18,6 +19,8 @@ export function DatePicker({
   max,
 }: {
   value: string | null;
+  /** Multi-select: every date highlighted (the parent toggles them in onChange). */
+  values?: string[];
   onChange: (iso: string) => void;
   now: Date;
   isDisabled: (iso: string) => boolean;
@@ -66,7 +69,7 @@ export function DatePicker({
           if (!iso) return <span key={`e${i}`} />;
           const disabled = isDisabled(iso) || iso > max;
           const noPrint = isNonPrint?.(iso) ?? false;
-          const selected = iso === value;
+          const selected = values ? values.includes(iso) : iso === value;
           return (
             <button
               key={iso}

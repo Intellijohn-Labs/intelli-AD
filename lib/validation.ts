@@ -91,9 +91,11 @@ export function validateStep1(s: BookingState): string | null {
 }
 
 export function validateStep3(s: BookingState, now: Date): string | null {
-  if (!s.releaseDate) return "Pick a release date.";
-  if (!isBookable(s.releaseDate, Object.keys(s.selection).filter((k) => s.selection[k].length), s.adType, now))
-    return "The cut-off for that date has passed for one of your publications.";
+  const dates = s.insertionDates?.length ? s.insertionDates : s.releaseDate ? [s.releaseDate] : [];
+  if (!dates.length) return "Pick at least one publication date.";
+  const ids = Object.keys(s.selection).filter((k) => s.selection[k].length);
+  if (dates.some((d) => !isBookable(d, ids, s.adType, now)))
+    return "The cut-off for one of the chosen dates has passed for one of your publications.";
   return null;
 }
 
