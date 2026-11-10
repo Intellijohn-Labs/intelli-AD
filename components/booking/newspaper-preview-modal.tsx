@@ -2,6 +2,7 @@
 
 import { ArrowRight, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { getNewspaper } from "@/data/newspapers";
 import { useI18n } from "@/context/language-context";
@@ -36,8 +37,9 @@ export function NewspaperPreviewModal({ onClose, onContinue }: { onClose: () => 
     return () => { document.removeEventListener("keydown", onKey, true); document.body.style.overflow = prev; };
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:items-center" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm sm:items-center" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div role="dialog" aria-modal="true" aria-labelledby="np-title" className="my-6 w-full max-w-2xl rounded-sm border border-stone-300 bg-[#fbfbf9] text-stone-900 shadow-2xl [background-image:radial-gradient(rgba(0,0,0,0.035)_1px,transparent_1px)] [background-size:4px_4px]">
         <header className="flex items-start justify-between gap-3 border-b-[3px] border-double border-stone-800 px-5 pt-4 pb-3">
           <div className="min-w-0">
@@ -66,6 +68,7 @@ export function NewspaperPreviewModal({ onClose, onContinue }: { onClose: () => 
           </div>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

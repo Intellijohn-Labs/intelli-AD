@@ -1,7 +1,7 @@
 "use client";
 
 import { RefreshCw, User } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { composeObituary, DEFAULT_OBITUARY } from "@/data/obituary";
 import { composeTender, DEFAULT_TENDER } from "@/data/tender";
 import { useBooking } from "@/lib/booking-store";
@@ -23,6 +23,7 @@ export function InteractiveMatterComposer({ value, onChange, chars, words, lines
 }) {
   const { state } = useBooking();
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [confirming, setConfirming] = useState(false);
   const ob = { ...DEFAULT_OBITUARY, ...state.obituary, kind: state.categoryId === "remembrance" ? ("anniversary" as const) : ("demise" as const) };
   const generator =
     (state.categoryId === "obituary" || state.categoryId === "remembrance") && state.obituary ? () => composeObituary(ob)
@@ -48,12 +49,20 @@ export function InteractiveMatterComposer({ value, onChange, chars, words, lines
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">പത്രത്തിൽ അച്ചടിക്കുന്ന വിധത്തിലുള്ള മാറ്റർ ഇവിടെ കാണാം. ആവശ്യാനുസരണം മാറ്റങ്ങൾ വരുത്താം (Edit freely as paragraphs or full text).</p>
         </div>
         {generator && (
-          <button type="button" onClick={() => { if (!value.trim() || value === generator() || window.confirm("Replace your edited matter with wording generated from the form?")) onChange(generator()); }}
+          <button type="button" aria-expanded={confirming} onClick={() => { if (!value.trim() || value === generator()) onChange(generator()); else setConfirming(true); }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-100 dark:border-white/20 dark:hover:bg-white/10">
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Auto-Format / Sync from Form
           </button>
         )}
       </div>
+
+      {confirming && generator && (
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-100">
+          <span className="font-semibold">Replace your edited text with wording generated from the form?</span>
+          <button type="button" onClick={() => { onChange(generator()); setConfirming(false); }} className="rounded-md bg-stone-900 px-3 py-1 text-xs font-bold text-white hover:bg-stone-800">Yes, replace</button>
+          <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-stone-400 px-3 py-1 text-xs font-bold hover:bg-white/60">Cancel</button>
+        </div>
+      )}
 
       <div className="mt-4 rounded-lg border-2 border-stone-300 bg-[#fdfdfb] p-5 shadow-inner">
         <div className={cn("gap-4", showPhoto ? "flex flex-col items-center sm:flex-row sm:items-start" : "block")}>

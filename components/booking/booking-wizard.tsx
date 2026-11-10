@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePublication } from "@/lib/publication";
 import { useToast } from "@/components/ui/toast";
@@ -133,9 +134,10 @@ function MobileProofBar({ state }: { state: BookingState }) {
         </div>
       </div>
 
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
         {open && (
-          <motion.div className="fixed inset-0 z-[60] flex items-end bg-slate-900/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+          <motion.div className="fixed inset-0 z-[999] flex items-end bg-slate-900/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
             <motion.div
               role="dialog" aria-modal="true" aria-label="Live newspaper proof"
               className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-3xl bg-[#F6F8FA] p-4 pb-8 shadow-2xl dark:bg-[#0B132B]"
@@ -147,7 +149,8 @@ function MobileProofBar({ state }: { state: BookingState }) {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
     </div>
   );
 }
