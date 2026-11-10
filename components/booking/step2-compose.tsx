@@ -23,6 +23,7 @@ import { columnsFor, displayWidth, isDisplayOnlyCategory, type CreativeMode } fr
 import { ObituaryComposer } from "./templates/obituary-template";
 import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
+import { InteractiveMatterComposer } from "./interactive-matter-composer";
 import { NewspaperPreviewModal } from "./newspaper-preview-modal";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -318,6 +319,17 @@ export function Step2Compose() {
                 ))}
               </div>
             </section>
+          )}
+          {!(displayOnly && mode === "upload") && (
+            <InteractiveMatterComposer
+              value={v.text ?? ""}
+              onChange={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
+              chars={m.chars}
+              words={m.words}
+              lines={m.lines}
+              charsPerLine={cpl}
+              showPhoto={!isText && (displayOnly ? mode === "builder" : false) && isObituary}
+            />
           )}
         </div>
 
