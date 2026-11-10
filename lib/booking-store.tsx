@@ -44,6 +44,8 @@ export interface TextStyle {
   align: "left" | "center" | "justify";
   /** Look of the border when the Border box enhancement is on (floral is for obituaries). */
   borderStyle: "single" | "double" | "floral";
+  /** Preview text size (proof only; billing is by line count). Default medium. */
+  size?: "sm" | "md" | "lg";
 }
 
 export const initialBookingState: BookingState = {

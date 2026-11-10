@@ -58,6 +58,8 @@ export interface ObituaryFields {
   prayer: string;
   /** Portrait crop: zoom (1–3) and focus point (0–100 %). */
   photoCrop: { zoom: number; x: number; y: number };
+  /** Portrait frame size relative to the standard 4×5 cm (0.5–1.5). Missing = 1. */
+  photoScale?: number;
 }
 
 export interface Prefix {

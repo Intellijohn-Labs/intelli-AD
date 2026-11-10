@@ -12,6 +12,33 @@ import type { FileMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PreviewCaption } from "./preview-caption";
 
+/** Single-line contentEditable block: commits on blur / Enter, so the notice text can be edited right on the proof. */
+function EditableLine({ value, onCommit, className, style }: { value: string; onCommit: (v: string) => void; className?: string; style?: React.CSSProperties }) {
+  return (
+    <p
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      role="textbox"
+      aria-label="Edit this line"
+      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
+      onBlur={(e) => { const v = (e.currentTarget.textContent ?? "").replace(/\s+/g, " ").trim(); if (v !== value) onCommit(v); }}
+      className={cn("cursor-text rounded-sm outline-none hover:bg-blue-500/5 focus:bg-blue-50/80 focus:ring-1 focus:ring-blue-500", className)}
+      style={style}
+    >{value}</p>
+  );
+}
+
+/** Replaces the nth non-empty line of the ad text. */
+function replaceLine(text: string, n: number, value: string) {
+  const lines = text.split("\n");
+  let seen = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() && ++seen === n) { lines[i] = value; break; }
+  }
+  return lines.join("\n");
+}
+
 const SERIF = { fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", serif' };
 const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-navy-500";
 
@@ -235,8 +262,8 @@ function Candle() {
 }
 
 /** 4×5 cm portrait (aspect 4:5) with the chosen accent. Overflow stays visible so ornaments can sit on the frame. */
-function Frame({ url, round, accent, crop, onCrop, onPhoto }: { url?: string; round: boolean; accent: FrameAccent; crop: { zoom: number; x: number; y: number }; onCrop?: (c: { zoom: number; x: number; y: number }) => void; onPhoto?: (f: FileMeta) => void }) {
-  const W = 96, H = round ? 96 : 120; // px; a 4×5 cm print area at preview scale
+function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale?: number; url?: string; round: boolean; accent: FrameAccent; crop: { zoom: number; x: number; y: number }; onCrop?: (c: { zoom: number; x: number; y: number }) => void; onPhoto?: (f: FileMeta) => void }) {
+  const W = Math.round(96 * scale), H = Math.round((round ? 96 : 120) * scale); // px; a 4×5 cm print area at preview scale
   const pad = accent === "garland" ? 12 : 4;
   const interactive = !!(onCrop && onPhoto);
   const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
@@ -345,11 +372,14 @@ function NoticeFrame({ style, children }: { style: "traditional" | "christian" |
  * Live Kerala-broadsheet preview of an obituary or remembrance. `bare` renders just the notice
  * (no caption or width cap) so the to-scale print preview can place it inside the exact ad box.
  */
-export function ObituaryPreview({ state, bare = false, editable = false }: { state: BookingState; bare?: boolean; editable?: boolean }) {
+export function ObituaryPreview({ state, bare = false, editable = false, inlineText = false }: { state: BookingState; bare?: boolean; editable?: boolean; inlineText?: boolean }) {
   const { update } = useBooking();
   const f = { ...DEFAULT_OBITUARY, ...state.obituary, kind: state.categoryId === "remembrance" ? ("anniversary" as const) : ("demise" as const) };
   const anniv = f.kind === "anniversary";
   const isText = state.adType === "classified-text";
+  const textPx = { sm: 11, md: 13, lg: 16 }[state.textStyle?.size ?? "md"];
+  const align = { left: "text-left", center: "text-center", justify: "text-justify" }[state.textStyle?.align ?? "justify"];
+  const commit = (n: number) => (v: string) => update({ text: replaceLine(state.text, n, v) });
   const heading = HEADING_STYLES.find((h) => h.id === f.headingStyle) ?? HEADING_STYLES[0];
 
   const all = state.text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -371,16 +401,21 @@ export function ObituaryPreview({ state, bare = false, editable = false }: { sta
         <NoticeFrame style={isText ? "minimal" : f.frameStyle}>
           <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug" style={{ fontFamily: heading.family, fontWeight: heading.weight, letterSpacing: heading.spacing }}>
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
-            {header}
+            {inlineText ? <EditableLine value={header} onCommit={commit(0)} /> : header}
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
           </h4>
           <div className={cn("mt-2 gap-3", showPhoto ? (narrow ? "flex flex-col items-center" : "flex items-start") : "block")}>
-            {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} />}
-            <div className="min-w-0 flex-1 space-y-1.5 text-justify text-[13px] leading-[1.7]">
-              {body.map((p, i) => <p key={i} className={cn(prayerLines.has(p) && "text-center font-semibold italic", !prayer && anniv && i === body.length - 1 && "text-center font-semibold italic")}>{p}</p>)}
+            {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} />}
+            <div className={cn("min-w-0 flex-1 space-y-1.5 leading-[1.7]", align)} style={{ fontSize: textPx }}>
+              {body.map((p, i) => {
+                const cls = cn(prayerLines.has(p) && "text-center font-semibold italic", !prayer && anniv && i === body.length - 1 && "text-center font-semibold italic");
+                return inlineText ? <EditableLine key={i} value={p} onCommit={commit(i + 1)} className={cls} /> : <p key={i} className={cls}>{p}</p>;
+              })}
             </div>
           </div>
-          {footer && <p className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic">{footer}</p>}
+          {footer && (inlineText
+            ? <EditableLine value={footer} onCommit={commit(all.length - 1)} className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic" />
+            : <p className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic">{footer}</p>)}
         </NoticeFrame>
       )}
     </div>

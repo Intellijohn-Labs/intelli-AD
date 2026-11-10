@@ -13,12 +13,16 @@ import type { Enhancements } from "@/lib/types";
 export const LINE_CM = 0.34;
 const HEADER_CM = 0.9;
 
+const TEXT_PX = { sm: 12, md: 14, lg: 17 } as const;
+
 export interface ProofEditor {
   /** Raw ad text as typed (what the form textarea holds). */
   rawText: string;
   onText: (text: string) => void;
   onStyle: (patch: Partial<TextStyle>) => void;
   onEnhancements: (patch: Partial<Enhancements>) => void;
+  /** Hide the built-in hover toolbar (the full-screen editor has its own). */
+  hideToolbar?: boolean;
 }
 
 /** Plain-text contentEditable: Enter inserts a line break, nothing else is stored. Mounted only while editing. */
@@ -111,7 +115,7 @@ export function NewspaperPreview({
           </span>
         </div>
       )}
-      {editor && (
+      {editor && !editor.hideToolbar && (
         <div role="toolbar" aria-label="Text formatting" className="mb-2 flex flex-wrap items-center justify-center gap-0.5 rounded-lg border border-slate-200 bg-white p-1 shadow-sm transition-opacity dark:border-slate-700 dark:bg-slate-800 [@media(hover:hover)]:opacity-40 [@media(hover:hover)]:group-focus-within/proof:opacity-100 [@media(hover:hover)]:group-hover/proof:opacity-100">
           <button type="button" aria-label="Bold first line" title="Bold first line (billed at the published bold rate)" aria-pressed={enhancements.bold} onClick={() => editor.onEnhancements({ bold: !enhancements.bold })} className={cn(tool, enhancements.bold && on)}><Bold className="h-3.5 w-3.5" /></button>
           <button type="button" aria-label="Italic" title="Italic" aria-pressed={textStyle.italic} onClick={() => editor.onStyle({ italic: !textStyle.italic })} className={cn(tool, textStyle.italic && on)}><Italic className="h-3.5 w-3.5" /></button>
@@ -138,7 +142,7 @@ export function NewspaperPreview({
             <p className="text-base font-bold tracking-tight">{paperName}</p>
             <p className="text-[10px] font-semibold uppercase">{t("Classifieds")} · {categoryName}</p>
           </div>
-          <div className="relative mx-auto px-3 py-2 text-[14px] leading-tight" style={{ width: `min(100%, ${(charsPerLine * 0.68 + 1.5).toFixed(1)}em)` }}>
+          <div className="relative mx-auto px-3 py-2 leading-tight" style={{ fontSize: TEXT_PX[textStyle.size ?? "md"], width: `min(100%, ${(charsPerLine * 0.68 + 1.5).toFixed(1)}em)` }}>
             {enhancements.tint && <span aria-hidden="true" className="absolute inset-0 bg-amber-200/80 dark:bg-amber-400/25" />}
             {enhancements.border && (
               <span aria-hidden="true" className={cn("absolute inset-0 border-slate-900 dark:border-slate-200", bs === "double" ? "border-[5px] border-double" : "border-2")} />

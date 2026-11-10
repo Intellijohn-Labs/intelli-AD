@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { Check, Eye, Save, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { saveDraft } from "@/lib/drafts";
+import { FullScreenProofEditorModal } from "./full-screen-proof-editor";
 import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
@@ -67,10 +68,22 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
 function LivePreview({ state }: { state: BookingState }) {
   const quote = useBookingQuote(state);
   const isText = state.adType === "classified-text";
+  const [open, setOpen] = useState(false);
   return (
     <Card className="p-5 sm:p-6">
-      <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#2B3D6B]">LIVE NEWSPAPER PROOF / അച്ചടി പ്രിവ്യൂ</h3>
-      <AdRender state={state} editable />
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Open the full-screen proof editor"
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
+        className="group relative -m-2 cursor-pointer rounded-2xl p-2 transition-all hover:ring-2 hover:ring-blue-500/50 focus-visible:outline-2 focus-visible:outline-blue-600"
+      >
+        <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#2B3D6B]">LIVE NEWSPAPER PROOF / അച്ചടി പ്രിവ്യൂ</h3>
+        <span aria-hidden="true" className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">🔍 Click to expand &amp; customize layout</span>
+        <div className="pointer-events-none"><AdRender state={state} /></div>
+      </div>
+      {open && <FullScreenProofEditorModal onClose={() => setOpen(false)} />}
       <div className="mt-4 flex items-baseline justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-400/30 dark:bg-emerald-500/10" aria-live="polite">
         <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">{isText ? `${quote.metrics.lines} lines` : `${quote.metrics.areaCm2} cm²`} · estimated cost</span>
         <span className="font-mono text-lg font-black tabular-nums text-emerald-700 dark:text-emerald-300"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>

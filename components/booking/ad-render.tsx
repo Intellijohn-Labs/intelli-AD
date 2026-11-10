@@ -14,7 +14,7 @@ import { ObituaryPreview } from "./templates/obituary-template";
 import { TenderPreview } from "./templates/tender-template";
 
 /** The composed ad exactly as the live preview shows it: template notice, text clip, or uploaded creative, on newsprint. */
-export function AdRender({ state, editable = false }: { state: BookingState; editable?: boolean }) {
+export function AdRender({ state, editable = false, inlineText = false, toolbar = true }: { state: BookingState; editable?: boolean; /** Obituary lines become directly editable (full-screen editor). */ inlineText?: boolean; toolbar?: boolean }) {
   const { tl, pn } = useI18n();
   const { update } = useBooking();
   const category = getCategory(state.categoryId);
@@ -31,10 +31,10 @@ export function AdRender({ state, editable = false }: { state: BookingState; edi
   if (builder)
     return (
       <PrintPreview widthCm={widthCm} heightCm={state.display.heightCm} colWidthCm={colW} paperName={paperName} colorMode={state.display.colorMode}>
-        {state.categoryId === "tender" ? <TenderPreview state={state} bare editable={editable} /> : <ObituaryPreview state={state} bare editable={editable} />}
+        {state.categoryId === "tender" ? <TenderPreview state={state} bare editable={editable} /> : <ObituaryPreview state={state} bare editable={editable} inlineText={inlineText} />}
       </PrintPreview>
     );
-  if (isDisplayOnlyCategory(state.categoryId) && isText) return state.categoryId === "tender" ? <TenderPreview state={state} editable={editable} /> : <ObituaryPreview state={state} editable={editable} />;
+  if (isDisplayOnlyCategory(state.categoryId) && isText) return state.categoryId === "tender" ? <TenderPreview state={state} editable={editable} /> : <ObituaryPreview state={state} editable={editable} inlineText={inlineText} />;
   if (isText) {
     // In the live sidebar the proof is editable in place; edits write straight back to the booking (and so the form and price).
     const editor: ProofEditor | undefined = editable
@@ -43,6 +43,7 @@ export function AdRender({ state, editable = false }: { state: BookingState; edi
           onText: (txt) => update({ text: txt }),
           onStyle: (p) => update({ textStyle: { ...state.textStyle, ...p } }),
           onEnhancements: (p) => update({ enhancements: { ...state.enhancements, ...p } }),
+          hideToolbar: !toolbar,
         }
       : undefined;
     return (
