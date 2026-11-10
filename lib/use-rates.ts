@@ -25,9 +25,17 @@ export async function loadRates(): Promise<RateRow[] | null> {
     return null;
   }
   try {
-    const { data, error } = await sb.from("publication_rates").select("*").order("newspaper_name").limit(5000);
-    if (error) throw error;
-    const rows = (data ?? []).map((r) => ({
+    // PostgREST caps every response at the project's max-rows (1000 by default) no matter what .limit() says,
+    // so page through the table with .range() until a short page comes back.
+    const PAGE = 1000;
+    const data: Record<string, any>[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    for (let from = 0; from < 50000; from += PAGE) {
+      const { data: page, error } = await sb.from("publication_rates").select("*").order("id").range(from, from + PAGE - 1);
+      if (error) throw error;
+      data.push(...(page ?? []));
+      if ((page?.length ?? 0) < PAGE) break;
+    }
+    const rows = data.map((r) => ({
       ...r,
       base_rate: Number(r.base_rate), extra_line_rate: Number(r.extra_line_rate),
       sq_cm_rate: Number(r.sq_cm_rate), color_surcharge_percent: Number(r.color_surcharge_percent),
