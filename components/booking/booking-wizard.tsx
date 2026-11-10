@@ -5,7 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePublication } from "@/lib/publication";
 import { useToast } from "@/components/ui/toast";
-import { Check, Eye, X } from "lucide-react";
+import { Check, Eye, Save, X } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { saveDraft } from "@/lib/drafts";
 import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
@@ -140,6 +142,8 @@ function MiniSummary({ state }: { state: BookingState }) {
   const { t, tl, pn, place } = useI18n();
   const { paper } = usePublication();
   const quote = useBookingQuote(state);
+  const { user } = useAuth();
+  const toast = useToast();
   useRatesVersion();
   const floor = flagshipRate(paper, state.adType);
   // Once a category is picked, show the resolved rate row's per-unit rate (extra line / cm²) for the chosen edition
@@ -169,6 +173,12 @@ function MiniSummary({ state }: { state: BookingState }) {
         {rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : <p>{t("Rates not yet published by admin")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
+      {user && (
+        <button type="button" onClick={() => toast(saveDraft(user.identifier, state) ? "Draft saved to Ad Drafts" : "Couldn't save the draft in this browser")}
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-white/20 dark:hover:bg-white/10">
+          <Save className="h-4 w-4" /> {t("Save as draft")}
+        </button>
+      )}
     </Card>
   );
 }

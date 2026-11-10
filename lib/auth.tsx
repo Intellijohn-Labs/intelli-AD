@@ -120,10 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const wasPartner = !!user && (!!user.is_agency || !!user.partner_status);
     clearSession();
     try { sessionStorage.removeItem("intelliad.booking.v1"); } catch { /* ignore */ } // drop the in-progress draft
-    await signOutSupabase();
+    try { await signOutSupabase(); } catch { /* the server call below still wipes the cookies */ }
+    try { await fetch("/auth/signout", { method: "POST", credentials: "same-origin", cache: "no-store" }); } catch { /* ignore */ }
     setUser(null);
-    router.replace(wasAdmin ? "/login?tab=admin" : wasPartner ? "/login?tab=agency" : "/login?tab=user");
-  }, [router, user]);
+    // Hard navigation (not router.replace): drops the client router cache, in-memory state and any cached admin data.
+    window.location.assign(wasAdmin ? "/login?tab=admin" : wasPartner ? "/login?tab=agency" : "/login?tab=user");
+  }, [user]);
 
   const value = useMemo(() => ({ user, ready, signIn, celebrate, signOut }), [user, ready, signIn, celebrate, signOut]);
   const blocked = ready && !user && !isPublicPath(pathname);

@@ -48,7 +48,7 @@ export function AuthControl({ className }: { className?: string }) {
             </div>
             <Link role="menuitem" href="/account/bookings" onClick={() => setOpen(false)} className={item}><Newspaper className="h-4 w-4" /> {t("My Bookings")}</Link>
             <Link role="menuitem" href="/account/profile" onClick={() => setOpen(false)} className={item}><UserRound className="h-4 w-4" /> Profile</Link>
-            <Link role="menuitem" href="/book" onClick={() => setOpen(false)} className={item}><FileText className="h-4 w-4" /> {t("Ad Drafts")}</Link>
+            <Link role="menuitem" href="/account/drafts" onClick={() => setOpen(false)} className={item}><FileText className="h-4 w-4" /> {t("Ad Drafts")}</Link>
             <button role="menuitem" type="button" className={`${item} border-t border-zinc-100 text-red-600 hover:bg-red-50`}
               onClick={() => { void signOut(); setOpen(false); toast("Signed out"); }}>
               <LogOut className="h-4 w-4" /> {t("Sign Out")}
