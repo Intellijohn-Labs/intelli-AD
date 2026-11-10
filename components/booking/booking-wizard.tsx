@@ -11,6 +11,7 @@ import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition, flagshipRate } from "@/lib/pricing";
 import { useRatesVersion } from "@/lib/use-rates";
+import { getActiveRates, matchRate } from "@/lib/rates";
 import { cutoffRuleFor, formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
@@ -140,7 +141,13 @@ function MiniSummary({ state }: { state: BookingState }) {
   const { paper } = usePublication();
   const quote = useBookingQuote(state);
   useRatesVersion();
-  const rate = flagshipRate(paper, state.adType);
+  const floor = flagshipRate(paper, state.adType);
+  // Once a category is picked, show the resolved rate row's per-unit rate (extra line / cm²) for the chosen edition
+  // (or the flagship one); before that, the paper-level floor rate.
+  const edition = paper.editions.find((e) => state.selection[paper.id]?.includes(e.id)) ?? floor?.edition;
+  const row = state.categoryId && edition ? matchRate(getActiveRates(), paper.name, edition.name, state.categoryId, state.adType) : null;
+  const unitRate = row ? (state.adType === "classified-text" ? row.extra_line_rate : row.sq_cm_rate) : 0;
+  const rate = unitRate > 0 && edition ? { amount: unitRate, unit: state.adType === "classified-text" ? ("line" as const) : ("cm²" as const), edition } : floor;
   const rule = cutoffRuleFor(paper, state.adType);
   return (
     <Card className="p-5 sm:p-6">
