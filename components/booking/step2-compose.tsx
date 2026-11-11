@@ -212,6 +212,8 @@ export function Step2Compose() {
             <>
               <TemplateComposer
                 categoryId={state.categoryId}
+                newspaper={paper?.name}
+                categoryLabel={category?.name}
                 value={v.text ?? ""}
                 onChange={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
                 error={textError}
@@ -262,6 +264,8 @@ export function Step2Compose() {
 
               <TemplateComposer
                 categoryId={state.categoryId}
+                newspaper={paper?.name}
+                categoryLabel={category?.name}
                 value={v.text ?? ""}
                 onChange={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
                 error={textError}

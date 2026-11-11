@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/admin/admins", label: "Admin Users" },
   { href: "/admin/bookings", label: "Bookings Monitor" },
   { href: "/admin/banners", label: "Ad Banners (പ്രമോഷൻ പോസ്റ്ററുകൾ)" },
+  { href: "/admin/settings/ai", label: "AI Settings" },
 ];
 
 /** The admin portal's own header: admin badge, section links, signed-in email and Sign Out. No customer booking actions. */
