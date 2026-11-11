@@ -149,8 +149,8 @@ export function LoginView() {
         </div>
         <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to IntelliAd&apos;s Terms &amp; Privacy Policy.</p>
       </motion.main>
-      {/* Below the card on phones (never pushes the sign-in form down); beside it on desktop */}
-      <div className="w-full max-w-md lg:max-w-none lg:flex-1"><LoginPromo /></div>
+      {/* Only when an admin has an active banner: below the card on phones, beside it on desktop */}
+      <LoginPromo />
       </div>
     </div>
   );

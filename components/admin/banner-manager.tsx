@@ -75,7 +75,7 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Ad Banners <span className="font-semibold text-slate-500">/ പ്രമോഷൻ പോസ്റ്ററുകൾ</span></h1>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Posters shown in the rotating banner on the sign-in page. With no active banners, built-in default slides are shown.</p>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Posters shown in the rotating banner on the sign-in page. Only banners switched on appear; with none active, the sign-in page shows no ad at all.</p>
 
       <form onSubmit={(e) => void upload(e)} className={`${card} mt-6`}>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Upload a banner</h2>
@@ -103,7 +103,7 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
 
       <h2 className="mt-8 text-lg font-bold text-slate-900 dark:text-white">Uploaded banners ({banners.length})</h2>
       {!banners.length ? (
-        <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-600">No banners yet. The sign-in page is showing the default slides.</p>
+        <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-600">No banners yet. The sign-in page shows no ad until you upload one and switch it on.</p>
       ) : (
         <ul className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {banners.map((b, i) => (

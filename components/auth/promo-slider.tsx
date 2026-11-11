@@ -2,13 +2,13 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { PROMO_SLIDES, type PromoSlide } from "@/data/login-slides";
+import type { PromoSlide } from "@/data/login-slides";
 import { cn } from "@/lib/utils";
 
 const INTERVAL_MS = 4500;
 
 /** Auto-advancing poster carousel: fades between slides, pauses on hover / focus, dots double as progress pills. */
-export function PromoSlider({ slides = PROMO_SLIDES, className }: { slides?: PromoSlide[]; className?: string }) {
+export function PromoSlider({ slides, className }: { slides: PromoSlide[]; className?: string }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);

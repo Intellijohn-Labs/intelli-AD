@@ -1,7 +1,4 @@
-/**
- * Promotional poster slides on the login page. Edit this list to change the banner (later it can be fetched from
- * Supabase with the same shape). Without an `imageUrl` a styled graphic (gradient + badge + headline) is drawn.
- */
+/** A slide of the login-page promo carousel. Slides come only from active rows of `promotional_banners` (no built-in defaults). */
 export interface PromoSlide {
   id: string;
   title: string;
@@ -17,22 +14,3 @@ export interface PromoSlide {
   /** Admin-uploaded poster: the image is shown as-is, not as a tinted backdrop. */
   custom?: boolean;
 }
-
-/** Built-in slides, shown when no banner has been uploaded in the admin portal. */
-export const PROMO_SLIDES: PromoSlide[] = [
-  {
-    id: "book-today",
-    badge: "Kerala's newspaper ad network",
-    title: "Book Newspaper Ads Today",
-    description: "Compose, preview and book classified and display ads across Kerala's leading dailies, with an instant Release Order.",
-    imageUrl: "/images/newspaper-rack.webp",
-    gradient: "from-blue-700 via-indigo-700 to-slate-900",
-  },
-  {
-    id: "volume-discount",
-    badge: "Volume savings",
-    title: "Special 15% Volume Discount",
-    description: "Run the same ad on 3+ days to save 5%, 5+ days 10%, and 7+ days 15% automatically.",
-    gradient: "from-emerald-600 via-teal-700 to-slate-900",
-  },
-];
