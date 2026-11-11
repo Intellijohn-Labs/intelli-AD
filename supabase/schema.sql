@@ -162,3 +162,12 @@ alter table public.promotional_banners add constraint promotional_banners_placem
 -- Banner titles are optional (an untitled banner is stored with an empty title).
 alter table public.promotional_banners alter column title drop not null;
 alter table public.promotional_banners alter column title set default '';
+
+-- AI provider API keys entered from /admin/settings/ai. RLS is ON with NO policies, so only the server-side
+-- service-role client can read or write it (app_settings is publicly readable, so keys must never live there).
+create table if not exists public.app_secrets (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.app_secrets enable row level security;
