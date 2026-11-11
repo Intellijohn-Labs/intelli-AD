@@ -87,6 +87,14 @@ function throttled(ip: string) {
 }
 
 export async function POST(req: Request) {
+  // Public endpoint for customers (signed-out visitors included): no login needed, but cross-site browser calls are refused.
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (origin && host) {
+    let ok = false;
+    try { ok = new URL(origin).host === host; } catch { /* malformed origin */ }
+    if (!ok) return NextResponse.json({ error: "Forbidden origin." }, { status: 403 });
+  }
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
   if (throttled(ip)) return NextResponse.json({ error: "Too many requests. Please wait a minute." }, { status: 429 });
 
