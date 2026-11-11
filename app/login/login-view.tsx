@@ -1,5 +1,6 @@
 "use client";
 
+import { PromoSlider } from "@/components/auth/promo-slider";
 import { AnimatePresence, motion } from "framer-motion";
 import { Building2, Lock, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import Link from "next/link";
@@ -69,9 +70,10 @@ export function LoginView() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8FAFC] px-4 py-10 dark:bg-[#0B132B]">
       <Broadsheet />
+      <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-10">
       <motion.main
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-md"
+        className="relative z-10 w-full max-w-md shrink-0"
       >
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="flex items-center gap-3">
@@ -147,6 +149,9 @@ export function LoginView() {
         </div>
         <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to IntelliAd&apos;s Terms &amp; Privacy Policy.</p>
       </motion.main>
+      {/* Below the card on phones (never pushes the sign-in form down); beside it on desktop */}
+      <div className="w-full max-w-md lg:max-w-none lg:flex-1"><PromoSlider /></div>
+      </div>
     </div>
   );
 }
