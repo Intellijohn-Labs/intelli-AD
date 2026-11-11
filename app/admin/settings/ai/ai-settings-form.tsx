@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { AI_MODELS, AI_PROVIDER_LABEL, type AiProvider } from "@/lib/ai-config";
+import { AI_IMAGE_MODELS, AI_MODELS, AI_PROVIDER_LABEL, type AiProvider } from "@/lib/ai-config";
 import { saveAiSettings, type AiSettingsState, type KeyInfo } from "./actions";
 
 const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
@@ -46,6 +46,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettingsState }) {
   const router = useRouter();
   const [provider, setProvider] = useState<AiProvider>(initial.config.provider);
   const [model, setModel] = useState(initial.config.model);
+  const [imageModel, setImageModel] = useState(initial.config.imageModel);
   const [temp, setTemp] = useState(initial.config.temperature);
   const [gKey, setGKey] = useState("");
   const [cKey, setCKey] = useState("");
@@ -55,7 +56,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettingsState }) {
 
   const pick = (p: AiProvider) => { setProvider(p); setModel(AI_MODELS[p][0].id); };
   const save = () => start(async () => {
-    const r = await saveAiSettings({ provider, model, temperature: temp, geminiKey: gKey, claudeKey: cKey, clearGemini: gClear && !gKey, clearClaude: cClear && !cKey });
+    const r = await saveAiSettings({ provider, model, temperature: temp, imageModel, geminiKey: gKey, claudeKey: cKey, clearGemini: gClear && !gKey, clearClaude: cClear && !cKey });
     if (r.ok) { setGKey(""); setCKey(""); setGClear(false); setCClear(false); toast(r.message); router.refresh(); }
     else toast.error(r.message);
   });
@@ -92,6 +93,15 @@ export function AiSettingsForm({ initial }: { initial: AiSettingsState }) {
         <KeyField id="gemini-key" label="Gemini API key" env="GEMINI_API_KEY" info={initial.keys.gemini} value={gKey} onChange={setGKey} onClear={() => setGClear((v) => !v)} cleared={gClear} />
         <KeyField id="claude-key" label="Anthropic API key" env="ANTHROPIC_API_KEY" info={initial.keys.claude} value={cKey} onChange={setCKey} onClear={() => setCClear((v) => !v)} cleared={cClear} />
         <p className="text-xs text-slate-500">Keys are stored server-side in a table only the service role can read and are never sent back to this page. A key saved here takes priority over the server environment variable.</p>
+        <div>
+          <label htmlFor="ai-image-model" className="mb-1 block text-sm font-semibold">Obituary poster model (Gemini image)</label>
+          <select id="ai-image-model" className={sel} value={imageModel} onChange={(e) => setImageModel(e.target.value)}>
+            {AI_IMAGE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+          <p className={`mt-1 text-xs ${initial.keys.gemini.configured ? "text-emerald-700" : "text-amber-700"}`}>
+            {initial.keys.gemini.configured ? "✓ Gemini is configured: the “AI പോസ്റ്റർ നിർമ്മിക്കുക” button is available to customers in the Obituary builder." : "Gemini isn’t configured: add a Gemini API key above to enable the obituary poster designer (it always uses Gemini, whichever provider is active for ad copy)."} Imagen isn’t offered because it can’t take the uploaded portrait.
+          </p>
+        </div>
         <Button type="button" onClick={save} disabled={pending}>{pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}Save settings</Button>
         {!initial.serviceRole && <p className="text-xs text-amber-700">SUPABASE_SERVICE_ROLE_KEY isn’t set on the server, so saving will fail.</p>}
       </section>

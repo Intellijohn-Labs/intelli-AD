@@ -13,5 +13,6 @@ export async function GET() {
   }
   const { keys } = await resolveAiKeys(admin);
   const isConfigured = !!(provider === "claude" ? keys.claude : keys.gemini);
-  return NextResponse.json({ isConfigured }, { headers: { "Cache-Control": "no-store" } });
+  // posterReady: the obituary poster designer always uses Gemini (image model), whatever text provider is active.
+  return NextResponse.json({ isConfigured, posterReady: !!keys.gemini }, { headers: { "Cache-Control": "no-store" } });
 }

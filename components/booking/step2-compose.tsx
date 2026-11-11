@@ -20,6 +20,7 @@ import { FileDropzone } from "./file-dropzone";
 import { CreativeUpload } from "./creative-upload";
 import { DisplaySizer } from "./display-sizer";
 import { columnsFor, displayWidth, isDisplayOnlyCategory, type CreativeMode } from "@/lib/display";
+import { uploadArtwork } from "@/lib/supabase/storage";
 import { ObituaryComposer } from "./templates/obituary-template";
 import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
@@ -184,6 +185,13 @@ export function Step2Compose() {
           {isObituary && (isText || mode === "builder") && (
             <ObituaryComposer
               charsPerLine={cpl}
+              colWidthCm={colW}
+              onPoster={(file, meta) => {
+                // The generated poster is a finished creative: switch to the upload path and make it the ad artwork.
+                update({ creativeMode: "upload" });
+                setValue("artwork", meta, { shouldValidate: true, shouldDirty: true });
+                void uploadArtwork(file).then((r) => { if (r.url) setValue("artwork", { ...meta, url: r.url }, { shouldValidate: true, shouldDirty: true }); });
+              }}
               onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
               onPhoto={(f) => setValue("artwork", f, { shouldValidate: true, shouldDirty: true })}
             />

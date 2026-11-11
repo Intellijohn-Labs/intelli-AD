@@ -9,16 +9,18 @@ import { useToast } from "@/components/ui/toast";
 interface Suggestion { id: number; style_name: string; text: string }
 
 const PLACEHOLDER = "ഉദാ: അജയ് 26 വയസ്സ്, ഹിന്ദു ഈഴവ, സോഫ്റ്റ്‌വെയർ എൻജിനീയർ, അനുയോജ്യരായ പെൺകുട്ടികളുടെ മാതാപിതാക്കളിൽ നിന്ന് ആലോചന ക്ഷണിക്കുന്നു. ഫോൺ: 9876543210";
-/** True once the server confirms the active AI provider has a key (the assistant is hidden otherwise). */
-export function useAiReady() {
-  const [ready, setReady] = useState(false);
+/** What the server can do right now: `text` = ad-copy assistant has a key, `poster` = Gemini image designer has a key. */
+export function useAiStatus() {
+  const [st, setSt] = useState({ text: false, poster: false });
   useEffect(() => {
     let live = true;
-    fetch("/api/ai/status", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (live) setReady(j?.isConfigured === true); }).catch(() => { if (live) setReady(false); });
+    fetch("/api/ai/status", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (live) setSt({ text: j?.isConfigured === true, poster: j?.posterReady === true }); }).catch(() => { if (live) setSt({ text: false, poster: false }); });
     return () => { live = false; };
   }, []);
-  return ready;
+  return st;
 }
+/** True once the server confirms the active AI provider has a key (the assistant is hidden otherwise). */
+export const useAiReady = () => useAiStatus().text;
 
 const MEMORIAL_NOTES = [
   "അടിസ്ഥാന മരണ അറിയിപ്പും സംസ്കാര വിവരങ്ങളും മാത്രം (ചെലവ് കുറവ്)",

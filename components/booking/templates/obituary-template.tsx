@@ -3,7 +3,9 @@
 import { Flame, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { getNewspaper } from "@/data/newspapers";
-import { AiAssistantModal, useAiReady } from "../ai-assistant-modal";
+import { AiAssistantModal, useAiStatus } from "../ai-assistant-modal";
+import { AiPosterModal } from "../ai-poster-modal";
+import { displayWidth } from "@/lib/display";
 import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
@@ -49,10 +51,11 @@ const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors
  * (In Memoriam), fill the fields, and the print text is generated into the ad text.
  * The portrait is the ad's artwork upload (classified display / box ads).
  */
-export function ObituaryComposer({ onText, onPhoto, charsPerLine = 28 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; charsPerLine?: number }) {
+export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28, colWidthCm = 4 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; /** A generated AI poster was chosen: it becomes the finished ad artwork. */ onPoster?: (file: File, meta: FileMeta) => void; charsPerLine?: number; colWidthCm?: number }) {
   const { state, update } = useBooking();
-  const aiReady = useAiReady();
+  const { text: aiReady, poster: posterReady } = useAiStatus();
   const [aiOpen, setAiOpen] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
   const paperName = getNewspaper(Object.keys(state.selection).find((k) => state.selection[k].length))?.name ?? "";
   // The category decides the notice type: Obituary = death notice, Remembrance = death anniversary.
   const kind: ObituaryKind = state.categoryId === "remembrance" ? "anniversary" : "demise";
@@ -161,13 +164,24 @@ export function ObituaryComposer({ onText, onPhoto, charsPerLine = 28 }: { onTex
         </div>
       )}
 
-      {!isText && aiReady && (
+      {!isText && (aiReady || (posterReady && onPoster)) && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
-          <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
-            <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
-          </button>
+          {aiReady && (
+            <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
+              <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
+            </button>
+          )}
+          {posterReady && onPoster && (
+            <button type="button" onClick={() => setPosterOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-500 to-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(225,29,72,0.45)] hover:shadow-[0_0_22px_rgba(225,29,72,0.7)]">
+              <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI പോസ്റ്റർ നിർമ്മിക്കുക (Generate 3 Ad Styles)
+            </button>
+          )}
           <span className="flex-1 text-xs text-zinc-600 dark:text-slate-200">ഫോം വിവരങ്ങളിൽ നിന്ന് ചരമ അറിയിപ്പിന്റെ മാതൃകകൾ ഉണ്ടാക്കാം. തിരഞ്ഞെടുത്താൽ നോട്ടീസ് മാറ്ററായി ചേർക്കും; ഫോമിലെ വിവരങ്ങൾ പിന്നീട് മാറ്റിയാലും ഈ മാറ്റർ മാറില്ല (റീസെറ്റ് ചെയ്താൽ ഫോമിൽ നിന്ന് വീണ്ടും ഉണ്ടാക്കാം).</span>
         </div>
+      )}
+      {onPoster && (
+        <AiPosterModal open={posterOpen} onClose={() => setPosterOpen(false)} text={state.text} category={anniv ? "remembrance" : "obituary"} language="ml"
+          widthCm={Math.round(displayWidth(state.display, colWidthCm) * 10) / 10} heightCm={state.display.heightCm} photo={state.artwork} onUse={onPoster} />
       )}
       <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => { update({ obituary: { ...f, isCustomMatter: true } }); onText(txt); }} />
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { AI_MODELS, DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
+import { AI_IMAGE_MODELS, AI_MODELS, DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
 import { resolveAiKeys } from "@/lib/ai-keys";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
@@ -32,6 +32,7 @@ const schema = z.object({
   provider: z.enum(["gemini", "claude"]),
   model: z.string(),
   temperature: z.number().min(0).max(1),
+  imageModel: z.string().refine((m) => AI_IMAGE_MODELS.some((x) => x.id === m), "Unknown image model.").default(AI_IMAGE_MODELS[0].id),
   // Blank = keep the stored key. A non-empty value replaces it.
   geminiKey: z.string().trim().max(300).optional(),
   claudeKey: z.string().trim().max(300).optional(),
@@ -45,8 +46,8 @@ export async function saveAiSettings(input: unknown): Promise<SaveResult> {
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid settings." };
   const admin = createAdminClient();
   if (!admin) return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY isn't set on the server, so settings can't be saved." };
-  const { provider, model, temperature, geminiKey, claudeKey, clearGemini, clearClaude } = parsed.data;
-  const { error } = await admin.from("app_settings").upsert({ key: KEY, value: { provider, model, temperature } }, { onConflict: "key" });
+  const { provider, model, temperature, imageModel, geminiKey, claudeKey, clearGemini, clearClaude } = parsed.data;
+  const { error } = await admin.from("app_settings").upsert({ key: KEY, value: { provider, model, temperature, imageModel } }, { onConflict: "key" });
   if (error) return { ok: false, message: error.message };
 
   if (geminiKey || claudeKey || clearGemini || clearClaude) {
