@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
 export interface Banner {
   id: string;
@@ -23,9 +23,8 @@ const BUCKET = "promo-banners";
 const NO_KEY = "SUPABASE_SERVICE_ROLE_KEY isn't set on the server, so banners can't be managed yet.";
 
 async function requireAdmin() {
-  const supabase = await createClient();
-  const { data } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
-  return (data.user?.app_metadata as { role?: string } | undefined)?.role === "admin" ? data.user : null;
+  const user = await getSessionUser();
+  return isAdminUser(user) ? user : null;
 }
 
 async function all(admin: NonNullable<ReturnType<typeof createAdminClient>>): Promise<Banner[]> {
@@ -35,9 +34,11 @@ async function all(admin: NonNullable<ReturnType<typeof createAdminClient>>): Pr
 
 /** Every banner, active or not (admin only). */
 export async function listBanners(): Promise<Banner[] | null> {
-  if (!(await requireAdmin())) return null;
   const admin = createAdminClient();
-  return admin ? all(admin) : null;
+  if (!admin) return null;
+  // Auth check and query run together; the rows are only returned if the caller is an admin.
+  const [user, rows] = await Promise.all([requireAdmin(), all(admin)]);
+  return user ? rows : null;
 }
 
 const optionalUrl = z.string().trim().max(500).optional().transform((v) => v || null)

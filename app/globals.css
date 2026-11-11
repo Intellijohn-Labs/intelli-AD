@@ -259,3 +259,6 @@ input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; bor
 .home-marquee-track { animation: home-marquee var(--marquee-dur, 40s) linear infinite; will-change: transform; }
 .home-marquee:hover .home-marquee-track, .home-marquee[data-paused="true"] .home-marquee-track { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .home-marquee-track { animation: none; } .home-marquee { overflow-x: auto; } }
+
+/* Admin route-change progress bar (app/admin/loading.tsx) */
+@keyframes admin-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }

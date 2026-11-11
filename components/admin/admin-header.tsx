@@ -37,7 +37,7 @@ export function AdminHeader({ email }: { email: string }) {
           {LINKS.map((l) => {
             const on = l.exact ? path === l.href : path.startsWith(l.href);
             return (
-              <Link key={l.href} href={l.href} aria-current={on ? "page" : undefined}
+              <Link key={l.href} href={l.href} prefetch aria-current={on ? "page" : undefined}
                 className={cn("shrink-0 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap", on ? "border-blue-600 text-blue-700 dark:text-sky-300" : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-300")}>
                 {l.label}
               </Link>

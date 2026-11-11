@@ -5,7 +5,7 @@ import { z } from "zod";
 import { newspapers } from "@/data/newspapers";
 import { CONFLICT_KEY, validateRows, type RateRow } from "@/lib/rates";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
 export interface ActionResult {
   ok: boolean;
@@ -23,11 +23,8 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 
 /** The caller must hold a verified session with app_metadata.role = "admin". Re-checked on every action (never trust the client). */
 async function requireAdmin() {
-  const supabase = await createClient();
-  const { data } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
-  const u = data.user;
-  if (!u || (u.app_metadata as { role?: string } | undefined)?.role !== "admin") return null;
-  return u;
+  const u = await getSessionUser();
+  return isAdminUser(u) ? u : null;
 }
 
 const NO_KEY = "SUPABASE_SERVICE_ROLE_KEY isn't set on the server, so admins can't be managed yet.";
@@ -97,12 +94,15 @@ export async function promoteToAdmin(_prev: ActionResult | null, formData: FormD
 
 /** Lists current admins. */
 export async function listAdmins(): Promise<AdminRow[] | null> {
-  if (!(await requireAdmin())) return null;
   const admin = createAdminClient();
   if (!admin) return null;
+  // The first page of users is fetched while the caller's admin role is being verified.
+  const first = admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const [ok, firstPage] = await Promise.all([requireAdmin(), first]);
+  if (!ok) return null;
   const out: AdminRow[] = [];
   for (let page = 1; page <= 20; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    const { data, error } = page === 1 ? firstPage : await admin.auth.admin.listUsers({ page, perPage: 200 });
     if (error) return null;
     for (const u of data.users) {
       if ((u.app_metadata as { role?: string } | undefined)?.role === "admin") {
