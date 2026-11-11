@@ -20,6 +20,7 @@ import { validateStep1 } from "@/lib/validation";
 import { isDisplayOnlyCategory } from "@/lib/display";
 import { cn, formatINR } from "@/lib/utils";
 import { StepNav } from "./step-nav";
+import type { CategoryId } from "@/lib/types";
 
 export function Step1Selection() {
   const { state, update } = useBooking();
@@ -30,6 +31,11 @@ export function Step1Selection() {
   const [error, setError] = useState<string | null>(null);
   const { activeId, setActive } = usePublication();
   const firstRun = useRef(true);
+  const [pendingCategory, setPendingCategory] = useState<CategoryId | null>(null);
+  const switchCategory = (id: CategoryId) => {
+    setPendingCategory(null);
+    update({ categoryId: id, text: "", artwork: null, obituary: null, tender: null, documents: {}, templateTitle: null });
+  };
   const { loaded, canPrice } = useRateAvailability();
   const edOk = (paper: (typeof newspapers)[number], editionName: string) => editionEnabled(paper.name, editionName) && canPrice(paper.name, editionName, state.categoryId, state.adType);
   const availableFor = (paper: (typeof newspapers)[number]) => visibleEditions(paper).some((e) => edOk(paper, e.name));
@@ -120,8 +126,9 @@ export function Step1Selection() {
                 if (state.categoryId === c.id) return;
                 // Category-specific content (template text, memorial photo, notice fields) must not leak into another category.
                 const hasContent = !!state.text.trim() || !!state.artwork || !!state.obituary || !!state.tender;
-                if (hasContent && state.categoryId && !window.confirm("Switching category clears your ad text, photo and notice details. Continue?")) return;
-                update({ categoryId: c.id, text: "", artwork: null, obituary: null, tender: null, documents: {}, templateTitle: null });
+                // Ask inline (a native confirm() blocks the whole tab).
+                if (hasContent && state.categoryId) { setPendingCategory(c.id); return; }
+                switchCategory(c.id);
               }} />
               {state.categoryId === c.id && <Tick />}
               <CategoryIcon name={c.icon} className="h-5 w-5" />
@@ -132,6 +139,13 @@ export function Step1Selection() {
             </motion.label>
           ))}
         </div>
+        {pendingCategory && (
+          <div role="alertdialog" aria-label="Confirm category change" className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <span className="flex-1">{t("Switching category clears your ad text, photo and notice details. Continue?")}</span>
+            <button type="button" onClick={() => switchCategory(pendingCategory)} className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700">{t("Yes, switch")}</button>
+            <button type="button" onClick={() => setPendingCategory(null)} className="rounded-md border border-amber-400 px-3 py-1.5 text-xs font-semibold">{t("Cancel")}</button>
+          </div>
+        )}
         {state.categoryId && (() => {
           const c = getCategory(state.categoryId)!;
           return <p className="mt-2 text-sm text-zinc-600">{tl(c.description, c.descriptionMl)}</p>;

@@ -9,7 +9,7 @@ import type { ParagraphSpacing } from "@/lib/paragraphs";
 import type { CategoryId } from "@/lib/types";
 import { findPlaceholders } from "@/lib/validation";
 import { cn } from "@/lib/utils";
-import { AiAssistantModal } from "./ai-assistant-modal";
+import { AiAssistantModal, useAiReady } from "./ai-assistant-modal";
 import { ParagraphField } from "./paragraph-field";
 
 const DEFAULT_PLACEHOLDER = "ഇവിടെ വിവരങ്ങൾ ഖണ്ഡികകളായി ടൈപ്പ് ചെയ്യുക അല്ലെങ്കിൽ മുകളിലുള്ള മാതൃകകളിൽ ക്ലിക്ക് ചെയ്യുക...";
@@ -70,12 +70,7 @@ export function TemplateComposer({
   };
 
   // The assistant button only shows once the server confirms an API key is active for the chosen provider.
-  const [aiReady, setAiReady] = useState(false);
-  useEffect(() => {
-    let live = true;
-    fetch("/api/ai/status", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (live) setAiReady(j?.isConfigured === true); }).catch(() => { if (live) setAiReady(false); });
-    return () => { live = false; };
-  }, []);
+  const aiReady = useAiReady();
   const [aiOpen, setAiOpen] = useState(false);
 
   const link = "inline-flex items-center gap-1 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-blue-600";

@@ -1,7 +1,9 @@
 "use client";
 
-import { Flame } from "lucide-react";
-import { useRef } from "react";
+import { Flame, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { getNewspaper } from "@/data/newspapers";
+import { AiAssistantModal, useAiReady } from "../ai-assistant-modal";
 import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
@@ -47,8 +49,11 @@ const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors
  * (In Memoriam), fill the fields, and the print text is generated into the ad text.
  * The portrait is the ad's artwork upload (classified display / box ads).
  */
-export function ObituaryComposer({ onText, onPhoto }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void }) {
+export function ObituaryComposer({ onText, onPhoto, charsPerLine = 28 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; charsPerLine?: number }) {
   const { state, update } = useBooking();
+  const aiReady = useAiReady();
+  const [aiOpen, setAiOpen] = useState(false);
+  const paperName = getNewspaper(Object.keys(state.selection).find((k) => state.selection[k].length))?.name ?? "";
   // The category decides the notice type: Obituary = death notice, Remembrance = death anniversary.
   const kind: ObituaryKind = state.categoryId === "remembrance" ? "anniversary" : "demise";
   const f = { ...DEFAULT_OBITUARY, ...state.obituary, kind }; // merge keeps older saved drafts valid
@@ -137,6 +142,16 @@ export function ObituaryComposer({ onText, onPhoto }: { onText: (text: string) =
           <Field id="ob-contact" label="Contact number(s) · ഫോൺ" className="sm:col-span-2"><Input id="ob-contact" inputMode="tel" {...input("contact")} /></Field>
         </div>
       )}
+
+      {!isText && aiReady && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
+          <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
+            <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
+          </button>
+          <span className="flex-1 text-xs text-zinc-600 dark:text-slate-200">ഫോം വിവരങ്ങളിൽ നിന്ന് ചരമ അറിയിപ്പിന്റെ മാതൃകകൾ ഉണ്ടാക്കാം. തിരഞ്ഞെടുത്താൽ നോട്ടീസ് മാറ്ററായി ചേർക്കും; ഫോമിലെ വിവരങ്ങൾ പിന്നീട് മാറ്റിയാൽ മാറ്റർ വീണ്ടും ഫോമിൽ നിന്ന് ഉണ്ടാക്കപ്പെടും.</span>
+        </div>
+      )}
+      <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => onText(txt)} />
 
       <ParagraphField id="ob-prayer" label="Prayer / tribute · പ്രാർത്ഥന" hint="Printed in italics under the details · e.g. ആത്മാവിന് നിത്യശാന്തി നേരുന്നു." rows={3} maxHeight={240} value={f.prayer} onChange={(v) => set({ prayer: v })} textClassName="font-clipping" />
 

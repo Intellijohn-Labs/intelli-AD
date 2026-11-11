@@ -183,6 +183,7 @@ export function Step2Compose() {
           {displayOnly && mode === "builder" && textError && <FieldError message={textError} />}
           {isObituary && (isText || mode === "builder") && (
             <ObituaryComposer
+              charsPerLine={cpl}
               onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
               onPhoto={(f) => setValue("artwork", f, { shouldValidate: true, shouldDirty: true })}
             />

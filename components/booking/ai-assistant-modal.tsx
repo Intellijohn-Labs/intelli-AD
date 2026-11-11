@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Sparkles, X } from "lucide-react";
+import { Eraser, Loader2, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isMemorialCategory } from "@/lib/ai-config";
@@ -9,6 +9,17 @@ import { useToast } from "@/components/ui/toast";
 interface Suggestion { id: number; style_name: string; text: string }
 
 const PLACEHOLDER = "ഉദാ: അജയ് 26 വയസ്സ്, ഹിന്ദു ഈഴവ, സോഫ്റ്റ്‌വെയർ എൻജിനീയർ, അനുയോജ്യരായ പെൺകുട്ടികളുടെ മാതാപിതാക്കളിൽ നിന്ന് ആലോചന ക്ഷണിക്കുന്നു. ഫോൺ: 9876543210";
+/** True once the server confirms the active AI provider has a key (the assistant is hidden otherwise). */
+export function useAiReady() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/ai/status", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (live) setReady(j?.isConfigured === true); }).catch(() => { if (live) setReady(false); });
+    return () => { live = false; };
+  }, []);
+  return ready;
+}
+
 const MEMORIAL_NOTES = [
   "അടിസ്ഥാന മരണ അറിയിപ്പും സംസ്കാര വിവരങ്ങളും മാത്രം (ചെലവ് കുറവ്)",
   "പരമ്പരാഗത കേരള ശൈലിയിൽ കുടുംബ വിവരങ്ങളോടു കൂടിയ പൂർണ്ണ അറിയിപ്പ്",
@@ -44,7 +55,8 @@ export function AiAssistantModal({ open, onClose, initialText, category, newspap
     if (!open) return;
     setPrompt(initialText);
     setOptions([]);
-    setTimeout(() => area.current?.focus(), 50);
+    // Focus and select the pre-filled draft so typing or pasting replaces it instead of being appended to it.
+    setTimeout(() => { area.current?.focus(); area.current?.select(); }, 50);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -85,10 +97,15 @@ export function AiAssistantModal({ open, onClose, initialText, category, newspap
           <p className="text-xs text-slate-600 dark:text-slate-300">പരസ്യത്തിൽ വരേണ്ട വിവരങ്ങൾ മലയാളത്തിലോ മംഗ്ലീഷിലോ ലളിതമായി ടൈപ്പ് ചെയ്യുക (Enter rough details/bullet points in Malayalam, Manglish, or English).</p>
           <textarea ref={area} value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5} maxLength={1500} placeholder={PLACEHOLDER} aria-label="Rough ad details"
             className="w-full rounded-lg border border-slate-300 bg-white p-3 font-serif text-sm text-slate-900 focus:border-violet-500 focus:outline focus:outline-1 focus:outline-violet-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" />
+          <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={generate} disabled={busy} aria-busy={busy}
             className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.5)] disabled:opacity-70">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} മാതൃകകൾ ഉണ്ടാക്കുക (Generate 3 Styles)
           </button>
+          <button type="button" onClick={() => { setPrompt(""); setOptions([]); area.current?.focus(); }} disabled={!prompt} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-rose-600 disabled:opacity-40">
+            <Eraser className="h-3.5 w-3.5" aria-hidden="true" /> Clear / മാറ്റുക
+          </button>
+          </div>
 
           <div className="space-y-2" aria-live="polite">
             {busy && [0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />)}
