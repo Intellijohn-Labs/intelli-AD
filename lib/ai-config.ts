@@ -23,3 +23,6 @@ export function normalizeAiConfig(raw: unknown): AiConfig {
   const t = typeof r.temperature === "number" && isFinite(r.temperature) ? Math.min(1, Math.max(0, r.temperature)) : DEFAULT_AI_CONFIG.temperature;
   return { provider, model, temperature: t };
 }
+
+/** Obituary / remembrance / condolence / anniversary categories (by id or display name, English or Malayalam). */
+export const isMemorialCategory = (c: string) => /obituar|remembrance|condolence|anniversar|memoriam|ചരമ|അനുസ്മരണ|നിര്യാത/i.test(c);

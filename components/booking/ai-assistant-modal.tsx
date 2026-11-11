@@ -3,11 +3,17 @@
 import { Loader2, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { isMemorialCategory } from "@/lib/ai-config";
 import { useToast } from "@/components/ui/toast";
 
 interface Suggestion { id: number; style_name: string; text: string }
 
 const PLACEHOLDER = "ഉദാ: അജയ് 26 വയസ്സ്, ഹിന്ദു ഈഴവ, സോഫ്റ്റ്‌വെയർ എൻജിനീയർ, അനുയോജ്യരായ പെൺകുട്ടികളുടെ മാതാപിതാക്കളിൽ നിന്ന് ആലോചന ക്ഷണിക്കുന്നു. ഫോൺ: 9876543210";
+const MEMORIAL_NOTES = [
+  "അടിസ്ഥാന മരണ അറിയിപ്പും സംസ്കാര വിവരങ്ങളും മാത്രം (ചെലവ് കുറവ്)",
+  "പരമ്പരാഗത കേരള ശൈലിയിൽ കുടുംബ വിവരങ്ങളോടു കൂടിയ പൂർണ്ണ അറിയിപ്പ്",
+  "ചരമവാർഷികത്തിനും ഓർമ്മപ്പൂക്കൾക്കും ഉതകുന്ന അനുസ്മരണ കുറിപ്പ്",
+];
 const NOTES = [
   "ചുരുങ്ങിയ ശൈലി: ആവശ്യമായ വിവരങ്ങൾ നിലനിർത്തി വരികൾ കുറച്ച് ചെലവ് ലാഭിക്കുന്നു",
   "പരമ്പരാഗത കേരള പത്ര ശൈലിയിലുള്ള ഔപചാരിക പദപ്രയോഗം",
@@ -95,7 +101,7 @@ export function AiAssistantModal({ open, onClose, initialText, category, newspap
                   <div className="mb-1 flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-bold text-violet-800 dark:text-violet-200">{o.style_name}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-300">{NOTES[i] ?? ""}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-300">{(isMemorialCategory(category) ? MEMORIAL_NOTES : NOTES)[i] ?? ""}</p>
                     </div>
                     <button type="button" onClick={() => { onUse(o.text); onClose(); }} className="shrink-0 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700">Use This / ഈ മാറ്റർ ചേർക്കുക</button>
                   </div>
