@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Eraser, Loader2, PhoneCall, Sparkles } from "lucide-react";
+import { Check, Copy, Eraser, PhoneCall, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/context/language-context";
@@ -9,6 +9,7 @@ import type { ParagraphSpacing } from "@/lib/paragraphs";
 import type { CategoryId } from "@/lib/types";
 import { findPlaceholders } from "@/lib/validation";
 import { cn } from "@/lib/utils";
+import { AiAssistantModal } from "./ai-assistant-modal";
 import { ParagraphField } from "./paragraph-field";
 
 const DEFAULT_PLACEHOLDER = "ഇവിടെ വിവരങ്ങൾ ഖണ്ഡികകളായി ടൈപ്പ് ചെയ്യുക അല്ലെങ്കിൽ മുകളിലുള്ള മാതൃകകളിൽ ക്ലിക്ക് ചെയ്യുക...";
@@ -75,19 +76,7 @@ export function TemplateComposer({
     fetch("/api/ai/status", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (live) setAiReady(j?.isConfigured === true); }).catch(() => { if (live) setAiReady(false); });
     return () => { live = false; };
   }, []);
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiOptions, setAiOptions] = useState<{ id: number; style_name: string; text: string }[]>([]);
-  const suggest = async () => {
-    if (!value.trim()) { toast.error("ദയവായി കുറച്ചു വിവരങ്ങൾ ടൈപ്പ് ചെയ്യുക (Please enter rough ad details first)"); return; }
-    setAiBusy(true);
-    try {
-      const res = await fetch("/api/ai/generate-ad-copy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ roughText: value, category: categoryLabel ?? "", newspaper: newspaper ?? "", language: lang }) });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !Array.isArray(j.suggestions)) { toast.error(j.error ?? "Couldn't generate suggestions right now."); return; }
-      setAiOptions(j.suggestions);
-    } catch { toast.error("Couldn't reach the AI assistant. Check your connection and try again."); }
-    finally { setAiBusy(false); }
-  };
+  const [aiOpen, setAiOpen] = useState(false);
 
   const link = "inline-flex items-center gap-1 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-blue-600";
   return (
@@ -125,9 +114,9 @@ export function TemplateComposer({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <button type="button" onClick={insertContact} className={cn(link, "text-blue-600 hover:underline dark:text-blue-400")}><PhoneCall className="h-3 w-3" aria-hidden="true" /> {lang === "ml" ? "+ ഫോൺ നമ്പർ ചേർക്കുക" : "+ Insert contact"} / ഫോൺ നമ്പർ ചേർക്കുക</button>
           {active && <button type="button" onClick={copySample} className={cn(link, "text-slate-500 hover:text-blue-600 dark:text-slate-300")}><Copy className="h-3 w-3" aria-hidden="true" /> Copy sample</button>}
-          {aiReady && <button type="button" onClick={suggest} disabled={aiBusy} aria-busy={aiBusy}
-            className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] transition-shadow hover:shadow-[0_0_22px_rgba(124,58,237,0.8)] disabled:opacity-70">
-            {aiBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />} ✨ AI സഹായി (AI Suggestions)
+          {aiReady && <button type="button" onClick={() => setAiOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] transition-shadow hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
+            <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
           </button>}
           <button type="button" onClick={() => { onChange(""); setActiveId(null); }} className={cn(link, "text-slate-500 hover:text-rose-500 dark:text-slate-300")}><Eraser className="h-3 w-3" aria-hidden="true" /> Clear text</button>
         </div>
@@ -152,20 +141,7 @@ export function TemplateComposer({
         textareaRef={(el) => { area.current = el; }}
       />
 
-      {(aiBusy || aiOptions.length > 0) && (
-        <div className="mt-3 space-y-2" aria-live="polite">
-          {aiBusy ? [0, 1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />) : aiOptions.map((o) => (
-            <div key={o.id} className="rounded-xl border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-violet-800 dark:text-violet-200">{o.style_name}</span>
-                <button type="button" onClick={() => { onChange(o.text); setAiOptions([]); }} className="rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white hover:bg-violet-700">Use This / തിരഞ്ഞെടുക്കുക</button>
-              </div>
-              <p className="whitespace-pre-wrap font-serif text-sm text-slate-800 dark:text-slate-100">{o.text}</p>
-            </div>
-          ))}
-          {!aiBusy && <button type="button" onClick={() => setAiOptions([])} className="text-xs text-slate-500 hover:underline">Dismiss suggestions</button>}
-        </div>
-      )}
+      <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={value} category={categoryLabel ?? ""} newspaper={newspaper ?? ""} language={lang} charsPerLine={charsPerLine} onUse={(txt) => onChange(txt)} />
 
       {placeholders.length > 0 && (
         <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10" role="status">
