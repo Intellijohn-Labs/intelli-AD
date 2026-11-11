@@ -60,6 +60,8 @@ export interface ObituaryFields {
   photoCrop: { zoom: number; x: number; y: number };
   /** Portrait frame size relative to the standard 4×5 cm (0.5–1.5). Missing = 1. */
   photoScale?: number;
+  /** True once the notice text is custom (applied from the AI assistant or edited by hand): field edits then leave it alone. */
+  isCustomMatter?: boolean;
 }
 
 export interface Prefix {

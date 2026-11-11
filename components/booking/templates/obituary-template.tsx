@@ -60,11 +60,22 @@ export function ObituaryComposer({ onText, onPhoto, charsPerLine = 28 }: { onTex
   const isText = state.adType === "classified-text";
   const anniv = kind === "anniversary";
 
+  // The matter is custom when flagged (AI text applied) or when it no longer matches what the fields would generate
+  // (edited by hand in the text box or the proof). Compared loosely: spacing / blank lines don't count as edits.
+  const norm = (t: string) => t.split("\n").map((l) => l.trim()).filter(Boolean).join("\n");
+  const custom = f.isCustomMatter === true || (norm(state.text) !== "" && norm(state.text) !== norm(composeObituary(f)));
+
+  /** Regenerates the matter from the fields (quick drafts, reset, and every field edit while the matter isn't custom). */
   const apply = (next: ObituaryFields) => {
-    update({ obituary: next });
-    onText(composeObituary(next));
+    const fields = { ...next, isCustomMatter: false };
+    update({ obituary: fields });
+    onText(composeObituary(fields));
   };
-  const set = (patch: Partial<ObituaryFields>) => apply({ ...f, ...patch });
+  const set = (patch: Partial<ObituaryFields>) => {
+    // A custom matter is never overwritten by field edits; the fields (photo, frame, heading…) still save.
+    if (custom) update({ obituary: { ...f, ...patch, isCustomMatter: true } });
+    else apply({ ...f, ...patch });
+  };
   const input = (key: keyof ObituaryFields, type = "text") => ({
     value: f[key] as string,
     type,
@@ -77,6 +88,13 @@ export function ObituaryComposer({ onText, onPhoto, charsPerLine = 28 }: { onTex
         <h3 id="obit-h" className="font-bold text-zinc-900 dark:text-white">{anniv ? "Death Anniversary / In Memoriam · ചരമവാർഷികം" : "Obituary · മരണവാർത്ത"}</h3>
         <p className="mt-1 text-xs text-zinc-600 dark:text-slate-200">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
       </div>
+
+      {custom && (
+        <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+          <span className="flex-1">ഇഷ്ടാനുസൃത മാറ്റർ ഉപയോഗത്തിലുണ്ട് — താഴെയുള്ള വിവരങ്ങൾ മാറ്റിയാലും ഇത് മാറില്ല. (Custom matter in use: editing the fields won’t overwrite it.)</span>
+          <button type="button" onClick={() => apply(f)} className="font-semibold underline underline-offset-2 hover:text-amber-700">റീസെറ്റ് ചെയ്യുക (Reset to default template)</button>
+        </p>
+      )}
 
       <div role="group" aria-label="Quick drafts" className="flex flex-wrap gap-2">
         {OBITUARY_PRESETS.filter((p) => p.kind === kind).map((p) => (
@@ -148,10 +166,10 @@ export function ObituaryComposer({ onText, onPhoto, charsPerLine = 28 }: { onTex
           <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
             <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
           </button>
-          <span className="flex-1 text-xs text-zinc-600 dark:text-slate-200">ഫോം വിവരങ്ങളിൽ നിന്ന് ചരമ അറിയിപ്പിന്റെ മാതൃകകൾ ഉണ്ടാക്കാം. തിരഞ്ഞെടുത്താൽ നോട്ടീസ് മാറ്ററായി ചേർക്കും; ഫോമിലെ വിവരങ്ങൾ പിന്നീട് മാറ്റിയാൽ മാറ്റർ വീണ്ടും ഫോമിൽ നിന്ന് ഉണ്ടാക്കപ്പെടും.</span>
+          <span className="flex-1 text-xs text-zinc-600 dark:text-slate-200">ഫോം വിവരങ്ങളിൽ നിന്ന് ചരമ അറിയിപ്പിന്റെ മാതൃകകൾ ഉണ്ടാക്കാം. തിരഞ്ഞെടുത്താൽ നോട്ടീസ് മാറ്ററായി ചേർക്കും; ഫോമിലെ വിവരങ്ങൾ പിന്നീട് മാറ്റിയാലും ഈ മാറ്റർ മാറില്ല (റീസെറ്റ് ചെയ്താൽ ഫോമിൽ നിന്ന് വീണ്ടും ഉണ്ടാക്കാം).</span>
         </div>
       )}
-      <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => onText(txt)} />
+      <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => { update({ obituary: { ...f, isCustomMatter: true } }); onText(txt); }} />
 
       <ParagraphField id="ob-prayer" label="Prayer / tribute · പ്രാർത്ഥന" hint="Printed in italics under the details · e.g. ആത്മാവിന് നിത്യശാന്തി നേരുന്നു." rows={3} maxHeight={240} value={f.prayer} onChange={(v) => set({ prayer: v })} textClassName="font-clipping" />
 
