@@ -48,8 +48,9 @@ const createSchema = z.object({
   description: z.string().trim().max(300).optional().transform((v) => v || null),
   linkUrl: optionalUrl,
   isActive: z.boolean(),
-  storagePath: z.string().regex(/^login\/[0-9a-f-]{36}\.(jpg|png|webp)$/, "Invalid image path."),
-});
+  placement: z.enum(["login_page", "home_top"]),
+  storagePath: z.string().regex(/^(login|home)\/[0-9a-f-]{36}\.(jpg|png|webp)$/, "Invalid image path."),
+}).refine((v) => v.storagePath.startsWith(v.placement === "home_top" ? "home/" : "login/"), "Image path doesn't match the placement.");
 
 /** Saves the DB record for an image the admin's browser already uploaded to the promo-banners bucket. */
 export async function createBanner(input: unknown): Promise<BannerResult> {
@@ -58,11 +59,11 @@ export async function createBanner(input: unknown): Promise<BannerResult> {
   if (!admin) return { ok: false, message: NO_KEY };
   const p = createSchema.safeParse(input);
   if (!p.success) return { ok: false, message: p.error.issues[0].message };
-  const { title, description, linkUrl, isActive, storagePath } = p.data;
+  const { title, description, linkUrl, isActive, storagePath, placement } = p.data;
   const image_url = admin.storage.from(BUCKET).getPublicUrl(storagePath).data.publicUrl;
-  const rows = await all(admin);
+  const rows = (await all(admin)).filter((r) => r.placement === placement);
   const { error } = await admin.from("promotional_banners").insert({
-    title, description, link_url: linkUrl, image_url, storage_path: storagePath, placement: "login_page", is_active: isActive,
+    title, description, link_url: linkUrl, image_url, storage_path: storagePath, placement, is_active: isActive,
     sort_order: rows.length ? Math.max(...rows.map((r) => r.sort_order)) + 1 : 0,
   });
   if (error) return { ok: false, message: error.message };
@@ -88,10 +89,12 @@ export async function moveBanner(id: unknown, direction: unknown): Promise<Banne
   if (!admin) return { ok: false, message: NO_KEY };
   const parsed = z.object({ id: z.uuid(), direction: z.enum(["up", "down"]) }).safeParse({ id, direction });
   if (!parsed.success) return { ok: false, message: "Invalid request." };
-  const rows = await all(admin);
+  const everything = await all(admin);
+  const target = everything.find((r) => r.id === parsed.data.id);
+  const rows = everything.filter((r) => r.placement === target?.placement); // ordering is per placement
   const i = rows.findIndex((r) => r.id === parsed.data.id);
   const j = parsed.data.direction === "up" ? i - 1 : i + 1;
-  if (i < 0 || j < 0 || j >= rows.length) return { ok: true, message: "Already there.", banners: rows };
+  if (i < 0 || j < 0 || j >= rows.length) return { ok: true, message: "Already there.", banners: everything };
   [rows[i], rows[j]] = [rows[j], rows[i]];
   for (let n = 0; n < rows.length; n++) {
     if (rows[n].sort_order !== n) {

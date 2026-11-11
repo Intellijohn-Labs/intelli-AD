@@ -253,3 +253,9 @@ input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; bor
 .dark { --art-shadow: rgba(0, 0, 0, 0.6); }
 @media (prefers-reduced-motion: reduce) { .svg-float, .svg-sweep, .svg-twinkle, .svg-hl, .svg-stamp, .svg-halo, .svg-swing { animation: none !important; } }
 @media (prefers-reduced-motion: reduce) { .art-hl, .art-ring2, .art-shim, .flicker .lamp-flame, .art-breathe { animation: none !important; } .art-ring2 { display: none; } }
+
+/* Home top banner: continuous right-to-left marquee (the track holds two identical groups, so -50% loops seamlessly). */
+@keyframes home-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.home-marquee-track { animation: home-marquee var(--marquee-dur, 40s) linear infinite; will-change: transform; }
+.home-marquee:hover .home-marquee-track, .home-marquee[data-paused="true"] .home-marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .home-marquee-track { animation: none; } .home-marquee { overflow-x: auto; } }

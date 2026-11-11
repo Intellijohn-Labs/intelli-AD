@@ -1,3 +1,4 @@
+import { HomeTopBanner } from "@/components/home/home-top-banner";
 import { MediaHub } from "@/components/home/media-hub";
 
 /**
@@ -20,6 +21,7 @@ export default function HomePage() {
       {/* Print-style dot matrix */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-40 dark:opacity-[0.06]" />
       <div className="relative">
+        <HomeTopBanner />
         <MediaHub />
       </div>
     </div>
