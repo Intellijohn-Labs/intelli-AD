@@ -38,7 +38,7 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
     setFile(null); setPreview(null);
     if (fileRef.current) fileRef.current.value = ""; // clear the picker so the same file can be re-chosen after fixing it
     setErr(msg);
-    toast(msg);
+    toast.error(msg);
   };
 
   function pick(f?: File) {
@@ -87,7 +87,7 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
     setBusy(null);
     setConfirmId(null);
     if (res.banners) setBanners(res.banners);
-    toast(res.message);
+    if (res.ok) toast(res.message); else toast.error(res.message);
   }
 
   return (

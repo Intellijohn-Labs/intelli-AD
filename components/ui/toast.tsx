@@ -1,22 +1,29 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+type Variant = "success" | "error";
 interface ToastItem {
   id: number;
   message: string;
+  variant: Variant;
 }
-const ToastContext = createContext<{ toast: (message: string) => void } | null>(null);
+/** `toast(message)` shows a success toast (✓); `toast.error(message)` a destructive one (red, alert icon). */
+export type ToastFn = ((message: string, variant?: Variant) => void) & { error: (message: string) => void };
+const ToastContext = createContext<{ toast: ToastFn } | null>(null);
 let counter = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const toast = useCallback((message: string) => {
-    const id = ++counter;
-    setItems((l) => [...l.slice(-2), { id, message }]);
-    window.setTimeout(() => setItems((l) => l.filter((x) => x.id !== id)), 3200);
+  const toast = useMemo<ToastFn>(() => {
+    const show = (message: string, variant: Variant = "success") => {
+      const id = ++counter;
+      setItems((l) => [...l.slice(-2), { id, message, variant }]);
+      window.setTimeout(() => setItems((l) => l.filter((x) => x.id !== id)), variant === "error" ? 5000 : 3200);
+    };
+    return Object.assign(show, { error: (message: string) => show(message, "error") });
   }, []);
   const value = useMemo(() => ({ toast }), [toast]);
   return (
@@ -32,9 +39,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 60, opacity: 0 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="pointer-events-auto flex items-center gap-2 rounded bg-[#0F172A] px-4 py-3 text-sm font-medium text-white shadow-md dark:bg-[#FFFFFF] dark:text-[#0F172A]"
+              role={i.variant === "error" ? "alert" : undefined}
+              className={i.variant === "error"
+                ? "pointer-events-auto flex max-w-sm items-start gap-2 rounded bg-red-700 px-4 py-3 text-sm font-medium text-white shadow-md"
+                : "pointer-events-auto flex items-center gap-2 rounded bg-[#0F172A] px-4 py-3 text-sm font-medium text-white shadow-md dark:bg-[#FFFFFF] dark:text-[#0F172A]"}
             >
-              <Check className="h-4 w-4" aria-hidden="true" /> {i.message}
+              {i.variant === "error" ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />} {i.message}
             </motion.div>
           ))}
         </AnimatePresence>
