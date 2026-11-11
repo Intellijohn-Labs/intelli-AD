@@ -37,7 +37,7 @@ export function HomeTopBanner() {
   const item = (s: Slide, key: string, hidden: boolean) => {
     const img = (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={s.image_url} alt={hidden ? "" : s.title} draggable={false} className="h-full w-auto max-w-none rounded-xl object-cover object-center lg:rounded-2xl" />
+      <img src={s.image_url} alt={hidden ? "" : s.title || "Promotion"} draggable={false} className="h-full w-auto max-w-none rounded-xl object-cover object-center lg:rounded-2xl" />
     );
     return s.link_url ? (
       <a key={key} href={s.link_url} aria-hidden={hidden || undefined} tabIndex={hidden ? -1 : undefined} {...(/^https?:/i.test(s.link_url) ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="mr-4 block h-full shrink-0">{img}</a>

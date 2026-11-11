@@ -56,10 +56,10 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
             <img src={s.imageUrl} alt="" className={cn("absolute inset-0 h-full w-full object-cover object-center", !s.custom && "opacity-45 mix-blend-luminosity")} />
           )}
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
-          {s.linkUrl && <a href={s.linkUrl} aria-label={s.title} className="absolute inset-0 z-[5] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" {...(/^https?:/i.test(s.linkUrl) ? { target: "_blank", rel: "noopener noreferrer" } : {})} />}
+          {s.linkUrl && <a href={s.linkUrl} aria-label={s.title || "Open promotion"} className="absolute inset-0 z-[5] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" {...(/^https?:/i.test(s.linkUrl) ? { target: "_blank", rel: "noopener noreferrer" } : {})} />}
           <div className="pointer-events-none relative flex max-w-md flex-col items-center pb-8">
             {s.badge && <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold tracking-wide uppercase ring-1 ring-white/25 backdrop-blur">{s.badge}</span>}
-            <h2 className="mt-3 font-serif text-2xl leading-tight font-black sm:text-3xl">{s.title}</h2>
+            {s.title && <h2 className="mt-3 font-serif text-2xl leading-tight font-black sm:text-3xl">{s.title}</h2>}
             {s.description && <p className="mt-2 text-sm leading-relaxed text-slate-100/90">{s.description}</p>}
           </div>
         </motion.div>
@@ -68,7 +68,7 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
       {slides.length > 1 && (
         <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-1.5 px-5" role="tablist" aria-label="Choose slide">
           {slides.map((x, n) => (
-            <button key={x.id} type="button" role="tab" aria-selected={n === i} aria-label={`Slide ${n + 1}: ${x.title}`} onClick={() => setI(n)} className="relative h-1.5 w-8 overflow-hidden rounded-full bg-white/30 focus-visible:outline-2 focus-visible:outline-white">
+            <button key={x.id} type="button" role="tab" aria-selected={n === i} aria-label={`Slide ${n + 1}${x.title ? `: ${x.title}` : ""}`} onClick={() => setI(n)} className="relative h-1.5 w-8 overflow-hidden rounded-full bg-white/30 focus-visible:outline-2 focus-visible:outline-white">
               {n === i && (
                 <motion.span
                   key={`${i}-${paused}`}

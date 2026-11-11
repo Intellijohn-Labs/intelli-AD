@@ -158,3 +158,7 @@ create policy "admins upload banners" on storage.objects for insert to authentic
 -- Banner placements: 'login_page' (login card carousel) and 'home_top' (home page right-to-left marquee).
 alter table public.promotional_banners drop constraint if exists promotional_banners_placement_check;
 alter table public.promotional_banners add constraint promotional_banners_placement_check check (placement in ('login_page', 'home_top'));
+
+-- Banner titles are optional (an untitled banner is stored with an empty title).
+alter table public.promotional_banners alter column title drop not null;
+alter table public.promotional_banners alter column title set default '';

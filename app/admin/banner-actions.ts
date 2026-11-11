@@ -45,7 +45,7 @@ const optionalUrl = z.string().trim().max(500).optional().transform((v) => v || 
   .refine((v) => v === null || /^https?:\/\//i.test(v) || v.startsWith("/"), "Target URL must start with http(s):// or /");
 
 const createSchema = z.object({
-  title: z.string().trim().min(2, "Enter a title.").max(120),
+  title: z.string().trim().max(120).optional().transform((v) => v ?? ""), // optional: an untitled banner is stored with ""
   description: z.string().trim().max(300).optional().transform((v) => v || null),
   linkUrl: optionalUrl,
   isActive: z.boolean(),

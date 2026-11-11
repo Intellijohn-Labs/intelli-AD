@@ -116,7 +116,6 @@ function PlacementCard({ spec, all, onChange }: { spec: Spec; all: Banner[]; onC
     e.preventDefault();
     setErr(null);
     if (!file) return setErr("Choose an image first.");
-    if (title.trim().length < 2) return setErr("Enter a title.");
     const supabase = createClient();
     if (!supabase) return setErr("Storage isn't configured.");
     setUploading(true);
@@ -161,7 +160,7 @@ function PlacementCard({ spec, all, onChange }: { spec: Spec; all: Banner[]; onC
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label={`${spec.title} image`} onChange={(e) => pick(e.target.files?.[0])} />
           </div>
           <div className="space-y-3">
-            <div><label htmlFor={`${id}-title`} className={lbl}>Title</label><Input id={`${id}-title`} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="Special 15% Volume Discount" /></div>
+            <div><label htmlFor={`${id}-title`} className={lbl}>Title (optional) / ടൈറ്റിൽ (ആവശ്യമെങ്കിൽ മാത്രം)</label><Input id={`${id}-title`} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" /></div>
             <div><label htmlFor={`${id}-desc`} className={lbl}>Description / tagline (optional)</label><Input id={`${id}-desc`} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} /></div>
             <div><label htmlFor={`${id}-url`} className={lbl}>Target URL (optional)</label><Input id={`${id}-url`} value={linkUrl} maxLength={500} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://… or /login?tab=agency" /></div>
             <Switch id={`${id}-active`} label="Active" description="Show on the page" checked={active} onChange={setActive} />
@@ -179,17 +178,17 @@ function PlacementCard({ spec, all, onChange }: { spec: Spec; all: Banner[]; onC
           {banners.map((b, i) => (
             <li key={b.id} className={`rounded-xl border border-slate-200 p-3 dark:border-slate-700 ${b.is_active ? "" : "opacity-70"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.image_url} alt={b.title} className={`${spec.thumbAspect} w-full rounded-lg object-cover object-center`} />
+              <img src={b.image_url} alt={b.title || "Banner"} className={`${spec.thumbAspect} w-full rounded-lg object-cover object-center`} />
               <div className="mt-3 flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-900 dark:text-white" title={b.title}>{b.title}</p>
+                  {b.title.trim() ? <p className="truncate font-bold text-slate-900 dark:text-white" title={b.title}>{b.title}</p> : <p className="truncate text-sm font-medium text-slate-400 italic">Untitled Banner (പേരില്ലാത്ത പോസ്റ്റർ)</p>}
                   {b.description && <p className="line-clamp-2 text-xs text-slate-600 dark:text-slate-300">{b.description}</p>}
                   {b.link_url && <p className="truncate text-xs text-blue-700 dark:text-sky-300" title={b.link_url}>{b.link_url}</p>}
                 </div>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${b.is_active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>{b.is_active ? "Active" : "Hidden"}</span>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button type="button" role="switch" aria-checked={b.is_active} aria-label={`${b.is_active ? "Disable" : "Enable"} ${b.title}`} disabled={busy === b.id} onClick={() => void run(b.id, () => setBannerActive(b.id, !b.is_active))} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${b.is_active ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"}`}>
+                <button type="button" role="switch" aria-checked={b.is_active} aria-label={`${b.is_active ? "Disable" : "Enable"} ${b.title || "banner"}`} disabled={busy === b.id} onClick={() => void run(b.id, () => setBannerActive(b.id, !b.is_active))} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${b.is_active ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"}`}>
                   <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${b.is_active ? "translate-x-5" : ""}`} />
                 </button>
                 <button type="button" aria-label="Move earlier" disabled={busy === b.id || i === 0} onClick={() => void run(b.id, () => moveBanner(b.id, "up"))} className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-600 dark:hover:bg-slate-800"><ArrowUp className="h-3.5 w-3.5" /></button>
@@ -201,7 +200,7 @@ function PlacementCard({ spec, all, onChange }: { spec: Spec; all: Banner[]; onC
                     <button type="button" onClick={() => setConfirmId(null)} className="rounded-md border border-slate-300 px-2 py-1 font-bold">No</button>
                   </span>
                 ) : (
-                  <button type="button" aria-label={`Delete ${b.title}`} onClick={() => setConfirmId(b.id)} className="ml-auto rounded-md border border-red-300 p-1.5 text-red-700 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button type="button" aria-label={`Delete ${b.title || "banner"}`} onClick={() => setConfirmId(b.id)} className="ml-auto rounded-md border border-red-300 p-1.5 text-red-700 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button>
                 )}
               </div>
             </li>
