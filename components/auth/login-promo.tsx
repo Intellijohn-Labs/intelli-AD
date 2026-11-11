@@ -36,7 +36,7 @@ export function LoginPromo() {
   // Loading, none active, or fetch failed: render nothing, so the sign-in card stays centred with no empty placeholder.
   if (!slides?.length) return null;
   return (
-    <div className="w-full max-w-md lg:max-w-none lg:flex-1">
+    <div className="w-full max-w-md pb-12 lg:max-w-none lg:flex-1 lg:pb-0">
       <PromoSlider slides={slides} />
     </div>
   );

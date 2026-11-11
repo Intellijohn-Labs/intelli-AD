@@ -29,7 +29,9 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
 
   if (!slides.length) return null;
   const s = slides[i];
+  const caption = s.custom && (s.title || s.description);
   return (
+    <div className={cn("w-full", className)}>
     <section
       aria-roledescription="carousel"
       aria-label="Promotions"
@@ -37,7 +39,7 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className={cn("relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-900 shadow-md lg:aspect-[4/5] lg:max-h-[640px]", className)}
+      className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-900 shadow-md lg:max-h-[640px] lg:max-w-none"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
@@ -53,11 +55,11 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
         >
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.imageUrl} alt="" className={cn("absolute inset-0 h-full w-full object-cover object-center", !s.custom && "opacity-45 mix-blend-luminosity")} />
+            <img src={s.imageUrl} alt="" className={cn("absolute inset-0 h-full w-full object-cover", s.custom ? "object-top lg:object-center" : "object-center opacity-45 mix-blend-luminosity")} />
           )}
-          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+          <div aria-hidden="true" className={cn("absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent", s.custom && "hidden lg:block")} />
           {s.linkUrl && <a href={s.linkUrl} aria-label={s.title || "Open promotion"} className="absolute inset-0 z-[5] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" {...(/^https?:/i.test(s.linkUrl) ? { target: "_blank", rel: "noopener noreferrer" } : {})} />}
-          <div className="pointer-events-none relative flex max-w-md flex-col items-center pb-8">
+          <div className={cn("pointer-events-none relative flex max-w-md flex-col items-center pb-8", s.custom && "hidden lg:flex")}>
             {s.badge && <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold tracking-wide uppercase ring-1 ring-white/25 backdrop-blur">{s.badge}</span>}
             {s.title && <h2 className="mt-3 font-serif text-2xl leading-tight font-black sm:text-3xl">{s.title}</h2>}
             {s.description && <p className="mt-2 text-sm leading-relaxed text-slate-100/90">{s.description}</p>}
@@ -83,5 +85,13 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
         </div>
       )}
     </section>
+    {/* Phones: the poster stays clean; its title and tagline sit in a caption underneath instead of over the image */}
+    {caption && (
+      <div className="mx-auto mt-3 max-w-sm px-1 text-center lg:hidden">
+        {s.title && <p className="font-serif text-base font-bold text-slate-900 dark:text-white">{s.title}</p>}
+        {s.description && <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{s.description}</p>}
+      </div>
+    )}
+    </div>
   );
 }
