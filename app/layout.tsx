@@ -9,6 +9,7 @@ import { Providers } from "@/components/providers";
 import { THEME_INIT_SCRIPT } from "@/components/theme-provider";
 import { WhatsAppWidget } from "@/components/whatsapp-widget";
 import { T } from "@/context/language-context";
+import { COMPANY } from "@/lib/company";
 import "./globals.css";
 
 /** Heavy geometric display face for the logo, headlines and calls to action. */
@@ -18,6 +19,10 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakart
 
 export const metadata: Metadata = {
   title: { default: "IntelliAd | Smart Newspaper Ad Booking Across Kerala", template: "%s | IntelliAd" },
+  applicationName: "IntelliAd",
+  publisher: COMPANY.tradeName,
+  creator: COMPANY.tradeName,
+  authors: [{ name: COMPANY.tradeName }],
   description: "Compare rates, compose and preview classified and display ads, and book across Kerala's and India's leading dailies with an instant Release Order.",
 };
 export const viewport: Viewport = {

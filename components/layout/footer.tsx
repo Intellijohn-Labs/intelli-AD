@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useI18n } from "@/context/language-context";
 import { bookHref } from "@/lib/booking-params";
 import { usePublication } from "@/lib/publication";
+import { COMPANY } from "@/lib/company";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "./brand-logo";
 
@@ -82,10 +83,19 @@ export function Footer() {
         </div>
       </div>
 
+      {/* Registered business details (GST certificate) */}
+      <div className="mx-auto mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
+        <address className="text-center text-xs leading-relaxed text-slate-400 not-italic md:text-left">
+          <p className="font-semibold text-slate-300">{COMPANY.tradeName} <span className="font-normal text-slate-400">· {COMPANY.constitution} (Proprietor: {COMPANY.legalName})</span></p>
+          <p>GSTIN: {COMPANY.gstin}</p>
+          <p>{COMPANY.addressLines.join(" ")}</p>
+        </address>
+      </div>
+
       {/* Bottom bar */}
-      <div className="mx-auto mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto mt-6 max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center justify-between gap-2 border-t border-slate-800 pt-6 text-center text-xs text-slate-500 md:flex-row md:text-left">
-          <p>© {year} IntelliAd. {t("All rights reserved.")}</p>
+          <p>© {year} {COMPANY.brand}, {COMPANY.tradeName}. {t("All rights reserved.")}</p>
           <p className="max-w-xl md:text-right">{t("Demo application. Rates are illustrative and payments are simulated. Publication names belong to their respective owners.")}</p>
         </div>
       </div>

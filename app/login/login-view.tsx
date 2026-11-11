@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { AgencyForm } from "@/components/agency/agency-form";
 import { AdminForm } from "@/components/auth/admin-form";
 import { AuthForm } from "@/components/auth/auth-form";
+import { COMPANY } from "@/lib/company";
 import { homeFor, useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -147,7 +148,7 @@ export function LoginView() {
             </>)}
           </div>
         </div>
-        <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to IntelliAd&apos;s Terms &amp; Privacy Policy.</p>
+        <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to the Terms &amp; Privacy Policy of IntelliAd, operated by {COMPANY.tradeName}.</p>
       </motion.main>
       {/* Only when an admin has an active banner: below the card on phones, beside it on desktop */}
       <LoginPromo />

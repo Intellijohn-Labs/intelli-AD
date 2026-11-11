@@ -6,6 +6,7 @@ import type { BookingState } from "./booking-store";
 import { cutoffFor, cutoffRuleFor } from "./cutoff";
 import { ENHANCEMENT_LABEL, type Quote } from "./pricing";
 import { formatDate, formatDateTime, formatINR } from "./utils";
+import { COMPANY } from "./company";
 
 export type PaymentMethod = "upi" | "card" | "netbanking";
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
@@ -102,9 +103,11 @@ table{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size
 th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}.n{text-align:right}.total td{font-weight:bold;border-top:2px solid #142241;font-size:15px}
 .ad{font-family:"Courier New",monospace;border:1px solid #999;padding:12px;background:#f7f4ec;white-space:pre-wrap}
 .meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-family:Arial,sans-serif;font-size:13px}.meta b{display:block;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.seller{font-family:Arial,sans-serif;font-size:12px;color:#333;line-height:1.5;margin:-4px 0 14px}
 .stamp{border:2px solid #1b7a3e;color:#1b7a3e;padding:4px 10px;font-family:Arial,sans-serif;font-weight:bold;transform:rotate(-4deg);display:inline-block}
 </style></head><body>
 <header><div><h1>INTELLIAD</h1><div class="sub">Release Order · Newspaper advertising</div></div><div class="stamp">PAID</div></header>
+<div class="seller"><b>${esc(COMPANY.tradeName)}</b> · ${esc(COMPANY.constitution)} (Proprietor: ${esc(COMPANY.legalName)})<br>GSTIN: ${esc(COMPANY.gstin)}<br>${esc(COMPANY.addressLines.join(" "))}</div>
 <div class="meta">
 <div><b>RO number</b>${esc(r.roNumber)}</div><div><b>Booking ID</b>${esc(r.bookingId)}</div>
 <div><b>Advertiser</b>${esc(r.contact.fullName)}${r.contact.company ? ", " + esc(r.contact.company) : ""}</div><div><b>Release date${(r.insertionDates?.length ?? 1) > 1 ? "s" : ""}</b>${esc((r.insertionDates?.length ? r.insertionDates : [r.releaseDate]).map((d) => formatDate(d)).join(", "))}</div>
