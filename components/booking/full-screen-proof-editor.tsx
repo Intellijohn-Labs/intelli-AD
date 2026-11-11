@@ -52,7 +52,7 @@ export function FullScreenProofEditorModal({ onClose }: { onClose: () => void })
   const reset = () => {
     const base = { photoFrame: DEFAULT_OBITUARY.photoFrame, frameStyle: DEFAULT_OBITUARY.frameStyle, photoCrop: DEFAULT_OBITUARY.photoCrop, photoScale: 1 };
     if (isObit && state.obituary) {
-      const next = { ...ob, ...base };
+      const next = { ...ob, ...base, isCustomMatter: false }; // text is regenerated below, so it is no longer custom
       update({ textStyle: DEFAULT_STYLE, obituary: next, text: composeObituary(next) }); // regenerate the text from the form fields: drops inline edits
     } else update({ textStyle: DEFAULT_STYLE });
   };
