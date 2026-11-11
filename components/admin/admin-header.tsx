@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/admin/rates", label: "Newspapers & Rates" },
   { href: "/admin/admins", label: "Admin Users" },
   { href: "/admin/bookings", label: "Bookings Monitor" },
+  { href: "/admin/banners", label: "Ad Banners" },
 ];
 
 /** The admin portal's own header: admin badge, section links, signed-in email and Sign Out. No customer booking actions. */

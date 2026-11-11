@@ -127,3 +127,30 @@ ALTER TABLE public.publication_rates ADD COLUMN IF NOT EXISTS border_rate NUMERI
 -- release_date stays the first insertion date; insertion_dates lists all of them; multi_day_discount is the ₹ saved.
 alter table public.bookings add column if not exists insertion_dates date[] not null default '{}';
 alter table public.bookings add column if not exists multi_day_discount numeric(12,2) not null default 0;
+
+-- ── Promotional banners (login page carousel), managed in /admin/banners ───────────────────────────────────────────
+create table if not exists public.promotional_banners (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  link_url text,
+  image_url text not null,
+  storage_path text not null,           -- object path inside the promo-banners bucket (used to clean up on delete)
+  placement text not null default 'login_page',
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.promotional_banners enable row level security;
+-- Visitors (not signed in) see active banners only; all writes go through admin-only server actions (service role).
+drop policy if exists "active banners are public" on public.promotional_banners;
+create policy "active banners are public" on public.promotional_banners for select to anon, authenticated using (is_active);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('promo-banners', 'promo-banners', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update
+  set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+-- Public read; only admins (app_metadata.role = 'admin') may upload from the browser. Deletes run server-side.
+drop policy if exists "admins upload banners" on storage.objects;
+create policy "admins upload banners" on storage.objects for insert to authenticated
+  with check (bucket_id = 'promo-banners' and (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');

@@ -1,6 +1,6 @@
 "use client";
 
-import { PromoSlider } from "@/components/auth/promo-slider";
+import { LoginPromo } from "@/components/auth/login-promo";
 import { AnimatePresence, motion } from "framer-motion";
 import { Building2, Lock, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import Link from "next/link";
@@ -150,7 +150,7 @@ export function LoginView() {
         <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to IntelliAd&apos;s Terms &amp; Privacy Policy.</p>
       </motion.main>
       {/* Below the card on phones (never pushes the sign-in form down); beside it on desktop */}
-      <div className="w-full max-w-md lg:max-w-none lg:flex-1"><PromoSlider /></div>
+      <div className="w-full max-w-md lg:max-w-none lg:flex-1"><LoginPromo /></div>
       </div>
     </div>
   );

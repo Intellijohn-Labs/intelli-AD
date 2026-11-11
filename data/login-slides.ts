@@ -12,8 +12,13 @@ export interface PromoSlide {
   imageUrl?: string;
   /** Tailwind gradient classes for the fallback graphic. */
   gradient: string;
+  /** Optional: clicking the slide opens this URL. */
+  linkUrl?: string;
+  /** Admin-uploaded poster: the image is shown as-is, not as a tinted backdrop. */
+  custom?: boolean;
 }
 
+/** Built-in slides, shown when no banner has been uploaded in the admin portal. */
 export const PROMO_SLIDES: PromoSlide[] = [
   {
     id: "book-today",
@@ -29,19 +34,5 @@ export const PROMO_SLIDES: PromoSlide[] = [
     title: "Special 15% Volume Discount",
     description: "Run the same ad on 3+ days to save 5%, 5+ days 10%, and 7+ days 15% automatically.",
     gradient: "from-emerald-600 via-teal-700 to-slate-900",
-  },
-  {
-    id: "partners",
-    badge: "For Akshaya & agencies",
-    title: "Become a Booking Partner",
-    description: "Akshaya Centres and registered agencies can book for walk-in customers and track every Release Order.",
-    gradient: "from-amber-600 via-rose-700 to-slate-900",
-  },
-  {
-    id: "all-papers",
-    badge: "9 publications",
-    title: "One Place for Every Daily",
-    description: "Malayala Manorama, Mathrubhumi, Deshabhimani, The Hindu and more, compared and booked together.",
-    gradient: "from-violet-700 via-purple-800 to-slate-900",
   },
 ];

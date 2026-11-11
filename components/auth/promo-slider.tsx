@@ -53,13 +53,14 @@ export function PromoSlider({ slides = PROMO_SLIDES, className }: { slides?: Pro
         >
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45 mix-blend-luminosity" />
+            <img src={s.imageUrl} alt="" className={cn("absolute inset-0 h-full w-full object-cover", !s.custom && "opacity-45 mix-blend-luminosity")} />
           )}
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
-          <div className="relative max-w-md pb-8">
+          {s.linkUrl && <a href={s.linkUrl} aria-label={s.title} className="absolute inset-0 z-[5] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" {...(/^https?:/i.test(s.linkUrl) ? { target: "_blank", rel: "noopener noreferrer" } : {})} />}
+          <div className="pointer-events-none relative max-w-md pb-8">
             {s.badge && <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold tracking-wide uppercase ring-1 ring-white/25 backdrop-blur">{s.badge}</span>}
             <h2 className="mt-3 font-serif text-2xl leading-tight font-black sm:text-3xl">{s.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-100/90">{s.description}</p>
+            {s.description && <p className="mt-2 text-sm leading-relaxed text-slate-100/90">{s.description}</p>}
           </div>
         </motion.div>
       </AnimatePresence>
