@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 const BUCKET = "promo-banners";
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 const MAX_BYTES = 5 * 1024 * 1024;
+const MIN_PX = 600; // minimum width and height
 const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 const lbl = "mb-1 block text-sm font-semibold text-slate-800 dark:text-slate-100";
 
@@ -33,13 +34,30 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
+  const reject = (msg: string) => {
+    setFile(null); setPreview(null);
+    if (fileRef.current) fileRef.current.value = ""; // clear the picker so the same file can be re-chosen after fixing it
+    setErr(msg);
+    toast(msg);
+  };
+
   function pick(f?: File) {
     setErr(null);
     if (!f) return;
-    if (!EXT[f.type]) return setErr("Choose a JPG, PNG or WebP image.");
-    if (f.size > MAX_BYTES) return setErr("The image must be 5 MB or smaller.");
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+    if (!EXT[f.type]) return reject("JPG, PNG അല്ലെങ്കിൽ WebP ചിത്രം മാത്രം തിരഞ്ഞെടുക്കുക. (Choose a JPG, PNG or WebP image.)");
+    if (f.size > MAX_BYTES) return reject("ഫയൽ സൈസ് 5 MB-യിൽ കൂടരുത്. (The image must be 5 MB or smaller.)");
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth < MIN_PX || img.naturalHeight < MIN_PX) {
+        URL.revokeObjectURL(url);
+        return reject(`ചിത്രത്തിന്റെ വലിപ്പം കുറവാണ് (${img.naturalWidth} × ${img.naturalHeight} px). കുറഞ്ഞത് ${MIN_PX} × ${MIN_PX} px വേണം; 1080 × 1350 px (4:5) അല്ലെങ്കിൽ 1080 × 1080 px ശുപാർശ ചെയ്യുന്നു.`);
+      }
+      setFile(f);
+      setPreview(url);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject("ഈ ചിത്രം വായിക്കാൻ കഴിഞ്ഞില്ല. (This image couldn't be read.)"); };
+    img.src = url;
   }
 
   async function upload(e: React.FormEvent) {
@@ -82,12 +100,14 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           <div>
             <span className={lbl}>Image (JPG, PNG or WebP, up to 5 MB)</span>
-            <button type="button" onClick={() => fileRef.current?.click()} className="group relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500 hover:border-blue-500 dark:border-slate-600 dark:bg-slate-800">
+            <span className="mb-2 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-900 dark:bg-blue-500/20 dark:text-blue-100">Recommended: 1080 × 1350 px (4:5) or 1080 × 1080 px (Square)</span>
+            <button type="button" onClick={() => fileRef.current?.click()} className="group relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500 hover:border-blue-500 dark:border-slate-600 dark:bg-slate-800">
               {preview
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={preview} alt="Banner preview" className="h-full w-full object-cover" />
+                ? <img src={preview} alt="Banner preview" className="h-full w-full object-cover object-center" />
                 : <span className="flex flex-col items-center gap-1"><ImagePlus className="h-6 w-6" aria-hidden="true" /> Click to choose an image</span>}
             </button>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">കുറിപ്പ്: മൊബൈലിലും ലാപ്ടോപ്പിലും കൃത്യമായി കാണുന്നതിനായി ചിത്രങ്ങൾ 1080 × 1350 px അല്ലെങ്കിൽ സ്ക്വയർ (1080 × 1080 px) അനുപാതത്തിൽ അപ്‌ലോഡ് ചെയ്യുക. പ്രധാന വിവരങ്ങളും അക്ഷരങ്ങളും ചിത്രത്തിന്റെ മധ്യഭാഗത്ത് (Center Safe Zone) നൽകാൻ ശ്രദ്ധിക്കുക. ഫയൽ സൈസ് 5 MB-യിൽ കൂടരുത്.</p>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Banner image" onChange={(e) => pick(e.target.files?.[0])} />
           </div>
           <div className="space-y-3">
@@ -109,7 +129,7 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
           {banners.map((b, i) => (
             <li key={b.id} className={`${card} !p-3 ${b.is_active ? "" : "opacity-70"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={b.image_url} alt={b.title} className="aspect-video w-full rounded-lg object-cover" />
+              <img src={b.image_url} alt={b.title} className="aspect-video w-full rounded-lg object-cover object-center" />
               <div className="mt-3 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-bold text-slate-900 dark:text-white" title={b.title}>{b.title}</p>

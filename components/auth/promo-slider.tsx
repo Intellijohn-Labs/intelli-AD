@@ -37,7 +37,7 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className={cn("relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-900 shadow-md lg:aspect-[4/5] lg:max-h-[640px]", className)}
+      className={cn("relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-900 shadow-md lg:aspect-[4/5] lg:max-h-[640px]", className)}
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
@@ -53,7 +53,7 @@ export function PromoSlider({ slides, className }: { slides: PromoSlide[]; class
         >
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.imageUrl} alt="" className={cn("absolute inset-0 h-full w-full object-cover", !s.custom && "opacity-45 mix-blend-luminosity")} />
+            <img src={s.imageUrl} alt="" className={cn("absolute inset-0 h-full w-full object-cover object-center", !s.custom && "opacity-45 mix-blend-luminosity")} />
           )}
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
           {s.linkUrl && <a href={s.linkUrl} aria-label={s.title} className="absolute inset-0 z-[5] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" {...(/^https?:/i.test(s.linkUrl) ? { target: "_blank", rel: "noopener noreferrer" } : {})} />}
