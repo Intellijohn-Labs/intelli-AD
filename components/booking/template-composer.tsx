@@ -68,6 +68,13 @@ export function TemplateComposer({
     try { await navigator.clipboard.writeText(active.text[lang]); toast("Sample copied"); } catch { toast("Could not copy. Select the text and copy it manually."); }
   };
 
+  // The assistant button only shows once the server confirms an API key is active for the chosen provider.
+  const [aiReady, setAiReady] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/ai/status", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (live) setAiReady(j?.isConfigured === true); }).catch(() => { if (live) setAiReady(false); });
+    return () => { live = false; };
+  }, []);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiOptions, setAiOptions] = useState<{ id: number; style_name: string; text: string }[]>([]);
   const suggest = async () => {
@@ -118,10 +125,10 @@ export function TemplateComposer({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <button type="button" onClick={insertContact} className={cn(link, "text-blue-600 hover:underline dark:text-blue-400")}><PhoneCall className="h-3 w-3" aria-hidden="true" /> {lang === "ml" ? "+ ഫോൺ നമ്പർ ചേർക്കുക" : "+ Insert contact"} / ഫോൺ നമ്പർ ചേർക്കുക</button>
           {active && <button type="button" onClick={copySample} className={cn(link, "text-slate-500 hover:text-blue-600 dark:text-slate-300")}><Copy className="h-3 w-3" aria-hidden="true" /> Copy sample</button>}
-          <button type="button" onClick={suggest} disabled={aiBusy} aria-busy={aiBusy}
+          {aiReady && <button type="button" onClick={suggest} disabled={aiBusy} aria-busy={aiBusy}
             className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] transition-shadow hover:shadow-[0_0_22px_rgba(124,58,237,0.8)] disabled:opacity-70">
             {aiBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />} ✨ AI സഹായി (AI Suggestions)
-          </button>
+          </button>}
           <button type="button" onClick={() => { onChange(""); setActiveId(null); }} className={cn(link, "text-slate-500 hover:text-rose-500 dark:text-slate-300")}><Eraser className="h-3 w-3" aria-hidden="true" /> Clear text</button>
         </div>
       </div>
