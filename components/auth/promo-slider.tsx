@@ -56,13 +56,10 @@ export function PromoSlider({ slides = PROMO_SLIDES, className }: { slides?: Pro
             <img src={s.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45 mix-blend-luminosity" />
           )}
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
-          <div className="relative max-w-md pb-6">
+          <div className="relative max-w-md pb-8">
             {s.badge && <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold tracking-wide uppercase ring-1 ring-white/25 backdrop-blur">{s.badge}</span>}
             <h2 className="mt-3 font-serif text-2xl leading-tight font-black sm:text-3xl">{s.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-100/90">{s.description}</p>
-            {s.linkUrl && s.ctaLabel && (
-              <a href={s.linkUrl} className="mt-4 inline-block rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-900 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{s.ctaLabel} →</a>
-            )}
           </div>
         </motion.div>
       </AnimatePresence>

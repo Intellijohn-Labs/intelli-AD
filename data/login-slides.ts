@@ -12,9 +12,6 @@ export interface PromoSlide {
   imageUrl?: string;
   /** Tailwind gradient classes for the fallback graphic. */
   gradient: string;
-  /** Optional call to action. */
-  linkUrl?: string;
-  ctaLabel?: string;
 }
 
 export const PROMO_SLIDES: PromoSlide[] = [
@@ -25,8 +22,6 @@ export const PROMO_SLIDES: PromoSlide[] = [
     description: "Compose, preview and book classified and display ads across Kerala's leading dailies, with an instant Release Order.",
     imageUrl: "/images/newspaper-rack.webp",
     gradient: "from-blue-700 via-indigo-700 to-slate-900",
-    linkUrl: "/login?tab=user&mode=register",
-    ctaLabel: "Create your account",
   },
   {
     id: "volume-discount",
@@ -41,8 +36,6 @@ export const PROMO_SLIDES: PromoSlide[] = [
     title: "Become a Booking Partner",
     description: "Akshaya Centres and registered agencies can book for walk-in customers and track every Release Order.",
     gradient: "from-amber-600 via-rose-700 to-slate-900",
-    linkUrl: "/login?tab=agency&mode=register",
-    ctaLabel: "Register as a partner",
   },
   {
     id: "all-papers",
