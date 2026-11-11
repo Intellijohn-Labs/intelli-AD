@@ -87,7 +87,7 @@ export function AiSettingsForm({ initial }: { initial: AiSettingsState }) {
         <div>
           <label htmlFor="ai-temp" className="mb-1 flex justify-between text-sm font-semibold"><span>Temperature</span><span className="font-mono">{temp.toFixed(2)}</span></label>
           <input id="ai-temp" type="range" min={0} max={1} step={0.05} value={temp} onChange={(e) => setTemp(Number(e.target.value))} className="w-full" />
-          <p className="text-xs text-slate-500">Lower is more literal and consistent (default 0.3).</p>
+          <p className="text-xs text-slate-500">Lower is more literal and consistent (default 0.3). Applies to Gemini only; current Claude models don’t accept a temperature.</p>
         </div>
         <KeyField id="gemini-key" label="Gemini API key" env="GEMINI_API_KEY" info={initial.keys.gemini} value={gKey} onChange={setGKey} onClear={() => setGClear((v) => !v)} cleared={gClear} />
         <KeyField id="claude-key" label="Anthropic API key" env="ANTHROPIC_API_KEY" info={initial.keys.claude} value={cKey} onChange={setCKey} onClear={() => setCClear((v) => !v)} cleared={cClear} />

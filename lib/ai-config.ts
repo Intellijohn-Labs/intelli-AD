@@ -8,8 +8,9 @@ export const AI_MODELS: Record<AiProvider, { id: string; label: string }[]> = {
     { id: "gemini-2.5-pro", label: "gemini-2.5-pro" },
   ],
   claude: [
-    { id: "claude-3-5-sonnet-20241022", label: "claude-3-5-sonnet-20241022" },
-    { id: "claude-3-5-haiku-20241022", label: "claude-3-5-haiku-20241022" },
+    { id: "claude-sonnet-5-5", label: "claude-sonnet-5-5 (recommended)" },
+    { id: "claude-haiku-5-5", label: "claude-haiku-5-5 (faster, cheaper)" },
+    { id: "claude-opus-5-5", label: "claude-opus-5-5" },
   ],
 };
 export const AI_PROVIDER_LABEL: Record<AiProvider, string> = { gemini: "Google Gemini (Paid)", claude: "Anthropic Claude (Paid)" };
