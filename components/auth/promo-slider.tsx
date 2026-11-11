@@ -49,7 +49,7 @@ export function PromoSlider({ slides = PROMO_SLIDES, className }: { slides?: Pro
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: reduced ? 0 : -24 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
-          className={cn("absolute inset-0 flex flex-col justify-end bg-gradient-to-br p-5 text-white sm:p-7", s.gradient)}
+          className={cn("absolute inset-0 flex flex-col items-center justify-end bg-gradient-to-br p-5 text-center text-white sm:p-7", s.gradient)}
         >
           {s.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -57,7 +57,7 @@ export function PromoSlider({ slides = PROMO_SLIDES, className }: { slides?: Pro
           )}
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
           {s.linkUrl && <a href={s.linkUrl} aria-label={s.title} className="absolute inset-0 z-[5] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white" {...(/^https?:/i.test(s.linkUrl) ? { target: "_blank", rel: "noopener noreferrer" } : {})} />}
-          <div className="pointer-events-none relative max-w-md pb-8">
+          <div className="pointer-events-none relative flex max-w-md flex-col items-center pb-8">
             {s.badge && <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold tracking-wide uppercase ring-1 ring-white/25 backdrop-blur">{s.badge}</span>}
             <h2 className="mt-3 font-serif text-2xl leading-tight font-black sm:text-3xl">{s.title}</h2>
             {s.description && <p className="mt-2 text-sm leading-relaxed text-slate-100/90">{s.description}</p>}

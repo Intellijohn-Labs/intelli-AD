@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createBanner, deleteBanner, moveBanner, setBannerActive, type Banner, type BannerResult } from "@/app/admin/banner-actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/field";
+import { Input, Switch } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 
@@ -94,7 +94,7 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
             <div><label htmlFor="bn-title" className={lbl}>Title</label><Input id="bn-title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="Special 15% Volume Discount" /></div>
             <div><label htmlFor="bn-desc" className={lbl}>Description / tagline (optional)</label><Input id="bn-desc" value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} /></div>
             <div><label htmlFor="bn-url" className={lbl}>Target URL (optional)</label><Input id="bn-url" value={linkUrl} maxLength={500} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://… or /login?tab=agency" /></div>
-            <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4" /> Active (show on the sign-in page)</label>
+            <Switch id="bn-active" label="Active" description="Show on the sign-in page" checked={active} onChange={setActive} />
           </div>
         </div>
         {err && <p role="alert" className="mt-3 text-sm font-medium text-red-700 dark:text-red-300">{err}</p>}
@@ -119,7 +119,9 @@ export function BannerManager({ initial }: { initial: Banner[] }) {
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${b.is_active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>{b.is_active ? "Active" : "Hidden"}</span>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button type="button" disabled={busy === b.id} onClick={() => void run(b.id, () => setBannerActive(b.id, !b.is_active))} className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-semibold hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800">{b.is_active ? "Hide" : "Show"}</button>
+                <button type="button" role="switch" aria-checked={b.is_active} aria-label={`${b.is_active ? "Disable" : "Enable"} ${b.title}`} disabled={busy === b.id} onClick={() => void run(b.id, () => setBannerActive(b.id, !b.is_active))} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${b.is_active ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-600"}`}>
+                  <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${b.is_active ? "translate-x-5" : ""}`} />
+                </button>
                 <button type="button" aria-label="Move earlier" disabled={busy === b.id || i === 0} onClick={() => void run(b.id, () => moveBanner(b.id, "up"))} className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-600 dark:hover:bg-slate-800"><ArrowUp className="h-3.5 w-3.5" /></button>
                 <button type="button" aria-label="Move later" disabled={busy === b.id || i === banners.length - 1} onClick={() => void run(b.id, () => moveBanner(b.id, "down"))} className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-600 dark:hover:bg-slate-800"><ArrowDown className="h-3.5 w-3.5" /></button>
                 {confirmId === b.id ? (
