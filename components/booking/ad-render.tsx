@@ -30,7 +30,7 @@ export function AdRender({ state, editable = false, inlineText = false, toolbar 
 
   if (builder)
     return (
-      <PrintPreview widthCm={widthCm} heightCm={state.display.heightCm} colWidthCm={colW} paperName={paperName} colorMode={state.display.colorMode}>
+      <PrintPreview widthCm={widthCm} heightCm={state.display.heightCm} colWidthCm={colW} paperName={paperName} colorMode={state.display.colorMode} stretch={state.categoryId !== "tender"}>
         {state.categoryId === "tender" ? <TenderPreview state={state} bare editable={editable} /> : <ObituaryPreview state={state} bare editable={editable} inlineText={inlineText} />}
       </PrintPreview>
     );

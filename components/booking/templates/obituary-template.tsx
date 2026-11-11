@@ -381,11 +381,12 @@ function Cross({ className }: { className?: string }) {
 
 /** Border frame around the whole notice: traditional floral bands, Christian cross, or a minimal rule. */
 function NoticeFrame({ style, children }: { style: "traditional" | "christian" | "minimal"; children: React.ReactNode }) {
-  if (style === "minimal") return <div className="border border-[#0F172A] p-3">{children}</div>;
+  // The frame grows to the height it is given (the print box) and centres its content, so a short notice sits balanced in it.
+  if (style === "minimal") return <div className="flex flex-1 flex-col justify-center border border-[#0F172A] p-3">{children}</div>;
   if (style === "christian") {
     return (
-      <div className="border-[3px] border-double border-[#0F172A] p-1">
-        <div className="border border-[#0F172A] p-3 pt-2">
+      <div className="flex flex-1 flex-col border-[3px] border-double border-[#0F172A] p-1">
+        <div className="flex flex-1 flex-col justify-center border border-[#0F172A] p-3 pt-2">
           <div className="mb-1 flex justify-center"><Cross /></div>
           {children}
         </div>
@@ -393,9 +394,9 @@ function NoticeFrame({ style, children }: { style: "traditional" | "christian" |
     );
   }
   return (
-    <div className="border-2 border-[#0F172A] p-1">
+    <div className="flex flex-1 flex-col border-2 border-[#0F172A] p-1">
       <FloralBand />
-      <div className="border-x border-[#0F172A] px-3 py-2">{children}</div>
+      <div className="flex flex-1 flex-col justify-center border-x border-[#0F172A] px-3 py-2">{children}</div>
       <FloralBand />
     </div>
   );
@@ -427,7 +428,7 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
   const narrow = !isText && (state.display.widthCm ?? state.display.columns * 4) < 6; // a ~1 column box stacks the portrait on top
 
   const notice = (
-    <div className="paper-grain bg-[#faf8f5] p-2 text-zinc-950" style={SERIF}>
+    <div className="paper-grain flex flex-1 flex-col bg-[#faf8f5] p-2 text-zinc-950" style={SERIF}>
       {!header ? (
         <p className="py-6 text-center text-sm text-zinc-400 italic">Your notice appears here as you fill the form…</p>
       ) : (
@@ -437,9 +438,10 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
             {inlineText ? <EditableLine value={header} onCommit={commit(0)} /> : header}
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
           </h4>
-          <div className={cn("mt-2 gap-3", showPhoto ? (narrow ? "flex flex-col items-center" : "flex items-start") : "block")}>
-            {showPhoto && <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} />}
-            <div className={cn("min-w-0 flex-1 space-y-1.5 leading-[1.7]", align)} style={{ fontSize: textPx }}>
+          <div className={cn("mt-2", showPhoto ? (narrow ? "flex flex-col items-center gap-3" : "flow-root") : "block")}>
+            {showPhoto && (narrow ? <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /> : <div className="float-left mr-3 mb-1"><Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /></div>)}
+            {/* The portrait floats left: the first lines sit beside it and the rest run the full width, so text never gets squeezed into a narrow column. */}
+            <div lang="ml" className={cn("min-w-0 space-y-1.5 leading-[1.7] hyphens-auto [overflow-wrap:anywhere] [text-wrap:pretty]", narrow && "w-full", showPhoto && !narrow && align === "text-justify" ? "text-left" : align)} style={{ fontSize: textPx }}>
               {body.map((p, i) => {
                 const cls = cn(prayerLines.has(p) && "text-center font-semibold italic", !prayer && anniv && i === body.length - 1 && "text-center font-semibold italic");
                 return inlineText ? <EditableLine key={i} value={p} onCommit={commit(i + 1)} className={cls} /> : <p key={i} className={cls}>{p}</p>;

@@ -136,7 +136,7 @@ export function TemplateComposer({
         textareaRef={(el) => { area.current = el; }}
       />
 
-      <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={value} category={categoryLabel ?? ""} newspaper={newspaper ?? ""} language={lang} charsPerLine={charsPerLine} onUse={(txt) => onChange(txt)} />
+      <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={value} category={categoryLabel ?? ""} newspaper={newspaper ?? ""} language={lang} charsPerLine={charsPerLine} onUse={(txt) => { onChange(txt); if (/[\u0D00-\u0D7F]/.test(txt)) setLang("ml"); /* keep the template/helper language in step with the applied Malayalam text */ }} />
 
       {placeholders.length > 0 && (
         <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/40 dark:bg-amber-500/10" role="status">

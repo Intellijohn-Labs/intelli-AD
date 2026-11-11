@@ -20,6 +20,7 @@ export function PrintPreview({
   imageUrl,
   fileName,
   children,
+  stretch = false,
 }: {
   widthCm: number;
   heightCm: number;
@@ -30,6 +31,8 @@ export function PrintPreview({
   fileName?: string;
   /** Template content (omit to show an uploaded creative instead). */
   children?: ReactNode;
+  /** Template content grows to fill the whole box height (flex column), so it can centre itself vertically. */
+  stretch?: boolean;
 }) {
   const w = Number.isFinite(widthCm) && widthCm > 0 ? widthCm : colWidthCm;
   const h = Number.isFinite(heightCm) && heightCm > 0 ? heightCm : 5;
@@ -75,7 +78,7 @@ export function PrintPreview({
               {/* the ad */}
               <div className={cn("absolute top-0 left-0 overflow-hidden border-2 bg-white shadow-md", overflowCm > 0.05 ? "border-red-600" : "border-zinc-900")} style={{ width: px(w), height: px(h) }}>
                 {children ? (
-                  <div ref={inner} className={cn("origin-top-left", colorMode === "bw" && "grayscale")} style={{ width: NATURAL_W, transform: `scale(${fit})` }}>
+                  <div ref={inner} className={cn("origin-top-left", stretch && "flex flex-col", colorMode === "bw" && "grayscale")} style={{ width: NATURAL_W, transform: `scale(${fit})`, minHeight: stretch ? Math.max(0, px(h) - 4) / fit : undefined }}>
                     {children}
                   </div>
                 ) : imageUrl ? (

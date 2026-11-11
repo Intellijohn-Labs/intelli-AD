@@ -39,16 +39,23 @@ Hard rules: never invent or assume any fact, name, relative, relationship, date,
     return `${common}
 
 This is an OBITUARY / REMEMBRANCE (ചരമം / അനുസ്മരണം) notice. Tone must be deeply respectful, solemn and formal; no promotional or casual language, no exclamation marks, no emojis. Only structure the facts supplied; do not add relatives, ages, places, dates or funeral timings that were not given.
+Funeral / last-rites details are essential: whenever the input mentions the death (മരണം / നിര്യാതനായി), the funeral or cremation (സംസ്കാരം), or any date, time or place for them, EVERY ONE of the 3 styles MUST keep the funeral place and timing exactly as given (including style 3, the remembrance style). Never drop, shorten, reword or alter a time, date or place.
 
 Write exactly 3 distinct Kerala print formats:
 1. style_name "${MEMORIAL_STYLES[0]}": basic death announcement and funeral details only, as short as possible (cost-effective).
 2. style_name "${MEMORIAL_STYLES[1]}": complete traditional family notice using the customary Kerala phrasing where the facts exist, e.g. "നിര്യാതനായി / നിര്യാതയായി", "സംസ്കാരം ...", "ഭാര്യ / ഭർത്താവ്:", "മക്കൾ:", "മരുമക്കൾ:" (use only the headings for which details were given; choose നിര്യാതനായി or നിര്യാതയായി by the person's gender as given).
-3. style_name "${MEMORIAL_STYLES[2]}": a solemn remembrance (അനുസ്മരണം / ഓർമ്മപ്പൂക്കൾ) suited to an anniversary or tribute, expressing remembrance and prayers without inventing any detail.
+3. style_name "${MEMORIAL_STYLES[2]}": a solemn remembrance (അനുസ്മരണം / ഓർമ്മപ്പൂക്കൾ) suited to an anniversary or tribute, expressing remembrance and prayers without inventing any detail. If the input gives funeral details, keep them in full in this style too.
 
 ${format}`;
   }
 
-  return `${common}
+  const matrimonial = /matrimon|bride|groom|marriage|വിവാഹ|വധു|വരൻ|വരന്/i.test(p.category) || /വധു|വരൻ|വരനെ|വധുവിനെ|bride|groom|alochana|ആലോചന/i.test(p.roughText);
+  const gram = matrimonial
+    ? `
+
+Matrimonial grammar (Malayalam): use correct singular agreement. A bride wanted is "അനുയോജ്യയായ വധുവിനെ" (singular feminine), never the plural/awkward "യോഗ്യരായ വധുവിനെ". A groom wanted is "അനുയോജ്യനായ വരനെ". Parents inviting proposals for their son or daughter may write "ആലോചനകൾ ക്ഷണിക്കുന്നു". Use only the community, age, education, job and contact details supplied.`
+    : "";
+  return `${common}${gram}
 
 Write exactly 3 distinct options for this category, persuasive yet clear and publication-ready in Kerala newspaper style:
 1. style_name "${STYLES[0]}": concise; fewer lines and characters to cut print cost while keeping every essential fact.
