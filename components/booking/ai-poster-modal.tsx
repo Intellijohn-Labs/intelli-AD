@@ -9,6 +9,7 @@ import { nearestAspect, POSTER_STYLES, type PosterStyleId } from "@/lib/obituary
 import type { FileMeta } from "@/lib/types";
 
 type Slot = { state: "idle" } | { state: "loading" } | { state: "ready"; mime: string; data: string } | { state: "error"; message: string };
+const MOTIFS = ["🪔 നിലവിളക്ക് (Nilavilakku)", "🕯️ മെഴുകുതിരി (Candle)", "✝️ കുരിശ് (Christian Cross)", "🕉️ ഓം (Om Symbol)", "🌸 മുല്ലപ്പൂവ് / പുഷ്പചക്രം (Floral Wreath)"];
 const IDLE: Record<PosterStyleId, Slot> = { classic: { state: "idle" }, honored: { state: "idle" }, memoriam: { state: "idle" } };
 
 /** Downscales the portrait to <= 1024 px JPEG so the request stays small. Returns null when there is no readable photo. */
@@ -42,6 +43,7 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
   const toast = useToast();
   const [slots, setSlots] = useState<Record<PosterStyleId, Slot>>(IDLE);
   const [zoom, setZoom] = useState<PosterStyleId | null>(null);
+  const [custom, setCustom] = useState("");
   const run = useRef(0);
   const busy = Object.values(slots).some((s) => s.state === "loading");
 
@@ -63,7 +65,7 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
   const one = async (id: PosterStyleId, ph: Awaited<ReturnType<typeof photoPayload>>, mine: number) => {
     set(id, { state: "loading" });
     try {
-      const res = await fetch("/api/ai/generate-obituary-art", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ styleId: id, colorMode, text, category, language, aspect, widthCm, heightCm, photo: ph ?? undefined }) });
+      const res = await fetch("/api/ai/generate-obituary-art", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ styleId: id, colorMode, customDesignPrompt: custom.trim() || undefined, text, category, language, aspect, widthCm, heightCm, photo: ph ?? undefined }) });
       const j = await res.json().catch(() => ({}));
       if (mine !== run.current) return;
       if (!res.ok || !j.data) set(id, { state: "error", message: j.error ?? "Couldn't design this style." });
@@ -76,6 +78,11 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
       }
     } catch (e) { if (mine === run.current) set(id, { state: "error", message: e instanceof Error && e.message ? e.message : "Couldn't reach the AI designer. Check your connection." }); }
   };
+
+  const toggleMotif = (m: string) => setCustom((cur) => {
+    if (cur.includes(m)) return cur.replace(m, "").replace(/\s*,\s*,/g, ",").replace(/^[\s,]+|[\s,]+$/g, "");
+    return cur.trim() ? `${cur.trim().replace(/,$/, "")}, ${m}` : m;
+  });
 
   const generate = async (only?: PosterStyleId) => {
     if (!text.trim()) { toast.error("ആദ്യം മാറ്റർ തയ്യാറാക്കുക (Fill in the notice details first)"); return; }
@@ -110,6 +117,19 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
         </div>
 
         <div className="space-y-4 overflow-y-auto px-4 py-4">
+          <div>
+            <label htmlFor="poster-custom" className="text-sm font-semibold text-slate-900 dark:text-white">ഡിസൈൻ നിർദ്ദേശങ്ങൾ (Design Suggestions - Optional)</label>
+            <input id="poster-custom" type="text" value={custom} maxLength={300} onChange={(e) => setCustom(e.target.value)} disabled={busy}
+              placeholder="ഉദാ: ഫോട്ടോയ്ക്ക് ഇരുവശത്തും കത്തിച്ച നിലവിളക്ക് വേണം / Include a lit traditional Kerala brass lamp beside the portrait"
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-2 focus:outline-violet-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+            <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Quick motif suggestions">
+              {MOTIFS.map((m) => {
+                const on = custom.includes(m);
+                return <button key={m} type="button" aria-pressed={on} onClick={() => toggleMotif(m)} disabled={busy}
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${on ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"}`}>{m}</button>;
+              })}
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={() => generate()} disabled={busy} aria-busy={busy}
               className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.5)] disabled:opacity-70">
