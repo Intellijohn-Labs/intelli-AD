@@ -62,6 +62,10 @@ export function Step2Compose() {
   const positions = commonPositions(extras, selectedPaperNames);
   const pctOf = (k: "tint_percent" | "underline_percent" | "box_percent") => [...new Set(selectedPaperNames.map((n) => addonsFor(extras, n)[k]).filter((x): x is number => !!x))];
   const tintPcts = pctOf("tint_percent"), underlinePcts = pctOf("underline_percent"), boxPcts = pctOf("box_percent");
+  // Highlighter symbol: a flat fee printed on the card, by number of editions booked.
+  const hlTiers = selectedPaperNames.map((n) => addonsFor(extras, n).highlighter).find((h) => h?.length) ?? null;
+  const editionCount = paperIds.reduce((a, id) => a + (state.selection[id]?.length ?? 0), 0);
+  const hlFee = hlTiers?.find((h) => editionCount >= h.min && (h.max == null || editionCount <= h.max))?.fee ?? null;
   const cfg = paper ? paperConfig(paper, state.adType) : null;
   const cpl = rates?.charsPerLine ?? 28;
   const colW = rates?.colWidthCm ?? 4;
@@ -77,7 +81,7 @@ export function Step2Compose() {
       heightCm: state.display.heightCm,
       colorMode: state.display.colorMode,
       position: state.display.position ?? "",
-      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline },
+      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline, highlighter: !!state.enhancements.highlighter },
       artwork: state.artwork,
       documents: state.documents ?? {},
     },
@@ -93,7 +97,7 @@ export function Step2Compose() {
     if (state.text !== cur.text) setValue("text", state.text, { shouldValidate: true });
     if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null) || (state.artwork?.url ?? null) !== (cur.artwork?.url ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
     const e = state.enhancements, c = cur.enhancements;
-    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline) setValue("enhancements", e);
+    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline || !!e.highlighter !== !!c.highlighter) setValue("enhancements", e);
   }, [state.text, state.artwork, state.enhancements, getValues, setValue]);
 
   // Keep the shared booking state (and therefore the live quote) in sync with the form.
@@ -101,7 +105,7 @@ export function Step2Compose() {
     const sub = watch((val) => {
       update({
         text: val.text ?? "",
-        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline },
+        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline, highlighter: !!val.enhancements?.highlighter },
         display: {
           columns: val.columns ?? 2,
           widthCm: Number.isFinite(val.widthCm) ? (val.widthCm as number) : undefined,
@@ -246,7 +250,9 @@ export function Step2Compose() {
                 onSpacing={(sp) => update({ paragraphSpacing: sp })}
                 extra={
                   <>
-                    <span><AnimatedNumber value={m.lines} className="font-semibold tabular-nums" /> {t(" Lines ({min} base) • Extra Lines: {rate}/line", { min: cfg?.minLines ?? 3, rate: formatINR(rule?.extra_line_rate ?? 0) })}</span>
+                    {(rule?.word_rate ?? 0) > 0
+                      ? <span><AnimatedNumber value={m.words} className="font-semibold tabular-nums" /> {t("words × {rate}/word", { rate: formatINR(rule!.word_rate!) })}{rule?.min_words ? ` · ${t("min {n} words", { n: rule.min_words })}` : ""}</span>
+                      : <span><AnimatedNumber value={m.lines} className="font-semibold tabular-nums" /> {t(" Lines ({min} base) • Extra Lines: {rate}/line", { min: cfg?.minLines ?? 3, rate: formatINR(rule?.extra_line_rate ?? 0) })}</span>}
                     {placeholders > 0 && <Badge tone="amber">{t("{n} placeholder(s) to fill", { n: placeholders })}</Badge>}
                   </>
                 }
@@ -255,9 +261,9 @@ export function Step2Compose() {
               <fieldset className="space-y-2 rounded-lg border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#0F1D3D]">
                 <legend className="px-1 text-sm font-bold">{t("Ad Enhancements / Styling")}</legend>
                 {([
-                  ["bold", "enh-bold", "Bold First Line / Heading", rule?.bold_heading_rate ?? 0],
+                  ["bold", "enh-bold", "Bold First Line / Heading", (rule?.word_rate ?? 0) > 0 ? rule?.heading_line_rate ?? 0 : rule?.bold_heading_rate ?? 0],
                   ["tick", "enh-tick", "Tick Mark (✔) at Beginning", rule?.tick_rate ?? 0],
-                  ["border", "enh-border", "Border / Box Outline", rule?.border_rate ?? 0],
+                  ["border", "enh-border", "Border / Box Outline", rule?.border_rate || (paper ? addonsFor(extras, paper.name).box_fee ?? 0 : 0)],
                 ] as const).map(([name, id, label, price]) => (
                   <Controller key={name} control={control} name={`enhancements.${name}`} render={({ field }) => (
                     <label htmlFor={id} className="flex cursor-pointer items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-white/10 dark:hover:bg-white/5">
@@ -268,6 +274,7 @@ export function Step2Compose() {
                   )} />
                 ))}
                 {tintPcts.length > 0 && <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: tintPcts.join(" / ") })} checked={field.value} onChange={field.onChange} />} />}
+                {hlTiers && <Controller control={control} name="enhancements.highlighter" render={({ field }) => <Switch id="enh-highlighter" label={t("Highlighter symbol")} description={hlFee ? t("+{fee} for {n} edition(s)", { fee: formatINR(hlFee), n: editionCount }) : t("Fee depends on the number of editions")} checked={!!field.value} onChange={field.onChange} />} />}
                 {underlinePcts.length > 0 && <Controller control={control} name="enhancements.underline" render={({ field }) => <Switch id="enh-underline" label={t("Underline")} description={t("+{pct}% of text charge", { pct: underlinePcts.join(" / ") })} checked={!!field.value} onChange={field.onChange} />} />}
               </fieldset>
             </>

@@ -3,7 +3,7 @@ import { getNewspaper, newspapers } from "@/data/newspapers";
 import type { AdType, CategoryId, DisplaySpec, Enhancements, Newspaper } from "./types";
 import { displayWidth } from "./display";
 import { countWords, round2, wrapText } from "./utils";
-import { addonsFor, combosFor, findRate, getActiveExtras, getActiveRates, headlineRate, pagePremium, paperConfig, visibleEditions, type PagePremiumData, type RateBook, type RateExtra } from "./rates";
+import { addonsFor, combosFor, findRate, getActiveExtras, getActiveRates, headlineRate, indianEditionNames, keralaEditionNames, outsideKeralaEditionNames, pagePremium, paperConfig, visibleEditions, type PagePremiumData, type RateBook, type RateExtra, type RateRow } from "./rates";
 
 /** GST on newspaper advertising services (5%). Every price shown adds this once, on the taxable subtotal. */
 export const GST_RATE = 0.05;
@@ -18,6 +18,7 @@ export const ENHANCEMENT_LABEL: Record<keyof Enhancements, string> = {
   border: "Border box",
   tint: "Background tint",
   underline: "Underline",
+  highlighter: "Highlighter symbol",
 };
 
 /** Per-publication discount when several of its editions are booked together. */
@@ -169,102 +170,121 @@ export function calculateQuote(input: QuoteInput): Quote {
       }
     }
 
-    // Combo packages printed on the rate card (display ads): when every edition of a package is selected, the package
-    // rate prices them together as one line (no further edition discount: the package rate is the card's own price).
-    const consumed = new Set<string>();
-    if (!isText) {
-      const selNames = new Set(selected.map((e) => e.name.trim().toLowerCase()));
-      const combos = combosFor(extras, paper.name).filter((c) => c.includes.length >= 2).sort((a, b) => b.includes.length - a.includes.length);
-      for (const combo of combos) {
-        const names = combo.includes.map((n) => n.trim().toLowerCase());
-        if (!names.every((n) => selNames.has(n)) || selected.some((e) => names.includes(e.name.trim().toLowerCase()) && consumed.has(e.id))) continue;
-        const row = [...combo.rates].filter((x) => x.ad_type === input.adType && (x.category === "all" || x.category === input.category)).sort((a, b) => Number(b.category !== "all") - Number(a.category !== "all"))[0];
-        if (!row || !(row.sq_cm_rate > 0)) continue;
-        const prem = display.position ? pagePremium(extras, paper.name, combo.name, display.position) : null;
-        if (display.position && !prem) continue;
-        const netC = (combo as { gst_included?: boolean }).gst_included ? 1 / (1 + GST_RATE) : 1;
-        const rateC = round2((prem?.rate_per_sq_cm ?? row.sq_cm_rate) * netC);
-        const baseUnitsC = row.min_sq_cm ?? cfg.minSqCm;
-        const baseC = round2(baseUnitsC * rateC);
-        const extraUnitsC = Math.max(0, round2(area - baseUnitsC));
-        const extraC = round2(extraUnitsC * rateC);
-        let enhC = 0;
-        if (display.colorMode === "color") {
-          // Exact printed colour rate when the card has one (and no position rate overrides it); else the derived percentage.
-          const exact = row.color_sq_cm_rate && row.color_sq_cm_rate > 0 && !prem?.rate_per_sq_cm ? round2(row.color_sq_cm_rate * netC) : 0;
-          const amt = exact ? round2(round2(baseUnitsC * exact) + round2(extraUnitsC * exact) - baseC - extraC) : round2((baseC + extraC) * (row.color_surcharge_percent / 100));
-          enhC += amt; enhTotals.color = (enhTotals.color ?? 0) + amt; }
-        if (prem?.percent && !prem.rate_per_sq_cm) { const amt = round2((baseC + extraC) * (prem.percent / 100)); enhC += amt; const key = `pos:${prem.label} (+${prem.percent}%)`; enhTotals[key] = (enhTotals[key] ?? 0) + amt; }
-        enhC = round2(enhC);
-        const grossC = round2(baseC + extraC + enhC);
-        selected.filter((e) => names.includes(e.name.trim().toLowerCase())).forEach((e) => consumed.add(e.id));
-        lines.push({
-          newspaperId: paper.id, newspaperName: paper.name, editionId: `combo:${combo.name}`, editionName: `${combo.name} (combo)`,
-          unitLabel: "cm²", baseUnits: baseUnitsC, extraUnits: extraUnitsC, extraUnitLabel: "cm²", rate: rateC,
-          base: round2(baseC * count), extra: round2(extraC * count), enhancements: round2(enhC * count), gross: round2(grossC * count),
-          discountPct: 0, discountLabel: "", discount: 0, net: round2(grossC * count),
-        });
+    // ── Pricing of one rate source (an edition's rate row, or a combo / slab entry from the rate card) ─────────────────
+    const addon = addonsFor(extras, paper.name);
+    type Src = Partial<Pick<RateRow, "word_rate" | "eng_word_rate" | "caps_word_rate" | "heading_line_rate" | "min_words" | "base_rate" | "extra_line_rate" | "min_lines" | "bold_heading_rate" | "tick_rate" | "border_rate" | "color_sq_cm_rate" | "min_sq_cm">> & { sq_cm_rate: number; color_surcharge_percent: number };
+    interface Charge { unitLabel: string; extraUnitLabel: string; baseUnits: number; extraUnits: number; rate: number; base: number; extra: number; enh: number; parts: Record<string, number> }
+    const charge = (src: Src, net: number, prem: PagePremiumData | null): Charge | null => {
+      const parts: Record<string, number> = {};
+      const add = (k: string, v: number) => { if (v) parts[k] = round2((parts[k] ?? 0) + v); };
+      if (isText) {
+        const addPct = (key: "tint" | "underline" | "border", amountBase: number) => {
+          if (!enh[key]) return;
+          const pct = key === "tint" ? addon.tint_percent : key === "underline" ? addon.underline_percent : !src.border_rate && !addon.box_fee ? addon.box_percent : null;
+          const amt = pct ? round2(amountBase * (pct / 100)) : key === "border" ? round2((src.border_rate || addon.box_fee || 0) * net) : 0; // tint / underline: only the exact percentage printed on the card
+          add(key, amt);
+        };
+        if ((src.word_rate ?? 0) > 0) {
+          // Per-word tariff: exact word count × the printed word rate (local language, English ordinary or English caps).
+          const malayalam = /[ഀ-ൿ]/.test(text);
+          const allCaps = !malayalam && /[A-Za-z]/.test(text) && !/[a-z]/.test(text);
+          const wr = malayalam ? src.word_rate! : allCaps && (src.caps_word_rate ?? 0) > 0 ? src.caps_word_rate! : (src.eng_word_rate ?? 0) > 0 ? src.eng_word_rate! : src.word_rate!;
+          const rate = round2(wr * net);
+          const billed = Math.max(m.words, src.min_words ?? 0);
+          const base = round2(billed * rate);
+          if (enh.bold && (src.heading_line_rate ?? 0) > 0) add("bold", round2(src.heading_line_rate! * net)); // heading: one line at the printed heading rate
+          addPct("tint", base); addPct("underline", base); addPct("border", base);
+          if (enh.tick && src.tick_rate) add("tick", round2(src.tick_rate * net));
+          return { unitLabel: "words", extraUnitLabel: "words", baseUnits: billed, extraUnits: 0, rate, base, extra: 0, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
+        }
+        // Per-line tariff: base_rate covers the minimum lines, then extra_line_rate per additional line.
+        const baseUnits = src.min_lines ?? r.textMinLines;
+        const base = round2((src.base_rate ?? 0) * net);
+        const extraUnits = Math.max(0, m.lines - baseUnits);
+        const extra = round2(extraUnits * (src.extra_line_rate ?? 0) * net);
+        for (const key of ["bold", "tick"] as const) if (enh[key] && src[ENHANCEMENT_RATE_KEY[key]]) add(key, round2((src[ENHANCEMENT_RATE_KEY[key]] ?? 0) * net));
+        addPct("tint", base + extra); addPct("underline", base + extra); addPct("border", base + extra);
+        return { unitLabel: "lines", extraUnitLabel: "lines", baseUnits, extraUnits, rate: round2(base / Math.max(1, baseUnits)), base, extra, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
       }
+      // Display: sq_cm_rate is final for the edition / category; a chosen page position uses the card's printed position rate / premium.
+      if (display.position && !prem) return null;
+      const rate = round2((prem?.rate_per_sq_cm ?? src.sq_cm_rate) * net);
+      const baseUnits = src.min_sq_cm ?? cfg.minSqCm;
+      const base = round2(baseUnits * rate);
+      const extraUnits = Math.max(0, round2(area - baseUnits));
+      const extra = round2(extraUnits * rate);
+      if (display.colorMode === "color") {
+        let exact = 0;
+        if (prem?.rate_per_sq_cm) { if (!((prem.color_rate_per_sq_cm ?? 0) > 0)) return null; exact = round2(prem.color_rate_per_sq_cm! * net); } // colour at this position must be printed on the card
+        else if ((src.color_sq_cm_rate ?? 0) > 0) exact = round2(src.color_sq_cm_rate! * net);
+        add("color", exact ? round2(round2(baseUnits * exact) + round2(extraUnits * exact) - base - extra) : round2((base + extra) * (src.color_surcharge_percent / 100)));
+      }
+      if (prem?.percent && !prem.rate_per_sq_cm) add(`pos:${prem.label} (+${prem.percent}%)`, round2((base + extra) * (prem.percent / 100)));
+      return { unitLabel: "cm²", extraUnitLabel: "cm²", baseUnits, extraUnits, rate, base, extra, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
+    };
+    const totalOf = (c: Charge) => round2(c.base + c.extra + c.enh);
+
+    // Each selected edition priced on its own (null = no published rate / position rate → not priced).
+    const indiv = new Map<string, { rule: RateRow; ch: Charge }>();
+    for (const e of selected) {
+      const rule = findRate(rates, paper.name, e.name, input.category, input.adType);
+      if (!rule) continue;
+      const prem = !isText && display.position ? pagePremium(extras, paper.name, e.name, display.position) : null;
+      const ch = charge(rule, rule.gst_included ? 1 / (1 + GST_RATE) : 1, prem);
+      if (ch) indiv.set(e.id, { rule, ch });
+    }
+
+    // Combo packages and count slabs printed on the rate card ("All Kerala", "Any 3 Editions"...): one line prices a set of
+    // editions together at the card's own rate. A package is used only when it is no dearer than pricing the editions one by one.
+    const paperStart = lines.length;
+    const consumed = new Set<string>();
+    const kerala = new Set(keralaEditionNames(paper)), outside = new Set(outsideKeralaEditionNames(paper)), india = new Set(indianEditionNames(paper));
+    const inScope = (scope: "any" | "kerala" | "outside-kerala" | "india", name: string) => scope === "any" || (scope === "kerala" ? kerala.has(name) : scope === "outside-kerala" ? outside.has(name) : india.has(name));
+    const allCombos = combosFor(extras, paper.name);
+    interface Cand { name: string; label: string; members: typeof selected; ch: Charge; total: number; saving: number }
+    const buildCands = (remaining: typeof selected): Cand[] => {
+      const out: Cand[] = [];
+      const remNames = new Set(remaining.map((e) => e.name.trim().toLowerCase()));
+      for (const c of allCombos) {
+        let members: typeof selected;
+        if (c.tier) members = remaining.filter((e) => inScope(c.tier!.scope, e.name));
+        else if (c.includes.length >= 2 && c.includes.every((n) => remNames.has(n.trim().toLowerCase()))) members = remaining.filter((e) => c.includes.some((n) => n.trim().toLowerCase() === e.name.trim().toLowerCase()));
+        else continue;
+        if (c.tier && (members.length < c.tier.min || members.length > c.tier.max || members.length < 2)) continue;
+        const row = [...c.rates].filter((x) => x.ad_type === input.adType && (x.category === "all" || x.category === input.category)).sort((a, b) => Number(b.category !== "all") - Number(a.category !== "all"))[0];
+        if (!row || !((row.sq_cm_rate ?? 0) > 0 || (row.word_rate ?? 0) > 0 || (row.base_rate ?? 0) > 0)) continue;
+        const prem = !isText && display.position ? (c.tier ? null : pagePremium(extras, paper.name, c.name, display.position)) : null;
+        const ch = charge(row, c.gst_included ? 1 / (1 + GST_RATE) : 1, prem);
+        if (!ch) continue;
+        const total = totalOf(ch);
+        const parts = members.map((e) => indiv.get(e.id));
+        const sum = parts.every(Boolean) ? parts.reduce((a, x) => a + totalOf(x!.ch), 0) : Infinity;
+        if (total > sum) continue;
+        out.push({ name: c.name, label: c.tier ? `${c.name} · ${members.length} editions` : `${c.name} (combo)`, members, ch, total, saving: sum === Infinity ? 1e12 : sum - total });
+      }
+      return out.sort((a, b) => b.saving - a.saving || b.members.length - a.members.length);
+    };
+    for (let remaining = selected, guard = 0; guard < 6; guard++) {
+      const best = buildCands(remaining)[0];
+      if (!best) break;
+      for (const [k, v] of Object.entries(best.ch.parts)) enhTotals[k] = (enhTotals[k] ?? 0) + v;
+      best.members.forEach((e) => consumed.add(e.id));
+      remaining = remaining.filter((e) => !consumed.has(e.id));
+      lines.push({
+        newspaperId: paper.id, newspaperName: paper.name, editionId: `combo:${best.name}`, editionName: best.label,
+        unitLabel: best.ch.unitLabel, baseUnits: best.ch.baseUnits, extraUnits: best.ch.extraUnits, extraUnitLabel: best.ch.extraUnitLabel, rate: best.ch.rate,
+        base: round2(best.ch.base * count), extra: round2(best.ch.extra * count), enhancements: round2(best.ch.enh * count), gross: round2(best.total * count),
+        discountPct: 0, discountLabel: "", discount: 0, net: round2(best.total * count),
+      });
     }
 
     for (const e of selected) {
       if (consumed.has(e.id)) continue;
-      // Prices come only from the published rate sheet. No rule → this edition is not priced (never a default).
-      const rule = findRate(rates, paper.name, e.name, input.category, input.adType);
-      if (!rule) continue;
-      const net = rule.gst_included ? 1 / (1 + GST_RATE) : 1; // sheet rates that already include GST are backed out; GST is added once on the total
-      let unitLabel: string, extraUnitLabel: string;
-      let baseUnits: number, extraUnits: number, rate: number, base: number, extra: number;
-      let enhancements = 0;
-
-      if (isText) {
-        // base_rate covers the minimum lines, then extra_line_rate per additional line.
-        baseUnits = rule.min_lines ?? r.textMinLines;
-        unitLabel = "lines";
-        rate = round2((rule.base_rate * net) / Math.max(1, baseUnits));
-        base = round2(rule.base_rate * net);
-        extraUnits = Math.max(0, m.lines - baseUnits);
-        extraUnitLabel = "lines";
-        extra = round2(extraUnits * rule.extra_line_rate * net);
-        // total = base/lines + bold + tick + border (flat, from the rate row) [+ tint %]; GST is added once afterwards.
-        const addon = addonsFor(extras, paper.name);
-        for (const key of ["bold", "tick", "border", "tint", "underline"] as const) {
-          if (!enh[key]) continue;
-          // Tint / underline are the exact percentages printed on this publication's card; none printed → nothing is charged (the option is not offered).
-          const pct = key === "tint" ? addon.tint_percent : key === "underline" ? addon.underline_percent : key === "border" && !rule.border_rate ? addon.box_percent : null;
-          const amt = pct ? round2((base + extra) * (pct / 100)) : key === "tint" || key === "underline" ? 0 : round2(rule[ENHANCEMENT_RATE_KEY[key]] * net);
-          if (!amt) continue;
-          enhancements += amt;
-          enhTotals[key] = (enhTotals[key] ?? 0) + amt;
-        }
-      } else {
-        // sq_cm_rate is final for this edition/category; colour adds color_surcharge_percent.
-        // A chosen page position uses the card's printed premium; no printed premium → this edition is not priced for it.
-        const prem = display.position ? pagePremium(extras, paper.name, e.name, display.position) : null;
-        if (display.position && !prem) continue;
-        rate = round2((prem?.rate_per_sq_cm ?? rule.sq_cm_rate) * net);
-        baseUnits = rule.min_sq_cm ?? r.minDisplayCm2;
-        unitLabel = "cm²";
-        base = round2(baseUnits * rate);
-        extraUnits = Math.max(0, round2(area - baseUnits));
-        extraUnitLabel = "cm²";
-        extra = round2(extraUnits * rate);
-        if (display.colorMode === "color") {
-          // Exact printed colour rate (₹/cm²) when the card has one (and no position rate overrides it); else the derived percentage.
-          const exact = rule.color_sq_cm_rate && rule.color_sq_cm_rate > 0 && !prem?.rate_per_sq_cm ? round2(rule.color_sq_cm_rate * net) : 0;
-          const amt = exact ? round2(round2(baseUnits * exact) + round2(extraUnits * exact) - base - extra) : round2((base + extra) * (rule.color_surcharge_percent / 100));
-          enhancements += amt;
-          enhTotals.color = (enhTotals.color ?? 0) + amt;
-        }
-        if (prem?.percent && !prem.rate_per_sq_cm) {
-          const amt = round2((base + extra) * (prem.percent / 100));
-          enhancements += amt;
-          enhTotals[`pos:${prem.label} (+${prem.percent}%)`] = (enhTotals[`pos:${prem.label} (+${prem.percent}%)`] ?? 0) + amt;
-        }
-      }
-      enhancements = round2(enhancements);
-
-      const gross = round2(base + extra + enhancements);
+      const hit = indiv.get(e.id);
+      if (!hit) continue; // no published rule (or no printed position rate) → this edition is not priced, never a default
+      const { ch } = hit;
+      for (const [k, v] of Object.entries(ch.parts)) enhTotals[k] = (enhTotals[k] ?? 0) + v;
+      const gross = totalOf(ch);
       const bundle = bundlePct.get(e.groupId);
       let discountPct = volumePct;
       let discountLabel = volumePct ? `${selected.length} editions of ${paper.name}` : "";
@@ -274,27 +294,27 @@ export function calculateQuote(input: QuoteInput): Quote {
       }
       const discount = round2((gross * discountPct) / 100);
       const k = count; // every insertion costs the same: line values below are for the whole run
-
       lines.push({
-        newspaperId: paper.id,
-        newspaperName: paper.name,
-        editionId: e.id,
-        editionName: e.name,
-        unitLabel,
-        baseUnits,
-        extraUnits,
-        extraUnitLabel,
-        rate,
-        base: round2(base * k),
-        extra: round2(extra * k),
-        enhancements: round2(enhancements * k),
-        gross: round2(gross * k),
-        discountPct,
-        discountLabel,
-        discount: round2(discount * k),
-        net: round2((gross - discount) * k),
+        newspaperId: paper.id, newspaperName: paper.name, editionId: e.id, editionName: e.name,
+        unitLabel: ch.unitLabel, baseUnits: ch.baseUnits, extraUnits: ch.extraUnits, extraUnitLabel: ch.extraUnitLabel, rate: ch.rate,
+        base: round2(ch.base * k), extra: round2(ch.extra * k), enhancements: round2(ch.enh * k), gross: round2(gross * k),
+        discountPct, discountLabel, discount: round2(discount * k), net: round2((gross - discount) * k),
       });
     }
+
+    // Highlighter symbol (classified text): one flat fee for the ad, set by how many editions it runs in.
+    if (isText && enh.highlighter) {
+      const priced = consumed.size + [...indiv.keys()].filter((id) => !consumed.has(id)).length;
+      const tier = (addon.highlighter ?? []).find((h) => priced >= h.min && (h.max == null || priced <= h.max));
+      const idx = lines.length > paperStart ? paperStart : -1;
+      if (tier && idx >= 0) {
+        const fee = round2(tier.fee * count);
+        enhTotals.highlighter = (enhTotals.highlighter ?? 0) + tier.fee;
+        const l = lines[idx];
+        lines[idx] = { ...l, enhancements: round2(l.enhancements + fee), gross: round2(l.gross + fee), net: round2(l.net + fee) };
+      }
+    }
+
   }
 
   const sum = (f: (l: EditionLine) => number) => round2(lines.reduce((a, l) => a + f(l), 0));

@@ -168,9 +168,10 @@ function MiniSummary({ state }: { state: BookingState }) {
   // (or the flagship one); before that, the paper-level floor rate.
   const edition = paper.editions.find((e) => state.selection[paper.id]?.includes(e.id)) ?? floor?.edition;
   const row = state.categoryId && edition ? matchRate(getActiveRates(), paper.name, edition.name, state.categoryId, state.adType) : null;
-  const unitRate = row ? (state.adType === "classified-text" ? row.extra_line_rate : row.sq_cm_rate) : 0;
+  const perWord = state.adType === "classified-text" && (row?.word_rate ?? 0) > 0;
+  const unitRate = row ? (perWord ? row.word_rate! : state.adType === "classified-text" ? row.extra_line_rate : row.sq_cm_rate) : 0;
   // No category yet → no rate line (never a stale paper-level "floor" rate such as ₹95/cm²).
-  const rate = !state.categoryId ? null : unitRate > 0 && edition ? { amount: unitRate, unit: state.adType === "classified-text" ? ("line" as const) : ("cm²" as const), edition } : floor;
+  const rate = !state.categoryId ? null : unitRate > 0 && edition ? { amount: unitRate, unit: perWord ? ("word" as const) : state.adType === "classified-text" ? ("line" as const) : ("cm²" as const), edition } : floor;
   const rule = cutoffRuleFor(paper, state.adType);
   return (
     <Card className="p-5 sm:p-6">

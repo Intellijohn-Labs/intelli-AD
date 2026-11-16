@@ -97,6 +97,7 @@ export const dict: Record<string, Entry> = {
   Editions: ["എഡിഷനുകൾ"],
   "Text from": ["ടെക്സ്റ്റ് നിരക്ക് (മുതൽ)"],
   line: ["വരി", null],
+  word: ["വാക്ക്", null],
   "cm²": ["cm²", null],
   "{n}M readers": ["{n} ദശലക്ഷം വായനക്കാർ", null],
   "Book in {name}": ["{name}-ൽ ബുക്ക് ചെയ്യുക", "Book in {name}"],

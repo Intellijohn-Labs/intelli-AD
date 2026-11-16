@@ -21,6 +21,13 @@ export interface RateRow {
   color_surcharge_percent: number;
   /** Exact printed colour rate per cm² (display ads), when the card prints one. Takes precedence over the percentage. */
   color_sq_cm_rate?: number | null;
+  /** Classified text priced PER WORD (cards like Manorama's): ordinary rate in the paper's language, English ordinary, English caps, and the heading rate per line. */
+  word_rate?: number | null;
+  eng_word_rate?: number | null;
+  caps_word_rate?: number | null;
+  heading_line_rate?: number | null;
+  /** Minimum billable words (per-word cards). */
+  min_words?: number | null;
   /** Minimum billable lines (text) / cm² (display). Null → the publication's standard minimum. */
   min_lines: number | null;
   min_sq_cm: number | null;
@@ -47,9 +54,38 @@ export interface RateExtra {
   name: string;
   data: Record<string, unknown>;
 }
-export interface PagePremiumData { label: string; edition?: string | null; percent?: number | null; rate_per_sq_cm?: number | null }
-export interface ComboData { includes: string[]; gst_included?: boolean; rates: { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; color_sq_cm_rate?: number | null; min_sq_cm?: number | null }[] }
-export interface AddonData { tint_percent?: number | null; underline_percent?: number | null; box_percent?: number | null }
+export interface PagePremiumData { label: string; edition?: string | null; percent?: number | null; rate_per_sq_cm?: number | null; /** Printed colour rate at this position (₹/cm²). */ color_rate_per_sq_cm?: number | null }
+/** One priced line of a combo package / slab: display (sq_cm_rate), per-word or per-line classified text. */
+export type ComboRate = { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; color_sq_cm_rate?: number | null; min_sq_cm?: number | null } & Partial<Pick<RateRow, "word_rate" | "eng_word_rate" | "caps_word_rate" | "heading_line_rate" | "min_words" | "base_rate" | "extra_line_rate" | "min_lines">>;
+/** A combo package (explicit `includes`) or a count-based slab ("Any 3 editions": `tier`). */
+export interface ComboData {
+  includes: string[];
+  gst_included?: boolean;
+  /** Slab: applies when the number of selected editions inside `scope` is between min and max. */
+  tier?: { min: number; max: number; scope: "any" | "kerala" | "outside-kerala" | "india" };
+  rates: ComboRate[];
+}
+export interface AddonData {
+  tint_percent?: number | null; underline_percent?: number | null; box_percent?: number | null;
+  /** Flat box-number fee (₹) and the highlighter-symbol fee by number of editions booked. */
+  box_fee?: number | null;
+  highlighter?: { min: number; max: number | null; fee: number }[] | null;
+}
+/** Extra columns that travel with a rate row (not spreadsheet columns). */
+export const ROW_EXTRA_COLUMNS = ["color_sq_cm_rate", "word_rate", "eng_word_rate", "caps_word_rate", "heading_line_rate", "min_words"] as const;
+/** True when the row prices anything (per line, per cm² or per word). */
+export const hasPrice = (r: Pick<RateRow, "base_rate" | "sq_cm_rate"> & { word_rate?: number | null }) => r.base_rate > 0 || r.sq_cm_rate > 0 || (r.word_rate ?? 0) > 0;
+
+/** Edition groupings of a publication, used to expand printed rows such as "All Kerala" or "Any 3 Outside Kerala Indian Editions". */
+export const OVERSEAS_EDITION = /gulf|overseas|international|middle east|dubai|uae|global/i;
+type PaperLike = { editions: { name: string; groupId: string }[]; groups: { id: string; name: string }[] };
+export function keralaEditionNames(paper: PaperLike): string[] { const ids = paper.groups.filter((g) => /kerala/i.test(g.name)).map((g) => g.id); return paper.editions.filter((e) => ids.includes(e.groupId)).map((e) => e.name); }
+export const overseasEditionNames = (paper: PaperLike) => paper.editions.filter((e) => OVERSEAS_EDITION.test(e.name)).map((e) => e.name);
+export function outsideKeralaEditionNames(paper: PaperLike): string[] { const k = new Set(keralaEditionNames(paper)); return paper.editions.filter((e) => !k.has(e.name) && !OVERSEAS_EDITION.test(e.name)).map((e) => e.name); }
+export const indianEditionNames = (paper: PaperLike) => paper.editions.filter((e) => !OVERSEAS_EDITION.test(e.name)).map((e) => e.name);
+
+/** Districts that some publications print from a neighbouring centre; used only when the district itself has no published rate. */
+export const EDITION_ALIASES: Record<string, string> = { idukki: "Kottayam", wayanad: "Kozhikode", kasaragod: "Kannur" };
 
 /** Per-newspaper settings (table `newspaper_settings`). */
 export interface PaperSettings {
@@ -192,8 +228,15 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
     if (cutTime === "bad") errors.push('cutoff_time must be a time like "16:00" or "4:00 PM"');
     if ((cutDays === null) !== (cutTime === null)) errors.push("cutoff_days and cutoff_time must be set together");
     if (gst === "bad") errors.push("gst_included must be TRUE or FALSE");
-    const empty = !base && !extra && !sq && !color && minLines === null && minSq === null && cutDays === null && cutTime === null && gst === false && !bold && !tick && !border;
-    if (!empty && adType === "classified-text" && !(base && base > 0)) errors.push("base_rate is required (> 0) for classified-text");
+    const wx: Record<string, number> = {};
+    for (const k of ROW_EXTRA_COLUMNS) {
+      const v = optNum(r[k]);
+      if (v === "bad" || (v !== null && (v < 0 || v > 1_000_000))) errors.push(`${k} must be a number from 0 to 1,000,000`);
+      else if (v !== null && v > 0) wx[k] = Math.round(v * 100) / 100;
+    }
+    const hasWord = (wx.word_rate ?? 0) > 0;
+    const empty = !hasWord && !wx.color_sq_cm_rate && !base && !extra && !sq && !color && minLines === null && minSq === null && cutDays === null && cutTime === null && gst === false && !bold && !tick && !border;
+    if (!empty && adType === "classified-text" && !(base && base > 0) && !hasWord) errors.push("base_rate (or a per-word rate) is required (> 0) for classified-text");
     if (!empty && adType && adType !== "classified-text" && AD_TYPE_IDS.includes(adType) && !(sq && sq > 0)) errors.push("sq_cm_rate is required (> 0) for display ads");
 
     if (!errors.length && paper) {
@@ -211,7 +254,7 @@ export function validateRows(raw: Record<string, unknown>[]): RowResult[] {
       errors,
       row: { newspaper_name: paper.name, edition, category, ad_type: adType, base_rate: base!, extra_line_rate: extra!, sq_cm_rate: sq!, color_surcharge_percent: color!,
         min_lines: minLines as number | null, min_sq_cm: minSq as number | null, cutoff_days: cutDays as number | null, cutoff_time: cutTime as string | null, gst_included: gst as boolean,
-        bold_heading_rate: bold!, tick_rate: tick!, border_rate: border! },
+        bold_heading_rate: bold!, tick_rate: tick!, border_rate: border!, ...wx },
     };
   });
 }
@@ -249,7 +292,7 @@ export function matchRate(rates: RateBook | null, paperName: string, editionName
   let bestScore = -1;
   for (const r of rates) {
     if (r.ad_type !== adType || norm(r.newspaper_name) !== norm(paperName)) continue;
-    if (!(r.base_rate > 0 || r.sq_cm_rate > 0)) continue;
+    if (!hasPrice(r)) continue;
     const edOk = isAll(r.edition) || norm(r.edition) === norm(editionName);
     const catOk = isAll(r.category) || (!!categoryId && norm(r.category) === norm(categoryId));
     if (!edOk || !catOk) continue;
@@ -261,22 +304,26 @@ export function matchRate(rates: RateBook | null, paperName: string, editionName
 
 /** Same as matchRate, but logs (once) when nothing is published: the calculator then prices nothing for that edition. */
 export function findRate(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
-  const hit = matchRate(rates, paperName, editionName, categoryId, adType);
+  let hit = matchRate(rates, paperName, editionName, categoryId, adType);
+  const alias = EDITION_ALIASES[norm(editionName)];
+  if (!hit && alias) hit = matchRate(rates, paperName, alias, categoryId, adType); // e.g. Idukki → Kottayam
   if (!hit) warnOnce(`${paperName}|${editionName}|${categoryId}|${adType}`, rates ? `No published rate for ${paperName} / ${editionName} / ${categoryId ?? "any category"} / ${adType}: not priced.` : "Rates not loaded: nothing is priced.");
   return hit;
 }
 
 /** True when the newspaper has a usable published rule (optionally for one ad type). */
 export const paperHasRates = (rates: RateBook, paperName: string, adType?: AdType) =>
-  rates.some((r) => norm(r.newspaper_name) === norm(paperName) && (!adType || r.ad_type === adType) && (r.base_rate > 0 || r.sq_cm_rate > 0));
+  rates.some((r) => norm(r.newspaper_name) === norm(paperName) && (!adType || r.ad_type === adType) && hasPrice(r));
 
 /** Lowest published per-unit rate (per line for text, per cm² for display), or null when none is published. */
-export function headlineRate(rates: RateBook | null, paperName: string, adType: AdType, minLines: number): { amount: number; unit: "line" | "cm²" } | null {
+export function headlineRate(rates: RateBook | null, paperName: string, adType: AdType, minLines: number): { amount: number; unit: "line" | "cm²" | "word" } | null {
   if (!rates) return null;
-  const vals = rates
-    .filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paperName))
-    .map((r) => (adType === "classified-text" ? r.base_rate / Math.max(1, minLines) : r.sq_cm_rate))
-    .filter((v) => v > 0);
+  const mine = rates.filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paperName));
+  if (adType === "classified-text") {
+    const words = mine.map((r) => r.word_rate ?? 0).filter((v) => v > 0);
+    if (words.length) return { amount: Math.round(Math.min(...words)), unit: "word" };
+  }
+  const vals = mine.map((r) => (adType === "classified-text" ? r.base_rate / Math.max(1, minLines) : r.sq_cm_rate)).filter((v) => v > 0);
   return vals.length ? { amount: Math.round(Math.min(...vals)), unit: adType === "classified-text" ? "line" : "cm²" } : null;
 }
 
@@ -351,7 +398,7 @@ export interface PaperConfig {
  */
 export function paperConfig(paper: Newspaper, adType: AdType, rates: RateBook | null = book): PaperConfig {
   const rows = (rates ?? [])
-    .filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paper.name) && (r.base_rate > 0 || r.sq_cm_rate > 0))
+    .filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paper.name) && hasPrice(r))
     // most general first: "all" edition/category rows describe the publication as a whole
     .sort((a, b) => Number(!isAll(a.edition)) + Number(!isAll(a.category)) - (Number(!isAll(b.edition)) + Number(!isAll(b.category))));
   const pick = <K extends keyof RateRow>(k: K) => rows.find((r) => r[k] !== null && r[k] !== undefined)?.[k] as RateRow[K] | undefined;

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { newspapers } from "@/data/newspapers";
-import { CONFLICT_KEY, validateRows, type RateRow } from "@/lib/rates";
+import { CONFLICT_KEY, ROW_EXTRA_COLUMNS, validateRows, type RateRow } from "@/lib/rates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
@@ -159,8 +159,8 @@ export async function saveRates(raw: unknown, allowClear = false): Promise<SaveR
   if (errors.length) return { ok: false, message: `${errors.length} row${errors.length === 1 ? " has" : "s have"} errors. Nothing was saved.`, saved: 0, cleared: 0, errors };
 
   // The exact printed colour rate (₹/cm²) isn't a spreadsheet column, so it's carried alongside the validated row.
-  const rows = results.map((r, i) => ({ r, c: Number(raw[i]?.color_sq_cm_rate) })).filter((x) => x.r.row)
-    .map(({ r, c }) => ({ ...(r.row as RateRow), color_sq_cm_rate: c > 0 && c < 100000 ? Math.round(c * 100) / 100 : null, updated_at: new Date().toISOString() }));
+  // Spreadsheet rows carry no per-word / exact-colour columns, so those keys are simply not written (existing values stay).
+  const rows = results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() }));
   if (rows.length) {
     const { error } = await admin.from("publication_rates").upsert(rows, { onConflict: CONFLICT_KEY });
     if (error) return { ok: false, message: error.message, saved: 0, cleared: 0, errors: [] };
@@ -239,7 +239,7 @@ const replaceSchema = z.object({
   newspaperName: z.string(),
   mode: z.enum(["merge", "replace"]).default("merge"),
   rows: z.array(z.record(z.string(), z.unknown())).max(MAX_BATCH),
-  extras: z.array(extraSchema).max(200).default([]),
+  extras: z.array(extraSchema).max(800).default([]),
   meta: z.object({ fileName: z.string().max(200).default(""), effectiveDate: z.string().max(20).nullable().default(null), engine: z.string().max(60).default("") }).default({ fileName: "", effectiveDate: null, engine: "" }),
 });
 export interface ReplaceResult extends ActionResult { saved: number; removed: number; extrasSaved: boolean; warning?: string }
@@ -272,9 +272,10 @@ export async function replacePublicationRates(input: unknown): Promise<ReplaceRe
 
   let upErr = (await admin.from("publication_rates").upsert(rows, { onConflict: CONFLICT_KEY })).error;
   let colourWarning: string | undefined;
-  if (upErr && /color_sq_cm_rate/i.test(upErr.message)) {
-    // Column not created yet: save without it (colour then falls back to the derived percentage) and say so.
-    upErr = (await admin.from("publication_rates").upsert(rows.map(({ color_sq_cm_rate: _c, ...rest }) => rest), { onConflict: CONFLICT_KEY })).error; // eslint-disable-line @typescript-eslint/no-unused-vars
+  if (upErr && /color_sq_cm_rate|word_rate|caps_word_rate|heading_line_rate|min_words/i.test(upErr.message)) {
+    // New columns not created yet. Per-word rates can't be saved without them: refuse. Colour-only: save without the exact colour rate and say so.
+    if (rows.some((r) => (r.word_rate ?? 0) > 0)) return bad("This card has per-word classified rates, but the database doesn't have the per-word columns yet. Run the new `alter table … word_rate` SQL block at the end of supabase/schema.sql, then save again. Nothing was saved.");
+    upErr = (await admin.from("publication_rates").upsert(rows.map((r) => { const o = { ...r } as Record<string, unknown>; for (const k of ROW_EXTRA_COLUMNS) delete o[k]; return o; }), { onConflict: CONFLICT_KEY })).error;
     colourWarning = "The exact colour-rate column doesn't exist yet, so colour uses the rounded percentage. Run the new `alter table … color_sq_cm_rate` SQL in supabase/schema.sql, then import again.";
   }
   if (upErr) return bad(upErr.message);

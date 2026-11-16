@@ -202,3 +202,11 @@ create policy "admins delete extras" on public.publication_extras for delete to 
 -- Exact printed colour rate (₹/cm²) so a colour ad is priced at precisely what the card prints, not a rounded percentage over B/W.
 alter table public.publication_rates add column if not exists color_sq_cm_rate numeric(12,2) check (color_sq_cm_rate is null or color_sq_cm_rate >= 0);
 NOTIFY pgrst, 'reload schema';
+
+-- Per-word classified text (cards like Malayala Manorama's): word rates, caps rate, heading rate per line, minimum words.
+alter table public.publication_rates add column if not exists word_rate numeric(12,2) check (word_rate is null or word_rate >= 0);
+alter table public.publication_rates add column if not exists eng_word_rate numeric(12,2) check (eng_word_rate is null or eng_word_rate >= 0);
+alter table public.publication_rates add column if not exists caps_word_rate numeric(12,2) check (caps_word_rate is null or caps_word_rate >= 0);
+alter table public.publication_rates add column if not exists heading_line_rate numeric(12,2) check (heading_line_rate is null or heading_line_rate >= 0);
+alter table public.publication_rates add column if not exists min_words integer check (min_words is null or min_words >= 0);
+NOTIFY pgrst, 'reload schema';

@@ -3,7 +3,7 @@ import { DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-co
 import { resolveAiKeys } from "@/lib/ai-keys";
 import { newspapers } from "@/data/newspapers";
 import { parseJsonLoose } from "@/lib/json-repair";
-import { buildExtractionPrompt, EXTRACTION_SYSTEM, expandCompact } from "@/lib/rate-import";
+import { buildExtractionPrompt, EXTRACTION_SYSTEM, expandCompact, mergeExtractions, type ExtractionPass } from "@/lib/rate-import";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
@@ -117,22 +117,32 @@ export async function POST(req: Request) {
   if (!key) return NextResponse.json({ error: `No ${cfg.provider === "claude" ? "Anthropic" : "Gemini"} API key is configured. Add one in Admin → AI Settings, or switch the AI engine.`, status: 503 }, { status: 503 });
 
   try {
-    const text = buildExtractionPrompt(paper.name, paper.editions.map((e) => e.name));
+    const names = paper.editions.map((e) => e.name);
     const b64 = bytes.toString("base64");
-    const reply = cfg.provider === "claude" ? await callClaude(cfg, key, b64, text) : await callGemini(cfg, key, b64, text);
-    let extraction;
-    let repaired = false;
-    try {
-      const loose = parseJsonLoose(reply.text);
-      repaired = loose.repaired;
-      extraction = expandCompact(loose.value);
-    } catch (e) {
-      console.error("[admin/rates/parse-pdf] unusable reply:", reply.truncated ? "(truncated)" : "", e instanceof Error ? e.message : e, reply.text.slice(0, 400));
-      return NextResponse.json({ error: reply.truncated ? "The AI ran out of room while reading this card, so nothing usable came back. Upload fewer pages (just the rate tables) and try again." : "The AI reply could not be read. Please try again, or switch the AI engine.", status: 502 }, { status: 502 });
-    }
-    const truncated = reply.truncated || repaired;
-    if (truncated) extraction.notes.unshift("The AI's reply was cut off, so the last rows may be missing. Check the table against the PDF, or upload fewer pages and extract again.");
-    return NextResponse.json({ extraction, truncated, publicationId: paper.id, provider: cfg.provider, model: cfg.model }, { headers: { "Cache-Control": "no-store" } });
+    // Two PARALLEL passes over the whole PDF so no page or table is skipped:
+    //   A = display / classified display / editions / page positions / combo packages
+    //   B = classified text (per word and per line), multi-edition slabs and add-on rules
+    const run = async (pass: ExtractionPass) => {
+      const text = buildExtractionPrompt(paper.name, names, pass);
+      const reply = cfg.provider === "claude" ? await callClaude(cfg, key, b64, text) : await callGemini(cfg, key, b64, text);
+      try {
+        const loose = parseJsonLoose(reply.text);
+        return { extraction: expandCompact(loose.value), cut: reply.truncated || loose.repaired };
+      } catch (e) {
+        console.error(`[admin/rates/parse-pdf] pass ${pass} unusable reply:`, reply.truncated ? "(truncated)" : "", e instanceof Error ? e.message : e, reply.text.slice(0, 400));
+        throw new Error(reply.truncated ? "ran out of room while reading this part of the card" : "returned a reply that could not be read");
+      }
+    };
+    const [ra, rb] = await Promise.allSettled([run("A"), run("B")]);
+    if (ra.status === "rejected" && rb.status === "rejected") throw ra.reason instanceof ProviderError ? ra.reason : rb.reason instanceof ProviderError ? rb.reason : new Error("The AI reply could not be read. Please try again, or switch the AI engine.");
+    const empty = expandCompact({});
+    const a = ra.status === "fulfilled" ? ra.value : null, b = rb.status === "fulfilled" ? rb.value : null;
+    const extraction = mergeExtractions(a?.extraction ?? empty, b?.extraction ?? empty);
+    const truncated = !!(a?.cut || b?.cut);
+    if (!a) extraction.notes.unshift(`Pass A (display rates, page positions, combo packages) failed: the AI ${(ra as PromiseRejectedResult).reason?.message ?? "failed"}. Those rows are MISSING. Extract again before saving.`);
+    if (!b) extraction.notes.unshift(`Pass B (classified text, slabs, add-ons) failed: the AI ${(rb as PromiseRejectedResult).reason?.message ?? "failed"}. Those rows are MISSING. Extract again before saving.`);
+    if (truncated) extraction.notes.unshift("The AI's reply was cut off for part of the card, so the last rows of that part may be missing. Check the table against the PDF, or upload fewer pages and extract again.");
+    return NextResponse.json({ extraction, truncated: truncated || !a || !b, publicationId: paper.id, provider: cfg.provider, model: cfg.model }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error("[admin/rates/parse-pdf] failed:", err.message);

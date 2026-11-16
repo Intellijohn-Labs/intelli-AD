@@ -215,22 +215,28 @@ export function Step1Selection() {
                         const eds = c.includes.map((n) => visibleEditions(paper).find((e) => e.name.trim().toLowerCase() === n.trim().toLowerCase()));
                         const rate = c.rates.filter((r) => r.ad_type === state.adType && (r.category === "all" || r.category === state.categoryId)).sort((a, b) => Number(b.category !== "all") - Number(a.category !== "all"))[0];
                         return { name: c.name, ids: eds.every(Boolean) ? eds.map((e) => e!.id) : [], rate };
-                      }).filter((c) => c.ids.length >= 2 && c.rate && c.rate.sq_cm_rate > 0);
-                      if (!pkgs.length) return null;
+                      }).filter((c) => c.ids.length >= 2 && c.rate && (c.rate.sq_cm_rate > 0 || (c.rate.word_rate ?? 0) > 0));
+                      const slabs = combosFor(getActiveExtras(), paper.name).filter((c) => c.tier).map((c) => {
+                        const rate = c.rates.find((r) => r.ad_type === state.adType && (r.category === "all" || r.category === state.categoryId));
+                        const per = (rate?.word_rate ?? 0) > 0 ? `${formatINR(rate!.word_rate!)}/${t("word")}` : (rate?.sq_cm_rate ?? 0) > 0 ? `${formatINR(rate!.sq_cm_rate)}/cm²` : "";
+                        return per ? { name: c.name, per } : null;
+                      }).filter((x): x is { name: string; per: string } => !!x);
+                      if (!pkgs.length && !slabs.length) return null;
                       return (
                         <div className="mb-3">
-                          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Combo packages")}</p>
+                          {pkgs.length > 0 && <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Combo packages")}</p>}
                           <div className="flex flex-wrap gap-2">
                             {pkgs.map((c) => {
                               const on = c.ids.every((id) => selected.includes(id));
                               return (
                                 <button key={c.name} type="button" aria-pressed={on} onClick={() => setEditions(paper.id, on ? selected.filter((id) => !c.ids.includes(id)) : [...new Set([...selected, ...c.ids])])}
                                   className={cn("rounded border px-3 py-1.5 text-sm font-semibold transition-colors", on ? "border-navy-600 bg-navy-700 text-white" : "border-dashed border-zinc-500 bg-white hover:border-navy-400")}>
-                                  {c.name} <span className="font-normal opacity-80">· {c.ids.length} editions · {formatINR(c.rate!.sq_cm_rate)}/cm²</span>
+                                  {c.name} <span className="font-normal opacity-80">· {c.ids.length} editions · {(c.rate!.word_rate ?? 0) > 0 ? `${formatINR(c.rate!.word_rate!)}/${t("word")}` : `${formatINR(c.rate!.sq_cm_rate)}/cm²`}</span>
                                 </button>
                               );
                             })}
                           </div>
+                          {slabs.length > 0 && <p className="mt-1.5 text-xs text-zinc-500">{t("Multi-edition slab rates apply automatically when you pick that many editions")}: {slabs.map((x) => `${x.name} ${x.per}`).join(" · ")}</p>}
                         </div>
                       );
                     })()}

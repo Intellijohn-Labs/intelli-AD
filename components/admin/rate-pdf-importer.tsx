@@ -7,7 +7,7 @@ import { replacePublicationRates } from "@/app/admin/actions";
 import { useToast } from "@/components/ui/toast";
 import { newspapers } from "@/data/newspapers";
 import { mapExtraction, type ImportExtra, type ImportField, type ImportRow, type RateExtraction } from "@/lib/rate-import";
-import { RATE_COLUMNS, validateRows } from "@/lib/rates";
+import { RATE_COLUMNS, ROW_EXTRA_COLUMNS, validateRows } from "@/lib/rates";
 import { loadRates } from "@/lib/use-rates";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,11 @@ const NUMS: { key: ImportField; label: string; types: ImportRow["ad_type"][]; st
   { key: "extra_line_rate", label: "Extra line ₹", types: ["classified-text"], step: "0.01" },
   { key: "bold_heading_rate", label: "Bold ₹", types: ["classified-text"], step: "0.01" },
   { key: "border_rate", label: "Box ₹", types: ["classified-text"], step: "0.01" },
+  { key: "word_rate", label: "₹ / word", types: ["classified-text"], step: "0.01" },
+  { key: "eng_word_rate", label: "Eng ₹ / word", types: ["classified-text"], step: "0.01" },
+  { key: "caps_word_rate", label: "Caps ₹ / word", types: ["classified-text"], step: "0.01" },
+  { key: "heading_line_rate", label: "Heading ₹ / line", types: ["classified-text"], step: "0.01" },
+  { key: "min_words", label: "Min words", types: ["classified-text"], step: "1" },
   { key: "min_sq_cm", label: "Min cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
   { key: "sq_cm_rate", label: "₹ / cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
   { key: "color_sq_cm_rate", label: "Colour ₹ / cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
@@ -30,7 +35,6 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [wpl, setWpl] = useState(4);
   const [busy, setBusy] = useState<"" | "reading" | "saving">("");
   const [error, setError] = useState("");
   const [meta, setMeta] = useState<{ ex: RateExtraction; provider: string; model: string } | null>(null);
@@ -66,7 +70,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   }, [busy]);
   const stage = pct < 20 ? "Uploading PDF document…" : pct < 55 ? "AI reading edition columns & tables…" : pct < 85 ? "Extracting Display, Obituary & Classified rates…" : "Formatting review table…";
 
-  const remap = (ex: RateExtraction, words: number) => { const m = mapExtraction(paper, ex, { wordsPerLine: words }); setRows(m.rows); setExtras(m.extras); setNotes(m.notes); setConfirming(false); };
+  const remap = (ex: RateExtraction) => { const m = mapExtraction(paper, ex); setRows(m.rows); setExtras(m.extras); setNotes(m.notes); setConfirming(false); };
 
   async function extract() {
     if (!file) return;
@@ -95,14 +99,14 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
     await new Promise((r) => setTimeout(r, 700));
     setTruncated(!!j.truncated);
     setMeta({ ex: j.extraction, provider: j.provider ?? engine, model: j.model ?? "" });
-    remap(j.extraction, wpl);
+    remap(j.extraction);
     setFinishing(false); setBusy("");
   }
 
   const included = rows.filter((r) => r.include);
   // Same validation the server applies on save, shown per row before anything is written.
   const problems = useMemo(() => {
-    const res = validateRows(included.map((r) => Object.fromEntries(RATE_COLUMNS.map((c) => [c, r[c]]))));
+    const res = validateRows(included.map((r) => Object.fromEntries([...RATE_COLUMNS, ...ROW_EXTRA_COLUMNS].map((c) => [c, r[c as keyof ImportRow]]))));
     return new Map(included.map((r, i) => [r.uid, res[i].errors]));
   }, [included]);
   const blocked = [...problems.values()].some((e) => e.length);
@@ -122,7 +126,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
     if (!included.length || blocked) return;
     setBusy("saving"); setError(""); setConfirming(false);
     try {
-      const raw = included.map((r) => ({ ...Object.fromEntries(RATE_COLUMNS.map((c) => [c, r[c]])), color_sq_cm_rate: r.color_sq_cm_rate ?? null }));
+      const raw = included.map((r) => Object.fromEntries([...RATE_COLUMNS, ...ROW_EXTRA_COLUMNS].map((c) => [c, r[c as keyof ImportRow]])));
       const res = await replacePublicationRates({
         newspaperName: paper.name,
         mode,
@@ -203,9 +207,6 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
             <span>Effective date: <b>{meta.ex.effectiveDate ?? "not found"}</b></span>
             <span>GST: <b>{meta.ex.gstIncluded === true ? "included" : meta.ex.gstIncluded === false ? "extra" : "not stated"}</b></span>
             <span>Confidence: <b>{meta.ex.confidence != null ? `${Math.round(meta.ex.confidence * (meta.ex.confidence <= 1 ? 100 : 1))}%` : "n/a"}</b></span>
-            <label className="ml-auto flex items-center gap-1.5">Words per line (per-word rates)
-              <input type="number" min={1} max={20} value={wpl} onChange={(e) => { const v = Math.max(1, Math.min(20, Number(e.target.value) || 4)); setWpl(v); remap(meta.ex, v); }} className="w-14 rounded border border-slate-300 px-1.5 py-0.5 text-right dark:border-slate-600 dark:bg-slate-900" />
-            </label>
           </div>
 
           {rows.length === 0 ? (
@@ -216,7 +217,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                 <span className="inline-block h-2.5 w-2.5 rounded-sm border border-red-500 bg-red-100 align-middle" /> missing &nbsp; <span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-500 bg-amber-100 align-middle" /> uncertain / derived (check against the PDF). Editing a cell marks it as checked. {flagged > 0 && <b className="text-amber-800 dark:text-amber-300">{flagged} cell{flagged === 1 ? "" : "s"} to verify.</b>}
               </p>
               <div className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                <table className="w-full min-w-[1000px] text-left text-xs">
+                <table className="w-full min-w-[1400px] text-left text-xs">
                   <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>
                     <th className="px-2 py-2">Use</th><th className="px-2 py-2">Edition</th><th className="px-2 py-2">Category</th><th className="px-2 py-2">Ad type</th>
                     {NUMS.map((c) => <th key={c.key} className="px-2 py-2 text-right whitespace-nowrap">{c.label}</th>)}<th className="px-2 py-2">Source</th>
@@ -234,7 +235,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                             <td key={c.key} className="px-2 py-1.5 text-right">
                               {c.types.includes(r.ad_type)
                                 ? <input type="number" min={0} step={c.step} value={r[c.key] ?? ""} aria-label={`${c.label} for ${r.edition} ${r.category}`} className={cellCls(r.flags[c.key])}
-                                    onChange={(e) => edit(r.uid, { [c.key]: e.target.value === "" ? (c.key === "min_lines" || c.key === "min_sq_cm" || c.key === "color_sq_cm_rate" ? null : 0) : Number(e.target.value) } as Partial<ImportRow>, c.key)} />
+                                    onChange={(e) => edit(r.uid, { [c.key]: e.target.value === "" ? (c.key === "min_lines" || c.key === "min_sq_cm" || c.key === "color_sq_cm_rate" || c.key === "word_rate" || c.key === "eng_word_rate" || c.key === "caps_word_rate" || c.key === "heading_line_rate" || c.key === "min_words" ? null : 0) : Number(e.target.value) } as Partial<ImportRow>, c.key)} />
                                 : <span className="text-slate-300">—</span>}
                             </td>
                           ))}
@@ -258,7 +259,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
           {extras.length > 0 && (
             <div>
               <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Page premiums, combo packages &amp; add-ons</h3>
-              <div className="overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="w-full min-w-[640px] text-left text-xs">
                   <thead className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr><th className="px-2 py-2">Use</th><th className="px-2 py-2">Item</th><th className="px-2 py-2">Type</th><th className="px-2 py-2">Printed values (editable)</th></tr></thead>
                   <tbody>
@@ -269,13 +270,14 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                         <td className="px-2 py-1.5 text-slate-500">{x.source}</td>
                         <td className="px-2 py-1.5">
                           <div className="flex flex-wrap gap-2">
-                            {(x.kind === "page_premium" ? [["percent", "+ %"], ["rate_per_sq_cm", "₹ / cm²"]] : x.kind === "addon" ? [["tint_percent", "Tint %"], ["underline_percent", "Underline %"]] : []).map(([k, lab]) => (
+                            {(x.kind === "page_premium" ? [["percent", "+ %"], ["rate_per_sq_cm", "B&W ₹ / cm²"], ["color_rate_per_sq_cm", "Colour ₹ / cm²"]] : x.kind === "addon" ? [["tint_percent", "Tint %"], ["underline_percent", "Underline %"], ["box_percent", "Box %"], ["box_fee", "Box ₹"]] : []).map(([k, lab]) => (
                               <label key={k} className="flex items-center gap-1">{lab}
                                 <input type="number" min={0} step="0.01" value={(x.data[k] as number | null) ?? ""} className="w-20 rounded border border-slate-300 px-1.5 py-1 text-right tabular-nums dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                                   onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, data: { ...y.data, [k]: e.target.value === "" ? null : Number(e.target.value) } } : y))} />
                               </label>
                             ))}
-                            {x.kind === "combo" && ((x.data.rates as { ad_type: string; category: string; sq_cm_rate: number; color_surcharge_percent: number }[]) ?? []).map((r) => <span key={r.ad_type + r.category} className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{r.category === "all" ? "all" : r.category} · {r.ad_type === "commercial-display" ? "display" : "classified display"}: ₹{r.sq_cm_rate}/cm² (+{r.color_surcharge_percent}% colour)</span>)}
+                            {x.kind === "addon" && Array.isArray(x.data.highlighter) && <span className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">Highlighter: {(x.data.highlighter as { min: number; max: number | null; fee: number }[]).map((h) => `${h.min}${h.max == null ? "+" : h.max !== h.min ? `–${h.max}` : ""} ed. ₹${h.fee}`).join(" · ")}</span>}
+                            {x.kind === "combo" && ((x.data.rates as { ad_type: string; category: string; sq_cm_rate: number; color_sq_cm_rate?: number | null; word_rate?: number | null; caps_word_rate?: number | null; heading_line_rate?: number | null }[]) ?? []).map((r) => <span key={r.ad_type + r.category} className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{r.ad_type === "classified-text" ? `classified text: ₹${r.word_rate ?? "?"}/word${r.caps_word_rate ? ` · caps ₹${r.caps_word_rate}` : ""}${r.heading_line_rate ? ` · heading ₹${r.heading_line_rate}/line` : ""}` : `${r.category === "all" ? "all" : r.category} · ${r.ad_type === "commercial-display" ? "display" : "classified display"}: ₹${r.sq_cm_rate}/cm²${r.color_sq_cm_rate ? ` · colour ₹${r.color_sq_cm_rate}` : ""}`}</span>)}
                           </div>
                         </td>
                       </tr>

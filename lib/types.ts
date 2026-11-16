@@ -19,6 +19,8 @@ export interface Enhancements {
   tint: boolean;
   /** Underline (classified text): a percentage printed on the rate card. */
   underline?: boolean;
+  /** Highlighter symbol before the ad (classified text): a flat fee printed on the rate card, by number of editions. */
+  highlighter?: boolean;
 }
 
 export type ColorMode = "bw" | "color";
