@@ -19,6 +19,7 @@ export const ENHANCEMENT_LABEL: Record<keyof Enhancements, string> = {
   tint: "Background tint",
   underline: "Underline",
   highlighter: "Highlighter symbol",
+  caps: "All caps",
 };
 
 /** Per-publication discount when several of its editions are booked together. */
@@ -78,6 +79,9 @@ export interface EditionLine {
   /** Display ads: the exact per-cm² rate actually multiplied (B/W, exact printed colour, or position rate), and the exact per-insertion product. Absent when colour is a derived percentage. */
   appliedRate?: number;
   appliedTotal?: number;
+  /** Combo / slab lines: the package name and how many editions it covers (1 for a single edition). */
+  packageName?: string;
+  editionsCovered?: number;
   /** Colour was requested but this page position only prints a B/W rate: priced at the printed B/W rate. */
   bwOnly?: boolean;
 }
@@ -192,7 +196,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         if ((src.word_rate ?? 0) > 0) {
           // Per-word tariff: exact word count × the printed word rate (local language, English ordinary or English caps).
           const malayalam = /[ഀ-ൿ]/.test(text);
-          const allCaps = !malayalam && /[A-Za-z]/.test(text) && !/[a-z]/.test(text);
+          const allCaps = !malayalam && (!!enh.caps || (/[A-Za-z]/.test(text) && !/[a-z]/.test(text)));
           const wr = malayalam ? src.word_rate! : allCaps && (src.caps_word_rate ?? 0) > 0 ? src.caps_word_rate! : (src.eng_word_rate ?? 0) > 0 ? src.eng_word_rate! : src.word_rate!;
           const rate = round2(wr * net);
           const billed = Math.max(m.words, src.min_words ?? 0);
@@ -285,7 +289,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         unitLabel: best.ch.unitLabel, baseUnits: best.ch.baseUnits, extraUnits: best.ch.extraUnits, extraUnitLabel: best.ch.extraUnitLabel, rate: best.ch.rate,
         base: round2(best.ch.base * count), extra: round2(best.ch.extra * count), enhancements: round2(best.ch.enh * count), gross: round2(best.total * count),
         discountPct: 0, discountLabel: "", discount: 0, net: round2(best.total * count),
-        appliedRate: best.ch.appliedRate, appliedTotal: best.ch.appliedTotal, bwOnly: best.ch.bwOnly,
+        appliedRate: best.ch.appliedRate, appliedTotal: best.ch.appliedTotal, bwOnly: best.ch.bwOnly, packageName: best.name, editionsCovered: best.members.length,
       });
     }
 
@@ -310,7 +314,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         unitLabel: ch.unitLabel, baseUnits: ch.baseUnits, extraUnits: ch.extraUnits, extraUnitLabel: ch.extraUnitLabel, rate: ch.rate,
         base: round2(ch.base * k), extra: round2(ch.extra * k), enhancements: round2(ch.enh * k), gross: round2(gross * k),
         discountPct, discountLabel, discount: round2(discount * k), net: round2((gross - discount) * k),
-        appliedRate: ch.appliedRate, appliedTotal: ch.appliedTotal, bwOnly: ch.bwOnly,
+        appliedRate: ch.appliedRate, appliedTotal: ch.appliedTotal, bwOnly: ch.bwOnly, editionsCovered: 1,
       });
     }
 

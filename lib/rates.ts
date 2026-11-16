@@ -87,6 +87,19 @@ export const indianEditionNames = (paper: PaperLike) => paper.editions.filter((e
 /** Districts that some publications print from a neighbouring centre; used only when the district itself has no published rate. */
 export const EDITION_ALIASES: Record<string, string> = { idukki: "Kottayam", wayanad: "Kozhikode", kasaragod: "Kannur" };
 
+/** All 14 Kerala districts and the printing edition(s) that serve them, in order of preference (used by the booking search). */
+export const DISTRICT_EDITIONS: Record<string, string[]> = {
+  thiruvananthapuram: ["Thiruvananthapuram"], trivandrum: ["Thiruvananthapuram"], kollam: ["Kollam"], pathanamthitta: ["Pathanamthitta", "Kottayam"],
+  alappuzha: ["Alappuzha"], kottayam: ["Kottayam"], idukki: ["Kottayam"], ernakulam: ["Kochi"], thrissur: ["Thrissur"], palakkad: ["Palakkad"],
+  malappuram: ["Malappuram"], kozhikode: ["Kozhikode"], wayanad: ["Kozhikode"], kannur: ["Kannur"], kasaragod: ["Kannur"],
+};
+/** Districts whose name matches the search text (3+ letters), each with the edition names that serve it. */
+export function districtMatches(query: string): { district: string; editions: string[] }[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 3) return [];
+  return Object.entries(DISTRICT_EDITIONS).filter(([d]) => d.startsWith(q)).map(([d, editions]) => ({ district: d.charAt(0).toUpperCase() + d.slice(1), editions }));
+}
+
 /** Per-newspaper settings (table `newspaper_settings`). */
 export interface PaperSettings {
   newspaper_name: string;

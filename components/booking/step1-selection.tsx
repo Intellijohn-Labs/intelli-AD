@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AD_TYPES, categories, getCategory } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
-import { combosFor, editionEnabled, getActiveExtras, visibleEditions } from "@/lib/rates";
+import { combosFor, districtMatches, editionEnabled, getActiveExtras, visibleEditions } from "@/lib/rates";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/field";
@@ -70,14 +70,15 @@ export function Step1Selection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
+  const districtHits = useMemo(() => districtMatches(query), [query]); // Idukki, Wayanad, Kasaragod, Pathanamthitta... → the edition that serves them
   const visible = useMemo(
     () =>
       newspapers.filter(
         (n) =>
           (scope === "all" || n.scope === scope) &&
-          (!query || (n.name + n.nameMl + n.language + visibleEditions(n).map((e) => e.name).join(" ")).toLowerCase().includes(query.toLowerCase())),
+          (!query || (n.name + n.nameMl + n.language + visibleEditions(n).map((e) => e.name).join(" ")).toLowerCase().includes(query.toLowerCase()) || districtHits.some((d) => d.editions.some((ed) => visibleEditions(n).some((e) => e.name === ed)))),
       ),
-    [scope, query],
+    [scope, query, districtHits],
   );
 
   const setEditions = (paperId: string, ids: string[]) => {
@@ -199,6 +200,18 @@ export function Step1Selection() {
                 </button>
                 {isOpen && !locked && (
                   <div id={`panel-${paper.id}`} className="border-t border-zinc-200/80 px-4 py-3">
+                    {districtHits.map((d) => {
+                      const edName = d.editions.find((n) => visibleEditions(paper).some((e) => e.name === n));
+                      const ed = edName ? visibleEditions(paper).find((e) => e.name === edName) : null;
+                      if (!ed) return null;
+                      const on = selected.includes(ed.id), ok = edOk(paper, ed.name);
+                      return (
+                        <p key={d.district} className="mb-2 flex flex-wrap items-center gap-2 rounded border border-dashed border-zinc-400 bg-white/60 px-3 py-1.5 text-sm">
+                          <span><b>{d.district}</b> {edName === d.district ? t("has its own edition") : t("is covered by the {edition} edition", { edition: place(ed.name) })}</span>
+                          <button type="button" disabled={!ok} onClick={() => setEditions(paper.id, on ? selected : [...selected, ed.id])} className="rounded border border-navy-600 px-2 py-0.5 text-xs font-semibold text-navy-700 hover:bg-navy-50 disabled:opacity-50">{on ? t("Selected") : ok ? t("Select {edition}", { edition: place(ed.name) }) : t("Rate not available — upload rate card")}</button>
+                        </p>
+                      );
+                    })}
                     {suggestions.length > 0 && (
                       <div className="mb-3 flex flex-wrap gap-2">
                         {suggestions.map((s) => (

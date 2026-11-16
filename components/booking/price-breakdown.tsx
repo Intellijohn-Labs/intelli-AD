@@ -24,7 +24,10 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
   const { t: tr } = useI18n();
   const { totals: t, metrics: m, editionCount } = quote;
   const isText = adType === "classified-text";
-  const baseSub = isText ? tr("Minimum {n} lines × {e} edition(s)", { n: m.minLines, e: editionCount }) : tr("Minimum {n} cm² × {e} edition(s)", { n: m.minAreaCm2, e: editionCount });
+  const covered = quote.lines.reduce((a, l) => a + (l.editionsCovered ?? 1), 0) || editionCount;
+  const pkg = quote.lines.find((l) => l.packageName);
+  const perWord = quote.lines[0]?.unitLabel === "words";
+  const baseSub = isText && perWord ? `${pkg ? `${pkg.packageName} · ` : ""}${tr("{n} words · {e} edition(s)", { n: quote.lines[0].baseUnits, e: covered })}` : isText ? tr("Minimum {n} lines × {e} edition(s)", { n: m.minLines, e: covered }) : tr("Minimum {n} cm² × {e} edition(s)", { n: m.minAreaCm2, e: covered });
   const extraUnits = quote.lines[0]?.extraUnits ?? 0;
   const extraSub = tr("{n} extra {unit} beyond minimum", {
     n: isText ? extraUnits : extraUnits.toFixed(1),

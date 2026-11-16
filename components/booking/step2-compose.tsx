@@ -81,7 +81,7 @@ export function Step2Compose() {
       heightCm: state.display.heightCm,
       colorMode: state.display.colorMode,
       position: state.display.position ?? "",
-      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline, highlighter: !!state.enhancements.highlighter },
+      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline, highlighter: !!state.enhancements.highlighter, caps: !!state.enhancements.caps },
       artwork: state.artwork,
       documents: state.documents ?? {},
     },
@@ -97,7 +97,7 @@ export function Step2Compose() {
     if (state.text !== cur.text) setValue("text", state.text, { shouldValidate: true });
     if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null) || (state.artwork?.url ?? null) !== (cur.artwork?.url ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
     const e = state.enhancements, c = cur.enhancements;
-    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline || !!e.highlighter !== !!c.highlighter) setValue("enhancements", e);
+    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline || !!e.highlighter !== !!c.highlighter || !!e.caps !== !!c.caps) setValue("enhancements", e);
   }, [state.text, state.artwork, state.enhancements, getValues, setValue]);
 
   // Keep the shared booking state (and therefore the live quote) in sync with the form.
@@ -105,7 +105,7 @@ export function Step2Compose() {
     const sub = watch((val) => {
       update({
         text: val.text ?? "",
-        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline, highlighter: !!val.enhancements?.highlighter },
+        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline, highlighter: !!val.enhancements?.highlighter, caps: !!val.enhancements?.caps },
         display: {
           columns: val.columns ?? 2,
           widthCm: Number.isFinite(val.widthCm) ? (val.widthCm as number) : undefined,
@@ -241,7 +241,7 @@ export function Step2Compose() {
                 newspaper={paper?.name}
                 categoryLabel={category?.name}
                 value={v.text ?? ""}
-                onChange={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
+                onChange={(txt) => setValue("text", v.enhancements?.caps ? txt.toUpperCase() : txt, { shouldValidate: true, shouldDirty: true })}
                 error={textError}
                 hint={t("Write as it should appear in print. Press Enter for a new paragraph. Abbreviations save lines.")}
                 charsPerLine={cpl}
@@ -274,6 +274,7 @@ export function Step2Compose() {
                   )} />
                 ))}
                 {tintPcts.length > 0 && <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: tintPcts.join(" / ") })} checked={field.value} onChange={field.onChange} />} />}
+                {!/[ഀ-ൿ]/.test(v.text ?? "") && <Controller control={control} name="enhancements.caps" render={({ field }) => <Switch id="enh-caps" label={t("All Caps (UPPERCASE)")} description={(rule?.caps_word_rate ?? 0) > 0 ? t("Capitals rate {rate}/word", { rate: formatINR(rule!.caps_word_rate!) }) : t("Ad copy is set in capitals")} checked={!!field.value} onChange={(on) => { field.onChange(on); if (on) setValue("text", (v.text ?? "").toUpperCase(), { shouldValidate: true, shouldDirty: true }); }} />} />}
                 {hlTiers && <Controller control={control} name="enhancements.highlighter" render={({ field }) => <Switch id="enh-highlighter" label={t("Highlighter symbol")} description={hlFee ? t("+{fee} for {n} edition(s)", { fee: formatINR(hlFee), n: editionCount }) : t("Fee depends on the number of editions")} checked={!!field.value} onChange={field.onChange} />} />}
                 {underlinePcts.length > 0 && <Controller control={control} name="enhancements.underline" render={({ field }) => <Switch id="enh-underline" label={t("Underline")} description={t("+{pct}% of text charge", { pct: underlinePcts.join(" / ") })} checked={!!field.value} onChange={field.onChange} />} />}
               </fieldset>

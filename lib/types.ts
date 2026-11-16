@@ -21,6 +21,8 @@ export interface Enhancements {
   underline?: boolean;
   /** Highlighter symbol before the ad (classified text): a flat fee printed on the rate card, by number of editions. */
   highlighter?: boolean;
+  /** All capitals (English classified text): the ad copy is upper-cased and the card's caps per-word rate applies. */
+  caps?: boolean;
 }
 
 export type ColorMode = "bw" | "color";

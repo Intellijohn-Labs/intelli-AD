@@ -173,6 +173,11 @@ function MiniSummary({ state }: { state: BookingState }) {
   // No category yet → no rate line (never a stale paper-level "floor" rate such as ₹95/cm²).
   const rate = !state.categoryId ? null : unitRate > 0 && edition ? { amount: unitRate, unit: perWord ? ("word" as const) : state.adType === "classified-text" ? ("line" as const) : ("cm²" as const), edition } : floor;
   const rule = cutoffRuleFor(paper, state.adType);
+  // When a combo / slab prices the selection ("Any 2 Editions"), the footer names that package, its rate and the real edition count.
+  const paperLines = quote.lines.filter((l) => l.newspaperId === paper.id);
+  const pkg = paperLines.find((l) => l.packageName);
+  const covered = paperLines.reduce((a, l) => a + (l.editionsCovered ?? 1), 0);
+  const unitWord = (u: string) => (u === "words" ? t("word") : u === "lines" ? t("line") : t("cm²"));
   return (
     <Card className="p-5 sm:p-6">
       <p className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>
@@ -190,7 +195,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       )}
       <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
-        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
+        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName!, price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
       {user && (

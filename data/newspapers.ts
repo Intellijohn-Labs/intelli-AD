@@ -94,6 +94,7 @@ const allNewspapers: Newspaper[] = [
       ["Kottayam", "kl", 0.75],
       ["Thrissur", "kl", 0.7],
       ["Kollam", "kl", 0.6],
+      ["Pathanamthitta", "kl", 0.5],
       ["Kannur", "kl", 0.55],
       ["Alappuzha", "kl", 0.5],
       ["Malappuram", "kl", 0.5],
