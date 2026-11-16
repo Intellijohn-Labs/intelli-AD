@@ -10,55 +10,42 @@ export const maxDuration = 60;
 
 const body = z.object({
   styleId: z.enum(["classic", "honored", "memoriam"]),
-  /** The notice wording, exactly as it should be printed. */
-  text: z.string().trim().min(5).max(1200),
+  /** Unused by the image model (artwork is text-free); kept so older clients still validate. */
+  text: z.string().trim().max(1200).optional(),
   category: z.enum(["obituary", "remembrance"]).default("obituary"),
   language: z.enum(["ml", "en"]).default("ml"),
   aspect: z.string().regex(/^\d:\d$/).default("4:5"),
   widthCm: z.number().min(1).max(60).optional(),
   heightCm: z.number().min(1).max(60).optional(),
   /** Optional portrait (already downscaled by the browser). */
-  photo: z.object({ mime: z.enum(["image/jpeg", "image/png"]), data: z.string().max(2_500_000) }).optional(),
+  photo: z.object({ mime: z.enum(["image/jpeg", "image/png", "image/webp"]), data: z.string().max(2_500_000) }).optional(),
 });
 type Input = z.infer<typeof body>;
 
-const STYLE_BRIEF: Record<PosterStyleId, { brief: string; header: string | null }> = {
-  classic: {
-    brief: `STYLE 1 — Vintage Floral Wreath: classic newsprint tone (warm off-white paper, dark ink). An intricate, finely drawn floral wreath / garland of natural flowers and leaves frames the portrait, which sits in a round or oval opening at the top centre. A bold header sits above or beside it, with the name and the other details set cleanly below in a clear serif typeface.`,
-    header: "ആദരാഞ്ജലികൾ",
-  },
-  honored: {
-    brief: `STYLE 2 — Ornate Frame / Tribute: a Victorian / vintage engraved newspaper border (fine filigree, cartouche corners, engraved line-work). The portrait is cropped to an oval. The details are arranged in a structured, orderly layout beneath or beside the portrait.`,
-    header: "വേദനയോടെ ഓർക്കുന്നു",
-  },
-  memoriam: {
-    brief: `STYLE 3 — Minimalist Memoriam: a clean, elegant thin border with subtle remembrance elements, such as a single rose and/or a lit candle motif, in a restrained palette and with generous quiet space. The portrait sits in a soft oval or rounded frame. Present the funeral announcement lines clearly and prominently.`,
-    header: null,
-  },
+const STYLE_BRIEF: Record<PosterStyleId, string> = {
+  classic: `STYLE 1 — Vintage Floral Wreath: classic newsprint tone (warm cream parchment, fine dark ink line-work). An intricate, finely drawn floral wreath / garland of natural flowers and leaves frames the portrait, which sits in a round or oval opening.`,
+  honored: `STYLE 2 — Ornate Vintage Newspaper Border: a Victorian / vintage engraved newspaper border (fine filigree, cartouche corners, engraved line-work) around the whole sheet. The portrait is cropped to an oval.`,
+  memoriam: `STYLE 3 — Minimalist Rose & Candle: a clean, elegant thin border with a single rose and/or a lit candle motif, in a restrained palette with generous quiet space. The portrait sits in a soft oval or rounded frame.`,
 };
 
 function prompt(p: Input): string {
   const hasPhoto = !!p.photo;
-  const size = p.widthCm && p.heightCm ? `${p.widthCm} × ${p.heightCm} cm` : "a standard newspaper display box";
-  return `You are a senior newspaper-advertisement designer for Kerala dailies (Malayala Manorama, Mathrubhumi and similar). Create ONE print-ready ${p.category === "remembrance" ? "remembrance (death anniversary / In Memoriam)" : "obituary"} newspaper ad as a single image.
+  return `You are a senior newspaper-advertisement artist for Kerala dailies. Create ONE text-free decorative frame for a ${p.category === "remembrance" ? "remembrance (death anniversary)" : "obituary"} newspaper ad, as a single image.
 
-FORMAT: portrait ${p.aspect}, designed for a ${size} newspaper box. Clean off-white newsprint-style background, crisp high-contrast artwork that still reads well in black and white. Fill the whole frame; no mock-up, no paper curl, no device or desk scene.
+ABSOLUTE RULE: generate ZERO text. No letters, words, numbers, digits, dates, symbols, captions, watermarks, logos or signatures anywhere in the image, in any script. Typography will be added later by software; any glyph you draw will ruin the ad.
+
+FORMAT: portrait ${p.aspect}, filling the whole frame. Warm cream / parchment newsprint background, crisp high-contrast artwork that still reads in black and white. No mock-up, no paper curl, no desk or device scene.
+
+${STYLE_BRIEF[p.styleId]}
+
+LAYOUT (strict; measured from the top of the image):
+- TOP 15%: a clean, empty, unobstructed cream parchment area (a plain band, no ornament inside it) reserved for a heading.
+- Between about 15% and 60% of the height: the portrait, framed gracefully and centred in the upper-middle area, surrounded by the theme's borders and motifs.
+- BOTTOM 40%: a clean, empty, unobstructed cream parchment area below the portrait, reserved for the name and several lines of details. Keep any border or motif thin and at the extreme edges only; nothing may intrude on this area.
 
 ${hasPhoto
     ? "PHOTO: the attached image is the portrait of the deceased. Use THIS person's face exactly as it is: do not re-draw, beautify, age, stylise or replace it; only crop it into the frame."
-    : "PHOTO: none was supplied. Do NOT invent a face or a portrait; use ornament only and leave no empty portrait frame."}
-
-${STYLE_BRIEF[p.styleId].brief}
-
-${(() => { const h = STYLE_BRIEF[p.styleId].header; return h ? `HEADER (bold, prominent; typeset exactly): "${h}"\n\n` : ""; })()}TEXT TO TYPESET — use exactly this wording, nothing more and nothing less (apart from the header above):
-"""
-${p.text}
-"""
-Typography rules:
-- The person's name is the largest, boldest line; the remaining details are smaller and gracefully aligned (centred).
-- ${p.language === "ml" ? "The text is Malayalam: render it in true Malayalam Unicode script with correct conjuncts and vowel signs, in a clear serif newspaper typeface." : "The text is English: render it in a clear serif newspaper typeface."}
-- Copy every character faithfully, including digits, dates and times. Never output garbled, look-alike, placeholder or lorem-ipsum characters. If you cannot render a word exactly, keep it simply and legibly rather than inventing glyphs.
-- Do not add any other text beyond the header and the wording above: no watermark, caption, logo, phone number, website or signature.
+    : "PHOTO: none was supplied. Do NOT invent a face or a portrait; leave the central frame as ornament only (for example an empty ornamental cartouche or floral medallion)."}
 
 Respectful, solemn and dignified in every detail.`;
 }
@@ -115,7 +102,7 @@ export async function POST(req: Request) {
   if (throttled(ip)) return NextResponse.json({ error: "Too many poster requests. Please wait a few minutes.", status: 429 }, { status: 429 });
 
   const parsed = body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Please provide the notice text (and a JPG/PNG photo under ~1.8 MB).", status: 400 }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Invalid request (a JPG/PNG photo must be under ~1.8 MB).", status: 400 }, { status: 400 });
 
   const admin = createAdminClient();
   const { keys } = await resolveAiKeys(admin);

@@ -13,3 +13,16 @@ export function nearestAspect(widthCm: number, heightCm: number): string {
   const r = widthCm > 0 && heightCm > 0 ? widthCm / heightCm : 4 / 5;
   return ASPECTS.reduce((best, a) => (Math.abs(a[1] - r) < Math.abs(best[1] - r) ? a : best))[0];
 }
+
+/** Header printed (by the canvas compositor, never by the image model) at the top of each style. */
+export const POSTER_HEADERS: Record<PosterStyleId, string> = {
+  classic: "ആദരാഞ്ജലികൾ",
+  honored: "വേദനയോടെ ഓർക്കുന്നു",
+  memoriam: "കണ്ണീർപ്പൂക്കൾ",
+};
+
+/** Parses a Gemini aspect label such as "4:5" into width / height. */
+export function aspectRatio(label: string): number {
+  const [w, h] = label.split(":").map(Number);
+  return w > 0 && h > 0 ? w / h : 4 / 5;
+}

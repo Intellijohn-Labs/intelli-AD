@@ -4,6 +4,7 @@ import { Loader2, RefreshCw, Sparkles, X, ZoomIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/components/ui/toast";
+import { composePoster } from "@/lib/poster-compositor";
 import { nearestAspect, POSTER_STYLES, type PosterStyleId } from "@/lib/obituary-art";
 import type { FileMeta } from "@/lib/types";
 
@@ -24,9 +25,11 @@ async function photoPayload(photo: FileMeta | null): Promise<{ mime: "image/jpeg
 }
 
 /** "✨ AI Poster Designer": three finished obituary ad designs from the notice text and the portrait; one can replace the ad artwork. */
-export function AiPosterModal({ open, onClose, text, category, language, widthCm, heightCm, photo, onUse }: {
+export function AiPosterModal({ open, onClose, name, text, category, language, widthCm, heightCm, photo, onUse }: {
   open: boolean;
   onClose: () => void;
+  /** Deceased's name, typeset large by the compositor. */
+  name: string;
   text: string;
   category: "obituary" | "remembrance";
   language: "ml" | "en";
@@ -63,8 +66,14 @@ export function AiPosterModal({ open, onClose, text, category, language, widthCm
       const j = await res.json().catch(() => ({}));
       if (mine !== run.current) return;
       if (!res.ok || !j.data) set(id, { state: "error", message: j.error ?? "Couldn't design this style." });
-      else set(id, { state: "ready", mime: j.mime, data: j.data });
-    } catch { if (mine === run.current) set(id, { state: "error", message: "Couldn't reach the AI designer. Check your connection." }); }
+      else {
+        // The model's artwork is text-free; our exact wording is typeset over it on a canvas.
+        const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+        const png = await composePoster({ artworkUrl: `data:${j.mime};base64,${j.data}`, styleId: id, name: name.trim() || lines[0] || "", lines, aspect });
+        if (mine !== run.current) return;
+        set(id, { state: "ready", mime: "image/png", data: png });
+      }
+    } catch (e) { if (mine === run.current) set(id, { state: "error", message: e instanceof Error && e.message ? e.message : "Couldn't reach the AI designer. Check your connection." }); }
   };
 
   const generate = async (only?: PosterStyleId) => {
@@ -108,7 +117,7 @@ export function AiPosterModal({ open, onClose, text, category, language, widthCm
             <span className="text-xs text-slate-500 dark:text-slate-300">{photo ? "അപ്‌ലോഡ് ചെയ്ത ഫോട്ടോ ഉപയോഗിക്കും." : "ഫോട്ടോ ഇല്ല: ഫോട്ടോ ഇല്ലാതെ അലങ്കാര ഡിസൈൻ ഉണ്ടാക്കും."} ഓരോ ഡിസൈനും ഉണ്ടാക്കാൻ അര മിനിറ്റോളം എടുക്കും.</span>
           </div>
           <p className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-            AI വരച്ച അക്ഷരങ്ങളിൽ തെറ്റുകൾ വരാം. തിരഞ്ഞെടുക്കുന്നതിനുമുമ്പ് പേര്, തീയതി, സമയം, സ്ഥലം എന്നിവ വലുതാക്കി കൃത്യമായി പരിശോധിക്കുക. തെറ്റുണ്ടെങ്കിൽ വീണ്ടും ഉണ്ടാക്കുക അല്ലെങ്കിൽ സാധാരണ ബിൽഡർ ഉപയോഗിക്കുക. (AI-drawn lettering can contain mistakes: zoom in and check every name, date, time and place before choosing.)
+            ചിത്രവും അലങ്കാരവും മാത്രമാണ് AI ഉണ്ടാക്കുന്നത്; അക്ഷരങ്ങൾ നിങ്ങളുടെ മാറ്ററിൽ നിന്ന് നേരിട്ട് ചേർക്കുന്നു. എങ്കിലും ഫോട്ടോ ഫ്രെയിമിലും അക്ഷരങ്ങളുടെ സ്ഥാനത്തും തെറ്റില്ലെന്ന് വലുതാക്കി പരിശോധിക്കുക. (The AI draws only the portrait frame and ornament; the wording is typeset from your notice text. Still zoom in and check the layout before choosing.)
           </p>
 
           <div className="grid gap-3 sm:grid-cols-3">

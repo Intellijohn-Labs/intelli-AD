@@ -180,7 +180,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28,
         </div>
       )}
       {onPoster && (
-        <AiPosterModal open={posterOpen} onClose={() => setPosterOpen(false)} text={state.text} category={anniv ? "remembrance" : "obituary"} language="ml"
+        <AiPosterModal open={posterOpen} onClose={() => setPosterOpen(false)} name={f.name} text={state.text} category={anniv ? "remembrance" : "obituary"} language="ml"
           widthCm={Math.round(displayWidth(state.display, colWidthCm) * 10) / 10} heightCm={state.display.heightCm} photo={state.artwork} onUse={onPoster} />
       )}
       <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => { update({ obituary: { ...f, isCustomMatter: true } }); onText(txt); }} />
