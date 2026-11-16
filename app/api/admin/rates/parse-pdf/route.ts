@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
 import { resolveAiKeys } from "@/lib/ai-keys";
 import { newspapers } from "@/data/newspapers";
-import { buildExtractionPrompt, extractionSchema } from "@/lib/rate-import";
+import { parseJsonLoose } from "@/lib/json-repair";
+import { buildExtractionPrompt, expandCompact } from "@/lib/rate-import";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
@@ -25,52 +26,38 @@ async function providerError(name: string, res: Response) {
   return new ProviderError(`${name} API error (${res.status}): ${detail}`, res.status);
 }
 
-async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<string> {
+type Reply = { text: string; truncated: boolean };
+
+async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<Reply> {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ inline_data: { mime_type: "application/pdf", data: pdfB64 } }, { text }] }],
-      generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 16000 },
+      generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }, // JSON mode; no hidden "thinking" tokens eating the output budget
     }),
     signal: AbortSignal.timeout(55_000),
   });
   if (!res.ok) throw await providerError("Gemini", res);
   const j = await res.json();
-  return (j?.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
+  const cand = j?.candidates?.[0];
+  return { text: (cand?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join(""), truncated: cand?.finishReason === "MAX_TOKENS" };
 }
 
-async function callClaude(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<string> {
+async function callClaude(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<Reply> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: cfg.model,
-      max_tokens: 12000,
+      max_tokens: 8192,
       messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfB64 } }, { type: "text", text }] }],
     }),
     signal: AbortSignal.timeout(55_000),
   });
   if (!res.ok) throw await providerError("Claude", res);
   const j = await res.json();
-  return (j?.content ?? []).map((b: { text?: string }) => b.text ?? "").join("");
-}
-
-/** First balanced {...} in the text (string-aware); tolerates fences or prose around it. */
-function firstJsonObject(raw: string): unknown {
-  const start = raw.indexOf("{");
-  if (start >= 0) {
-    let depth = 0, inStr = false, esc = false;
-    for (let i = start; i < raw.length; i++) {
-      const c = raw[i];
-      if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
-      if (c === '"') inStr = true;
-      else if (c === "{") depth++;
-      else if (c === "}" && --depth === 0) { try { return JSON.parse(raw.slice(start, i + 1)); } catch { break; } }
-    }
-  }
-  console.error("[admin/rates/parse-pdf] unparseable reply:", raw.slice(0, 600));
-  throw new Error("The AI reply was not valid JSON. Try again, or use a clearer / smaller PDF.");
+  return { text: (j?.content ?? []).map((b: { text?: string }) => b.text ?? "").join(""), truncated: j?.stop_reason === "max_tokens" };
 }
 
 const hits = new Map<string, number[]>();
@@ -123,13 +110,20 @@ export async function POST(req: Request) {
   try {
     const text = buildExtractionPrompt(paper.name, paper.editions.map((e) => e.name));
     const b64 = bytes.toString("base64");
-    const raw = cfg.provider === "claude" ? await callClaude(cfg, key, b64, text) : await callGemini(cfg, key, b64, text);
-    const parsed = extractionSchema.safeParse(firstJsonObject(raw));
-    if (!parsed.success) {
-      console.error("[admin/rates/parse-pdf] schema mismatch:", JSON.stringify(parsed.error.issues).slice(0, 600));
-      return NextResponse.json({ error: "The AI returned data in an unexpected format. Please try again.", status: 502 }, { status: 502 });
+    const reply = cfg.provider === "claude" ? await callClaude(cfg, key, b64, text) : await callGemini(cfg, key, b64, text);
+    let extraction;
+    let repaired = false;
+    try {
+      const loose = parseJsonLoose(reply.text);
+      repaired = loose.repaired;
+      extraction = expandCompact(loose.value);
+    } catch (e) {
+      console.error("[admin/rates/parse-pdf] unusable reply:", reply.truncated ? "(truncated)" : "", e instanceof Error ? e.message : e, reply.text.slice(0, 400));
+      return NextResponse.json({ error: reply.truncated ? "The AI ran out of room while reading this card, so nothing usable came back. Upload fewer pages (just the rate tables) and try again." : "The AI reply could not be read. Please try again, or switch the AI engine.", status: 502 }, { status: 502 });
     }
-    return NextResponse.json({ extraction: parsed.data, publicationId: paper.id, provider: cfg.provider, model: cfg.model }, { headers: { "Cache-Control": "no-store" } });
+    const truncated = reply.truncated || repaired;
+    if (truncated) extraction.notes.unshift("The AI's reply was cut off, so the last rows may be missing. Check the table against the PDF, or upload fewer pages and extract again.");
+    return NextResponse.json({ extraction, truncated, publicationId: paper.id, provider: cfg.provider, model: cfg.model }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error("[admin/rates/parse-pdf] failed:", err.message);

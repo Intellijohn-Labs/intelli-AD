@@ -45,6 +45,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   const [pct, setPct] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [finishing, setFinishing] = useState(false);
+  const [truncated, setTruncated] = useState(false);
   const prog = useRef({ start: 0, uploadedAt: 0, uploadFrac: 0, done: false });
   useEffect(() => {
     if (busy !== "reading") return;
@@ -83,11 +84,12 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
       xhr.timeout = 70_000;
       xhr.send(fd);
     });
-    const j = result.body as { extraction?: RateExtraction; provider?: string; model?: string; error?: string; _status?: number };
+    const j = result.body as { extraction?: RateExtraction; truncated?: boolean; provider?: string; model?: string; error?: string; _status?: number };
     if (!result.ok || !j.extraction) { prog.current.done = true; setError(j.error ?? `Couldn't read the PDF (${j._status ?? "error"}).`); setBusy(""); return; }
     prog.current.done = true;
     setPct(100); setFinishing(true); // snap to 100% with a checkmark, then reveal the table
     await new Promise((r) => setTimeout(r, 700));
+    setTruncated(!!j.truncated);
     setMeta({ ex: j.extraction, provider: j.provider ?? engine, model: j.model ?? "" });
     remap(j.extraction, wpl);
     setFinishing(false); setBusy("");
@@ -183,6 +185,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
 
       {meta && (
         <div className="mt-5 space-y-4">
+          {truncated && <p role="alert" className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />The AI&rsquo;s reply was cut off, so the last rows may be missing. Compare the table with the PDF, or upload fewer pages and extract again.</p>}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">
             <span>Read by <b>{meta.provider === "claude" ? "Claude" : "Gemini"}</b> · {meta.model} <em className="text-slate-500">(not right? switch engine above and extract again)</em></span>
             <span>Effective date: <b>{meta.ex.effectiveDate ?? "not found"}</b></span>

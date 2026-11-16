@@ -54,23 +54,61 @@ export const EXTRACTION_SHAPE = `{
       "boldHeadingPerLine": number | null, "boxFee": number | null, "tintPercent": number | null, "underlinePercent": number | null, "uncertain": boolean } ]
 }`;
 
-/** Prompt for the PDF extraction (shared by the API route and offline checks). Asks for compact JSON to keep the reply fast. */
+/**
+ * Compact reply format requested from the model (arrays and short keys, so a whole tariff is ~1–2k tokens and
+ * can't run out of room mid-JSON). `expandCompact` turns it back into a RateExtraction.
+ */
+export const COMPACT_SHAPE = `{
+ "date": "YYYY-MM-DD",          // effective date (omit if not printed)
+ "gst": 1 | 0,                  // 1 only if the card says rates INCLUDE GST
+ "conf": 0.0-1.0,               // overall confidence
+ "n": ["short note", ...],      // at most 8 notes: ambiguity, illegible values, things not captured below
+ "e": [ ["Edition name", "s|c|n", count] ],            // s = single edition, c = combination package, n = "any N editions" tier
+ "d": [ ["Edition or ALL", "category", bw, colour, minSqCm, uncertain] ],   // display rates PER SQ CM; ONE row per edition+category
+ "p": [ ["Position", "Edition or null", percent, perSqCm] ],                // page premiums (Front, Back, Page 3, Page 5/Business, Solus...)
+ "c": [ ["Edition or ALL", "ml|en", perWord, perLine, minWords, minLines, boldPerLine, boxFee, tintPercent, underlinePercent, uncertain] ]   // classifieds
+}
+category is one of: normal, personal, obituary, matrimonial, recruitment, financial, tender, other. Use null for any cell that is absent or unreadable; uncertain is 1 or 0.`;
+
+/** Prompt for the PDF extraction (shared by the API route and offline checks). */
 export function buildExtractionPrompt(paperName: string, editionNames: string[]): string {
-  return `You are extracting a newspaper advertising TARIFF / RATE CARD from the attached PDF into structured JSON. The publication is "${paperName}". Our system's edition names for it are: ${editionNames.join(", ")}.
+  return `You are extracting a newspaper advertising TARIFF / RATE CARD from the attached PDF into JSON. The publication is "${paperName}". Our system's edition names for it are: ${editionNames.join(", ")}.
 
 Read every page, including multi-column tables and footnotes. Extract:
-- editions: every individual edition, combination package (All Kerala, All India, Gulf / Overseas, Metros...) and "any N editions" tier.
-- displayRates: display / classified-display prices PER SQUARE CM, by edition and category: Normal (general display), Personal / Obituary, Matrimonial, Recruitment, Financial, Tender / Notice. Give ONE object per edition + category, with both "bw" and "colour" filled in that same object (never one object per column).
-- pagePremiums: Front page, Back page, Page 3, Page 5 / Business, Solus and similar position surcharges (percent, or per sq cm).
-- classifiedText: per-word (or per-line) rates for Malayalam and English classifieds, minimum words / lines, bold / heading charge per line, box fee, background tint % and underline %.
-- effectiveDate (ISO YYYY-MM-DD) if a date such as "w.e.f. 1 April 2024" appears, and whether rates include GST.
+- e: every individual edition, combination package (All Kerala, All India, Gulf / Overseas, Metros...) and "any N editions" tier.
+- d: display / classified-display prices PER SQUARE CM by edition and category: Normal (general display), Personal / Obituary, Matrimonial, Recruitment, Financial, Tender / Notice. ONE row per edition + category with both the black & white and the colour rate in that row.
+- p: page-position premiums (Front page, Back page, Page 3, Page 5 / Business, Solus and similar).
+- c: classified word / line rates for Malayalam ("ml") and English ("en"), minimums, bold / heading charge per line, box fee, background tint % and underline %.
+- date (effective date) and gst.
 
 Rules:
-- Copy numbers exactly as printed (rupees). NEVER guess or invent a number: omit a value that is absent, illegible or ambiguous, set "uncertain": true when you are not sure, and explain briefly in "notes".
-- Use edition names exactly as printed (the app maps spelling variants such as Trivandrum / Thiruvananthapuram itself). Use "ALL" only when one rate truly applies to the whole card.
-- Be COMPACT so the reply is quick: output minified JSON on a single line (no indentation or line breaks), omit any key whose value is null, empty or false, keep "notes" to at most 8 short entries, and add no commentary.
-- Output ONLY one JSON object with this shape (every key optional except where you have data):
-${EXTRACTION_SHAPE}`;
+- Copy numbers exactly as printed (rupees). NEVER guess or invent a number: use null for anything absent, illegible or ambiguous, set uncertain to 1 when unsure, and add a short note in "n".
+- Use edition names exactly as printed (the app maps spellings such as Trivandrum / Thiruvananthapuram itself). Use "ALL" only when one rate truly applies to the whole card.
+- Output ONLY minified JSON on a single line (no markdown, no indentation, no commentary) in exactly this shape:
+${COMPACT_SHAPE}`;
+}
+
+type Cell = string | number | null | undefined;
+const cn = (v: Cell): number | null => { const n = typeof v === "string" ? Number(v.replace(/[₹,%\s]/g, "")) : v; return typeof n === "number" && Number.isFinite(n) ? n : null; };
+const cs = (v: Cell): string => (v == null ? "" : String(v));
+
+/** Turns the compact reply into a RateExtraction. Also accepts the long format (displayRates / classifiedText...). */
+export function expandCompact(raw: unknown): RateExtraction {
+  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  if (!("d" in o || "c" in o || "p" in o || "e" in o) && ("displayRates" in o || "classifiedText" in o)) return extractionSchema.parse(o);
+  const rows = (k: string) => (Array.isArray(o[k]) ? (o[k] as unknown[]).filter(Array.isArray) as Cell[][] : []);
+  const kind = (v: Cell) => (cs(v).toLowerCase().startsWith("c") ? "combo" : cs(v).toLowerCase().startsWith("n") ? "any-n" : "single");
+  const lang = (v: Cell) => (/^e/i.test(cs(v)) ? "en" : /^m/i.test(cs(v)) ? "ml" : "other");
+  return extractionSchema.parse({
+    effectiveDate: typeof o.date === "string" ? o.date : null,
+    gstIncluded: o.gst == null ? null : o.gst === 1 || o.gst === true || o.gst === "1",
+    confidence: cn(o.conf as Cell),
+    notes: Array.isArray(o.n) ? (o.n as unknown[]).map(String).slice(0, 12) : [],
+    editions: rows("e").map((r) => ({ name: cs(r[0]), kind: kind(r[1]), count: cn(r[2]) })),
+    displayRates: rows("d").map((r) => ({ edition: cs(r[0]) || "ALL", category: cs(r[1]).toLowerCase() || "normal", categoryLabel: cs(r[1]), bw: cn(r[2]), colour: cn(r[3]), minSqCm: cn(r[4]), uncertain: r[5] === 1 || r[5] === "1" })),
+    pagePremiums: rows("p").map((r) => ({ position: cs(r[0]), edition: cs(r[1]) || null, surchargePercent: cn(r[2]), ratePerSqCm: cn(r[3]), text: null })),
+    classifiedText: rows("c").map((r) => ({ edition: cs(r[0]) || "ALL", language: lang(r[1]), perWord: cn(r[2]), perLine: cn(r[3]), minWords: cn(r[4]), minLines: cn(r[5]), boldHeadingPerLine: cn(r[6]), boxFee: cn(r[7]), tintPercent: cn(r[8]), underlinePercent: cn(r[9]), uncertain: r[10] === 1 || r[10] === "1" })),
+  });
 }
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9ഀ-ൿ ]+/g, " ").replace(/\s+/g, " ").trim();
