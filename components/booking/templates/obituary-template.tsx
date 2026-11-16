@@ -53,11 +53,12 @@ const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors
  * (In Memoriam), fill the fields, and the print text is generated into the ad text.
  * The portrait is the ad's artwork upload (classified display / box ads).
  */
-export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28, colWidthCm = 4 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; /** A generated AI poster was chosen: it becomes the finished ad artwork. */ onPoster?: (file: File, meta: FileMeta) => void; charsPerLine?: number; colWidthCm?: number }) {
+export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerLine = 28, colWidthCm = 4 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; /** A generated AI poster was chosen: it becomes the finished ad artwork. */ onPoster?: (file: File, meta: FileMeta) => void; /** Colour mode change from the photo section (keeps the Step 2 form in sync). */ onColor?: (c: "bw" | "color") => void; charsPerLine?: number; colWidthCm?: number }) {
   const { state, update } = useBooking();
   const { text: aiReady, poster: posterReady } = useAiStatus();
   const [aiOpen, setAiOpen] = useState(false);
   const [posterOpen, setPosterOpen] = useState(false);
+  const hasPhoto = !!(state.artwork?.previewUrl || state.artwork?.url);
   const paperName = getNewspaper(Object.keys(state.selection).find((k) => state.selection[k].length))?.name ?? "";
   // The category decides the notice type: Obituary = death notice, Remembrance = death anniversary.
   const kind: ObituaryKind = state.categoryId === "remembrance" ? "anniversary" : "demise";
@@ -166,16 +167,11 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28,
         </div>
       )}
 
-      {!isText && (aiReady || (posterReady && onPoster)) && (
+      {!isText && aiReady && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
           {aiReady && (
             <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
               <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
-            </button>
-          )}
-          {posterReady && onPoster && (
-            <button type="button" onClick={() => setPosterOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-500 to-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(225,29,72,0.45)] hover:shadow-[0_0_22px_rgba(225,29,72,0.7)]">
-              <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI പോസ്റ്റർ നിർമ്മിക്കുക (Generate 3 Ad Styles)
             </button>
           )}
           <span className="flex-1 text-xs text-zinc-600 dark:text-slate-200">ഫോം വിവരങ്ങളിൽ നിന്ന് ചരമ അറിയിപ്പിന്റെ മാതൃകകൾ ഉണ്ടാക്കാം. തിരഞ്ഞെടുത്താൽ നോട്ടീസ് മാറ്ററായി ചേർക്കും; ഫോമിലെ വിവരങ്ങൾ പിന്നീട് മാറ്റിയാലും ഈ മാറ്റർ മാറില്ല (റീസെറ്റ് ചെയ്താൽ ഫോമിൽ നിന്ന് വീണ്ടും ഉണ്ടാക്കാം).</span>
@@ -225,7 +221,29 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28,
             ))}
           </div>
         </div>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-zinc-600 dark:text-slate-200">Photo colour · ഫോട്ടോ നിറം</p>
+          <div role="radiogroup" aria-label="Photo colour" className="grid grid-cols-2 gap-2">
+            {([["bw", "Black & White", "ബ്ലാക്ക് & വൈറ്റ്"], ["color", "Colour", "Multi Colour · നിറം"]] as const).map(([id, en, ml]) => (
+              <button key={id} type="button" role="radio" aria-checked={state.display.colorMode === id}
+                onClick={() => (onColor ? onColor(id) : update({ display: { ...state.display, colorMode: id } }))}
+                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", state.display.colorMode === id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+                {en}<span className="block font-normal text-zinc-500">{ml}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-500">Colour printing costs more · നിറത്തിലുള്ള അച്ചടിക്ക് നിരക്ക് കൂടുതലാണ്.</p>
+        </div>
       </fieldset>
+      )}
+      {posterReady && onPoster && (
+        <div className="-mt-1 space-y-1">
+          <button type="button" onClick={() => setPosterOpen(true)} disabled={!hasPhoto} aria-describedby="poster-hint"
+            className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-500 to-rose-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(225,29,72,0.45)] hover:shadow-[0_0_22px_rgba(225,29,72,0.7)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
+            <Sparkles className="h-4 w-4" aria-hidden="true" /> ✨ AI Poster Generation
+          </button>
+          {!hasPhoto && <p id="poster-hint" className="text-xs text-zinc-500">Upload a photo first to generate AI posters · AI പോസ്റ്റർ ഉണ്ടാക്കാൻ ആദ്യം ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക.</p>}
+        </div>
       )}
     </section>
   );

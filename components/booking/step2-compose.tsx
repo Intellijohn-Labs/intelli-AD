@@ -192,6 +192,7 @@ export function Step2Compose() {
                 setValue("artwork", meta, { shouldValidate: true, shouldDirty: true });
                 void uploadArtwork(file).then((r) => { if (r.url) setValue("artwork", { ...meta, url: r.url }, { shouldValidate: true, shouldDirty: true }); });
               }}
+              onColor={(c) => setValue("colorMode", c, { shouldDirty: true })}
               onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
               onPhoto={(f) => setValue("artwork", f, { shouldValidate: true, shouldDirty: true })}
             />
