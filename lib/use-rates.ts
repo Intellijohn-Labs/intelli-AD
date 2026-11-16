@@ -46,6 +46,7 @@ export async function loadRates(): Promise<RateRow[] | null> {
       ...r,
       base_rate: Number(r.base_rate), extra_line_rate: Number(r.extra_line_rate),
       sq_cm_rate: Number(r.sq_cm_rate), color_surcharge_percent: Number(r.color_surcharge_percent),
+      color_sq_cm_rate: r.color_sq_cm_rate == null ? null : Number(r.color_sq_cm_rate),
       min_lines: r.min_lines ?? null, min_sq_cm: r.min_sq_cm == null ? null : Number(r.min_sq_cm),
       cutoff_days: r.cutoff_days ?? null, cutoff_time: r.cutoff_time ?? null, gst_included: r.gst_included === true,
       bold_heading_rate: Number(r.bold_heading_rate ?? 0), tick_rate: Number(r.tick_rate ?? 0), border_rate: Number(r.border_rate ?? 0),

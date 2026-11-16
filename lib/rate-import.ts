@@ -128,7 +128,7 @@ const ALIASES: Record<string, string> = {
   cannanore: "kannur", quilon: "kollam", bangalore: "bengaluru", madras: "chennai", bombay: "mumbai", palghat: "palakkad", alleppey: "alappuzha",
 };
 
-export type ImportField = "base_rate" | "extra_line_rate" | "sq_cm_rate" | "color_surcharge_percent" | "min_lines" | "min_sq_cm" | "bold_heading_rate" | "border_rate";
+export type ImportField = "base_rate" | "extra_line_rate" | "sq_cm_rate" | "color_surcharge_percent" | "color_sq_cm_rate" | "min_lines" | "min_sq_cm" | "bold_heading_rate" | "border_rate";
 export interface ImportRow extends RateRow {
   /** Stable client id for the review table. */
   uid: string;
@@ -189,7 +189,7 @@ function blank(paper: Newspaper, edition: string, category: string, adType: AdTy
   return {
     uid: `imp${++uidSeq}`, include: true, source: "", flags: {},
     newspaper_name: paper.name, edition, category, ad_type: adType,
-    base_rate: 0, extra_line_rate: 0, sq_cm_rate: 0, color_surcharge_percent: 0, min_lines: null, min_sq_cm: null, cutoff_days: null, cutoff_time: null,
+    base_rate: 0, extra_line_rate: 0, sq_cm_rate: 0, color_surcharge_percent: 0, color_sq_cm_rate: null, min_lines: null, min_sq_cm: null, cutoff_days: null, cutoff_time: null,
     gst_included: gst, bold_heading_rate: 0, tick_rate: 0, border_rate: 0,
   };
 }
@@ -204,7 +204,7 @@ export function mapExtraction(paper: Newspaper, ex: RateExtraction, opts: { word
   const rows = new Map<string, ImportRow>();
   const notes: string[] = [];
   const unmapped = new Set<string>();
-  const combos = new Map<string, { includes: string[]; gst_included: boolean; rates: { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; min_sq_cm?: number | null }[] }>();
+  const combos = new Map<string, { includes: string[]; gst_included: boolean; rates: { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; color_sq_cm_rate?: number | null; min_sq_cm?: number | null }[] }>();
   const extras: ImportExtra[] = [];
   let tint: number | null = null, underline: number | null = null, boxPct: number | null = null;
   const put = (edition: string, category: string, adType: AdType) => {
@@ -231,11 +231,11 @@ export function mapExtraction(paper: Newspaper, ex: RateExtraction, opts: { word
       const inc = (decl?.includes ?? []).map((n) => resolveEdition(paper, n));
       const incNames = inc.filter((x): x is { kind: "edition"; name: string } => x.kind === "edition").map((x) => x.name);
       if (!t || !decl || incNames.length < 2 || incNames.length !== inc.length) { unmapped.add(`Combo "${d.edition}": ${!decl?.includes?.length ? "the card doesn't list which editions it includes" : "includes editions that aren't in this app"}, so it can't be applied to a booking (not imported).`); continue; }
-      const prev = combos.get(d.edition) ?? { includes: incNames, gst_included: gst, rates: [] as { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; min_sq_cm?: number | null }[] };
+      const prev = combos.get(d.edition) ?? { includes: incNames, gst_included: gst, rates: [] as { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; color_sq_cm_rate?: number | null; min_sq_cm?: number | null }[] };
       for (const cat of t.categories) {
         if (!d.bw) continue;
         prev.rates = prev.rates.filter((r) => !(r.ad_type === t.adType && r.category === cat));
-        prev.rates.push({ ad_type: t.adType, category: cat, sq_cm_rate: d.bw, color_surcharge_percent: d.bw && d.colour && d.colour >= d.bw ? r2((d.colour / d.bw - 1) * 100) : 0, min_sq_cm: d.minSqCm ?? null });
+        prev.rates.push({ ad_type: t.adType, category: cat, sq_cm_rate: d.bw, color_surcharge_percent: d.bw && d.colour && d.colour >= d.bw ? r2((d.colour / d.bw - 1) * 100) : 0, color_sq_cm_rate: d.colour && d.bw && d.colour >= d.bw ? d.colour : null, min_sq_cm: d.minSqCm ?? null });
       }
       combos.set(d.edition, prev);
       continue;
@@ -248,9 +248,9 @@ export function mapExtraction(paper: Newspaper, ex: RateExtraction, opts: { word
       r.sq_cm_rate = d.bw ?? 0;
       if (!d.bw) r.flags.sq_cm_rate = "missing";
       if (d.bw && d.colour && d.colour >= d.bw) {
-        r.color_surcharge_percent = r2((d.colour / d.bw - 1) * 100);
-        r.flags.color_surcharge_percent = "uncertain"; // derived: colour ÷ B&W − 1
-      } else if (d.colour && !d.bw) r.flags.color_surcharge_percent = "missing";
+        r.color_surcharge_percent = r2((d.colour / d.bw - 1) * 100); // display only; pricing uses the exact printed colour rate below
+        r.color_sq_cm_rate = d.colour;
+      } else if (d.colour && !d.bw) r.flags.color_sq_cm_rate = "missing";
       if (d.minSqCm) r.min_sq_cm = d.minSqCm;
       if (d.uncertain) { r.flags.sq_cm_rate ??= "uncertain"; }
       if (t.uncertain) { r.flags.sq_cm_rate ??= "uncertain"; unmapped.add(`${t.uncertain} (check the category).`); }

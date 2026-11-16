@@ -92,7 +92,7 @@ export function DisplaySizer({
       {onPosition && positions.length > 0 && (
         <Field id="ad-position" label="Page position · പേജ് സ്ഥാനം" hint="Premium rates printed on the rate card">
           <Select id="ad-position" value={position} onChange={(e) => onPosition(e.target.value)}>
-            <option value="">Run of paper (no premium)</option>
+            <option value="">Inside Page (Standard)</option>
             {positions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
           </Select>
         </Field>

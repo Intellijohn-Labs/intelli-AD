@@ -189,7 +189,11 @@ export function calculateQuote(input: QuoteInput): Quote {
         const extraUnitsC = Math.max(0, round2(area - baseUnitsC));
         const extraC = round2(extraUnitsC * rateC);
         let enhC = 0;
-        if (display.colorMode === "color") { const amt = round2((baseC + extraC) * (row.color_surcharge_percent / 100)); enhC += amt; enhTotals.color = (enhTotals.color ?? 0) + amt; }
+        if (display.colorMode === "color") {
+          // Exact printed colour rate when the card has one (and no position rate overrides it); else the derived percentage.
+          const exact = row.color_sq_cm_rate && row.color_sq_cm_rate > 0 && !prem?.rate_per_sq_cm ? round2(row.color_sq_cm_rate * netC) : 0;
+          const amt = exact ? round2(round2(baseUnitsC * exact) + round2(extraUnitsC * exact) - baseC - extraC) : round2((baseC + extraC) * (row.color_surcharge_percent / 100));
+          enhC += amt; enhTotals.color = (enhTotals.color ?? 0) + amt; }
         if (prem?.percent && !prem.rate_per_sq_cm) { const amt = round2((baseC + extraC) * (prem.percent / 100)); enhC += amt; const key = `pos:${prem.label} (+${prem.percent}%)`; enhTotals[key] = (enhTotals[key] ?? 0) + amt; }
         enhC = round2(enhC);
         const grossC = round2(baseC + extraC + enhC);
@@ -246,7 +250,9 @@ export function calculateQuote(input: QuoteInput): Quote {
         extraUnitLabel = "cm²";
         extra = round2(extraUnits * rate);
         if (display.colorMode === "color") {
-          const amt = round2((base + extra) * (rule.color_surcharge_percent / 100));
+          // Exact printed colour rate (₹/cm²) when the card has one (and no position rate overrides it); else the derived percentage.
+          const exact = rule.color_sq_cm_rate && rule.color_sq_cm_rate > 0 && !prem?.rate_per_sq_cm ? round2(rule.color_sq_cm_rate * net) : 0;
+          const amt = exact ? round2(round2(baseUnits * exact) + round2(extraUnits * exact) - base - extra) : round2((base + extra) * (rule.color_surcharge_percent / 100));
           enhancements += amt;
           enhTotals.color = (enhTotals.color ?? 0) + amt;
         }

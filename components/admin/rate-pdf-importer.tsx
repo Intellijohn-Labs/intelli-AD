@@ -20,7 +20,8 @@ const NUMS: { key: ImportField; label: string; types: ImportRow["ad_type"][]; st
   { key: "border_rate", label: "Box ₹", types: ["classified-text"], step: "0.01" },
   { key: "min_sq_cm", label: "Min cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
   { key: "sq_cm_rate", label: "₹ / cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
-  { key: "color_surcharge_percent", label: "Colour +%", types: ["classified-display", "commercial-display"], step: "0.01" },
+  { key: "color_sq_cm_rate", label: "Colour ₹ / cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
+  { key: "color_surcharge_percent", label: "Colour +% (info)", types: ["classified-display", "commercial-display"], step: "0.01" },
 ];
 const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 
@@ -36,6 +37,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [extras, setExtras] = useState<ImportExtra[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [notes, setNotes] = useState<string[]>([]);
   const paper = newspapers.find((n) => n.id === paperId)!;
   const [ai, setAi] = useState<AiSettingsState | null>(null);
@@ -110,16 +112,20 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
       if (r.uid !== uid) return r;
       const flags = { ...r.flags };
       if (field) delete flags[field]; // edited by the admin = verified
-      return { ...r, ...patch, flags };
+      const next = { ...r, ...patch, flags };
+      // Keep the informational colour % in step; pricing uses the exact printed colour rate.
+      if ((field === "sq_cm_rate" || field === "color_sq_cm_rate") && next.sq_cm_rate > 0 && (next.color_sq_cm_rate ?? 0) >= next.sq_cm_rate) next.color_surcharge_percent = Math.round(((next.color_sq_cm_rate as number) / next.sq_cm_rate - 1) * 10000) / 100;
+      return next;
     }));
 
   async function apply() {
     if (!included.length || blocked) return;
     setBusy("saving"); setError(""); setConfirming(false);
     try {
-      const raw = included.map((r) => Object.fromEntries(RATE_COLUMNS.map((c) => [c, r[c]])));
+      const raw = included.map((r) => ({ ...Object.fromEntries(RATE_COLUMNS.map((c) => [c, r[c]])), color_sq_cm_rate: r.color_sq_cm_rate ?? null }));
       const res = await replacePublicationRates({
         newspaperName: paper.name,
+        mode,
         rows: raw,
         extras: extras.filter((x) => x.include).map((x) => ({ kind: x.kind, name: x.name, data: x.data })),
         meta: { fileName: file?.name ?? "", effectiveDate: meta?.ex.effectiveDate ?? null, engine: meta ? `${meta.provider}:${meta.model}` : "" },
@@ -141,7 +147,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   return (
     <section aria-labelledby="pdf-import-h" className={card}>
       <h2 id="pdf-import-h" className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"><Sparkles className="h-5 w-5 text-violet-600" aria-hidden="true" /> Upload Rate Card PDF · {paper.name}</h2>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload {paper.name}&rsquo;s official tariff PDF. Only this publication&rsquo;s rates are touched, and you review every number before anything is saved. Saving REPLACES all of this publication\u2019s existing rates (old, seed and dummy ones included) with the rows you approve.</p>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload {paper.name}&rsquo;s official tariff PDF. Only this publication&rsquo;s rates are touched, and you review every number before anything is saved. When you save you choose to merge into the existing rates (default, so a Display PDF and a Classifieds PDF can be uploaded separately) or to replace them all.</p>
 
       <div role="radiogroup" aria-label="AI engine" className="mt-4 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">AI Engine:</span>
@@ -228,7 +234,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                             <td key={c.key} className="px-2 py-1.5 text-right">
                               {c.types.includes(r.ad_type)
                                 ? <input type="number" min={0} step={c.step} value={r[c.key] ?? ""} aria-label={`${c.label} for ${r.edition} ${r.category}`} className={cellCls(r.flags[c.key])}
-                                    onChange={(e) => edit(r.uid, { [c.key]: e.target.value === "" ? (c.key === "min_lines" || c.key === "min_sq_cm" ? null : 0) : Number(e.target.value) } as Partial<ImportRow>, c.key)} />
+                                    onChange={(e) => edit(r.uid, { [c.key]: e.target.value === "" ? (c.key === "min_lines" || c.key === "min_sq_cm" || c.key === "color_sq_cm_rate" ? null : 0) : Number(e.target.value) } as Partial<ImportRow>, c.key)} />
                                 : <span className="text-slate-300">—</span>}
                             </td>
                           ))}
@@ -288,15 +294,23 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                     {busy === "saving" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />} Apply &amp; Save Rates ({included.length})
                   </button>
                 ) : (
-                  <div role="alertdialog" aria-label="Confirm replace" className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100">
-                    <span className="font-semibold">This replaces ALL existing {paper.name} rates (including any old or dummy ones) with these {included.length}. Continue?</span>
-                    <button type="button" onClick={() => void apply()} className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">Yes, replace &amp; save</button>
-                    <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-amber-500 px-3 py-1 text-xs font-bold">Cancel</button>
+                  <div role="alertdialog" aria-label="Confirm import mode" className="w-full max-w-2xl space-y-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100">
+                    <fieldset className="space-y-1.5">
+                      <legend className="font-semibold">How should these {included.length} rows be saved for {paper.name}?</legend>
+                      <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-emerald-600" checked={mode === "merge"} onChange={() => setMode("merge")} />
+                        <span><b>Merge / Update matching rows (keep existing ad types)</b><span className="block text-xs opacity-80">Adds new rows and updates rows with the same edition, category and ad type. Nothing else is deleted, so Display and Classified PDFs can be uploaded one after the other.</span></span></label>
+                      <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-emerald-600" checked={mode === "replace"} onChange={() => setMode("replace")} />
+                        <span><b>Replace all rates for this publication</b><span className="block text-xs opacity-80">Deletes every other existing {paper.name} rate (old, seed and dummy ones included) and its page premiums, combos and add-ons.</span></span></label>
+                    </fieldset>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => void apply()} className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">{mode === "merge" ? "Yes, merge & save" : "Yes, replace & save"}</button>
+                      <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-amber-500 px-3 py-1 text-xs font-bold">Cancel</button>
+                    </div>
                   </div>
                 )}
                 {blocked && <span className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-300"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Fix the highlighted rows (or untick them) to continue.</span>}
               </div>
-              {!blocked && included.length > 0 && <p className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> {paper.name}&rsquo;s old rates are deleted and only these (verified by you) go live in the booking calculator at once. Unticked rows are not saved.</p>}
+              {!blocked && included.length > 0 && <p className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> Rows you approve go live in the booking calculator at once (merge keeps other existing rows; replace removes them). Unticked rows are not saved.</p>}
             </div>
           )}
         </div>

@@ -5,8 +5,8 @@ import { Check, ChevronDown, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AD_TYPES, categories, getCategory } from "@/data/categories";
 import { newspapers } from "@/data/newspapers";
-import { useRateAvailability } from "@/lib/use-rates";
-import { editionEnabled, visibleEditions } from "@/lib/rates";
+import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
+import { combosFor, editionEnabled, getActiveExtras, visibleEditions } from "@/lib/rates";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/field";
@@ -26,6 +26,7 @@ export function Step1Selection() {
   const { state, update } = useBooking();
   const { t, tl, place, pn } = useI18n();
   const [open, setOpen] = useState<string | null>(() => Object.keys(state.selection)[0] ?? newspapers[0].id);
+  useRatesVersion(); // re-render when imported combo packages load
   const [scope, setScope] = useState<"all" | "national" | "regional">("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +209,31 @@ export function Step1Selection() {
                         ))}
                       </div>
                     )}
+                    {(() => {
+                      // Combo packages from the imported rate card: one click selects every edition the package includes.
+                      const pkgs = combosFor(getActiveExtras(), paper.name).map((c) => {
+                        const eds = c.includes.map((n) => visibleEditions(paper).find((e) => e.name.trim().toLowerCase() === n.trim().toLowerCase()));
+                        const rate = c.rates.filter((r) => r.ad_type === state.adType && (r.category === "all" || r.category === state.categoryId)).sort((a, b) => Number(b.category !== "all") - Number(a.category !== "all"))[0];
+                        return { name: c.name, ids: eds.every(Boolean) ? eds.map((e) => e!.id) : [], rate };
+                      }).filter((c) => c.ids.length >= 2 && c.rate && c.rate.sq_cm_rate > 0);
+                      if (!pkgs.length) return null;
+                      return (
+                        <div className="mb-3">
+                          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Combo packages")}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {pkgs.map((c) => {
+                              const on = c.ids.every((id) => selected.includes(id));
+                              return (
+                                <button key={c.name} type="button" aria-pressed={on} onClick={() => setEditions(paper.id, on ? selected.filter((id) => !c.ids.includes(id)) : [...new Set([...selected, ...c.ids])])}
+                                  className={cn("rounded border px-3 py-1.5 text-sm font-semibold transition-colors", on ? "border-navy-600 bg-navy-700 text-white" : "border-dashed border-zinc-500 bg-white hover:border-navy-400")}>
+                                  {c.name} <span className="font-normal opacity-80">· {c.ids.length} editions · {formatINR(c.rate!.sq_cm_rate)}/cm²</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {paper.groups.map((g) => {
                       const eds = visibleEditions(paper).filter((e) => e.groupId === g.id);
                       if (!eds.length) return null; // group with no enabled editions: hidden

@@ -198,3 +198,7 @@ create policy "admins update extras" on public.publication_extras for update to 
 drop policy if exists "admins delete extras" on public.publication_extras;
 create policy "admins delete extras" on public.publication_extras for delete to authenticated
   using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+-- Exact printed colour rate (₹/cm²) so a colour ad is priced at precisely what the card prints, not a rounded percentage over B/W.
+alter table public.publication_rates add column if not exists color_sq_cm_rate numeric(12,2) check (color_sq_cm_rate is null or color_sq_cm_rate >= 0);
+NOTIFY pgrst, 'reload schema';

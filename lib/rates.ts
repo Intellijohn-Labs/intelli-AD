@@ -19,6 +19,8 @@ export interface RateRow {
   sq_cm_rate: number;
   /** Extra charged for a colour ad, in percent. */
   color_surcharge_percent: number;
+  /** Exact printed colour rate per cm² (display ads), when the card prints one. Takes precedence over the percentage. */
+  color_sq_cm_rate?: number | null;
   /** Minimum billable lines (text) / cm² (display). Null → the publication's standard minimum. */
   min_lines: number | null;
   min_sq_cm: number | null;
@@ -46,7 +48,7 @@ export interface RateExtra {
   data: Record<string, unknown>;
 }
 export interface PagePremiumData { label: string; edition?: string | null; percent?: number | null; rate_per_sq_cm?: number | null }
-export interface ComboData { includes: string[]; gst_included?: boolean; rates: { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; min_sq_cm?: number | null }[] }
+export interface ComboData { includes: string[]; gst_included?: boolean; rates: { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; color_sq_cm_rate?: number | null; min_sq_cm?: number | null }[] }
 export interface AddonData { tint_percent?: number | null; underline_percent?: number | null; box_percent?: number | null }
 
 /** Per-newspaper settings (table `newspaper_settings`). */
