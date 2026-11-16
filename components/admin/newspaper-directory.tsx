@@ -8,6 +8,7 @@ import { downloadProtectedTemplate } from "@/lib/rate-template";
 import { getActiveRates, paperHasRates } from "@/lib/rates";
 import { loadRates, useRatesVersion } from "@/lib/use-rates";
 import { RateManager } from "./rate-manager";
+import { RatePdfImporter } from "./rate-pdf-importer";
 import { PaperSettingsPanel } from "./paper-settings-panel";
 import { RateTableEditor } from "./rate-table-editor";
 
@@ -15,6 +16,7 @@ const FORMATS = ["Classified Text", "Classified Display", "Commercial Display"];
 
 export function NewspaperDirectory() {
   const version = useRatesVersion();
+  const [importOpen, setImportOpen] = useState(false);
   const [open, setOpen] = useState<{ id: string; mode: "upload" | "table" | "settings" } | null>(null);
   useEffect(() => { void loadRates(); }, []);
 
@@ -42,6 +44,8 @@ export function NewspaperDirectory() {
     <div>
       <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Newspapers &amp; Rates</h1>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage rates one publication at a time. Saved rates go live in the booking calculator immediately.</p>
+      <button type="button" onClick={() => setImportOpen((v) => !v)} aria-expanded={importOpen} className="mt-4 inline-flex items-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700">✨ Import from Rate Card PDF</button>
+      {importOpen && <div className="mt-4"><RatePdfImporter /></div>}
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ordered.map((n) => {
