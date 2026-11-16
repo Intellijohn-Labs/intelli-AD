@@ -23,9 +23,9 @@ const body = z.object({
 type Input = z.infer<typeof body>;
 
 const STYLE_BRIEF: Record<PosterStyleId, string> = {
-  classic: `STYLE 1 — Vintage Floral Wreath: classic newsprint tone (warm cream parchment, fine dark ink line-work). An intricate, finely drawn floral wreath / garland of natural flowers and leaves frames the portrait, which sits in a round or oval opening.`,
-  honored: `STYLE 2 — Ornate Vintage Newspaper Border: a Victorian / vintage engraved newspaper border (fine filigree, cartouche corners, engraved line-work) around the whole sheet. The portrait is cropped to an oval.`,
-  memoriam: `STYLE 3 — Minimalist Rose & Candle: a clean, elegant thin border with a single rose and/or a lit candle motif, in a restrained palette with generous quiet space. The portrait sits in a soft oval or rounded frame.`,
+  classic: `STYLE 1 — Vintage Floral Wreath: classic newsprint tone (warm cream parchment, fine dark ink line-work). An intricate, finely drawn floral wreath / garland of natural flowers and leaves frames the portrait, which sits in a round or oval opening. The wreath must be fully contained within the 20%–55% band.`,
+  honored: `STYLE 2 — Ornate Vintage Newspaper Border: a Victorian / vintage engraved newspaper border (fine filigree, cartouche corners, engraved line-work) around the whole sheet. The portrait is cropped to an oval within the 20%–55% band; keep the filigree and cartouche corners out of the header and text zones, with only a thin plain edge border allowed.`,
+  memoriam: `STYLE 3 — Minimalist Rose & Candle: a clean, elegant thin border with a single rose and/or a lit candle motif, in a restrained palette with generous quiet space. The portrait sits in a soft oval or rounded frame within the 20%–55% band, with the rose and/or candle placed beside or around the frame inside that band only, never in the text zone.`,
 };
 
 function prompt(p: Input): string {
@@ -38,10 +38,11 @@ FORMAT: portrait ${p.aspect}, filling the whole frame. Warm cream / parchment ne
 
 ${STYLE_BRIEF[p.styleId]}
 
-LAYOUT (strict; measured from the top of the image):
-- TOP 15%: a clean, empty, unobstructed cream parchment area (a plain band, no ornament inside it) reserved for a heading.
-- Between about 15% and 60% of the height: the portrait, framed gracefully and centred in the upper-middle area, surrounded by the theme's borders and motifs.
-- BOTTOM 40%: a clean, empty, unobstructed cream parchment area below the portrait, reserved for the name and several lines of details. Keep any border or motif thin and at the extreme edges only; nothing may intrude on this area.
+LAYOUT (strict; percentages are of the image height, measured from the top):
+- TOP 18% (0%–18%): HEADER ZONE. Pure, solid, plain cream/parchment background only. Absolutely NO horizontal divider lines, rules, wreath or garland extensions, leaves, flowers, corner flourishes, or any ornament inside it.
+- 20%–55%: the ONLY band where the portrait oval/frame and its wreath, flowers or ornament may sit, centred horizontally. The frame, including all its decoration, must stay entirely inside this band; do not let it touch or cross the 20% or 55% lines.
+- BOTTOM 42% (58%–100%): TEXT ZONE. Pure, solid, plain cream/parchment background only. NO divider lines, floral extensions, candles, roses, corner flourishes or ornament of any kind inside it.
+- The only thing allowed to run through the header and text zones is, at most, a very thin plain outer border line hugging the extreme edges of the image (2% margin), and only if the theme has one.
 
 ${hasPhoto
     ? "PHOTO: the attached image is the portrait of the deceased. Use THIS person's face exactly as it is: do not re-draw, beautify, age, stylise or replace it; only crop it into the frame."

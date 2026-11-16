@@ -47,6 +47,24 @@ function wrap(ctx: Ctx, text: string, maxW: number): string[] {
   return out;
 }
 
+/** Drops lines that repeat the header, and strips the leading name (printed large above) from the line that starts with it. */
+export function tidyLines(name: string, lines: string[]): string[] {
+  const headers = new Set([...Object.values(POSTER_HEADERS), "ആദരാഞ്ജലികൾ"]);
+  let stripped = false;
+  return lines
+    .map((l) => l.trim())
+    .filter((l) => l && !headers.has(l.replace(/[.\s]+$/, "")))
+    .map((l) => {
+      if (stripped || !name || !l.startsWith(name)) return l;
+      stripped = true;
+      let r = l.slice(name.length).replace(/^[\s,.:;–-]+/, "");
+      const m = r.match(/^\(([^)]*)\)\s*,?\s*(.*)$/);
+      if (m) r = [m[1], m[2]].filter(Boolean).join(", ");
+      return r || l;
+    })
+    .filter(Boolean);
+}
+
 export interface ComposeInput {
   /** Text-free artwork as a data: URL. */
   artworkUrl: string;
@@ -84,16 +102,14 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
   ctx.drawImage(art, (W - aw) / 2, (H - ah) / 2, aw, ah);
 
   // Soft parchment wash behind the text zones so type stays readable even if the artwork drifts into them.
-  const wash = (y0: number, y1: number) => {
+  const wash = (y0: number, y1: number, stops: [number, number][]) => {
     const g = ctx.createLinearGradient(0, y0, 0, y1);
-    g.addColorStop(0, "rgba(250,244,230,0)");
-    g.addColorStop(0.3, "rgba(250,244,230,0.78)");
-    g.addColorStop(0.85, "rgba(250,244,230,0.78)");
-    g.addColorStop(1, "rgba(250,244,230,0.25)");
+    for (const [at, a] of stops) g.addColorStop(at, `rgba(250,244,230,${a})`);
     ctx.fillStyle = g;
     ctx.fillRect(0, y0, W, y1 - y0);
   };
-  wash(H * 0.58, H);
+  wash(0, H * 0.21, [[0, 0.9], [0.75, 0.9], [1, 0]]); // header zone
+  wash(H * 0.56, H, [[0, 0], [0.22, 0.92], [0.88, 0.92], [1, 0.4]]); // details zone
 
   ctx.fillStyle = INK;
   ctx.textAlign = "center";
@@ -109,14 +125,15 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
   // Details: bottom safe zone, below the portrait. Shrink type until everything fits.
   const top = H * 0.62, bottom = H * 0.965, maxH = bottom - top;
   const name = inp.name.trim();
+  const lines = tidyLines(name, inp.lines);
   let scale = 1;
   let layout: { nameLines: string[]; body: string[][]; ns: number; bs: number } | null = null;
-  for (; scale > 0.35; scale -= 0.04) {
-    const ns = W * 0.058 * scale, bs = W * 0.031 * scale;
+  for (; scale > 0.45; scale -= 0.03) {
+    const ns = W * 0.064 * scale, bs = W * 0.042 * scale; // ~9 pt body at 8 cm wide; min scale keeps it >= ~7 pt
     ctx.font = `800 ${ns}px ${SERIF}`;
     const nameLines = name ? wrap(ctx, name, zoneW) : [];
     ctx.font = `600 ${bs}px ${SANS}`;
-    const body = inp.lines.map((l) => wrap(ctx, l, zoneW));
+    const body = lines.map((l) => wrap(ctx, l, zoneW));
     const h = nameLines.length * ns * 1.3 + (nameLines.length ? ns * 0.35 : 0) + body.reduce((s, b) => s + b.length * bs * 1.45 + bs * 0.45, 0);
     layout = { nameLines, body, ns, bs };
     if (h <= maxH) break;
