@@ -125,8 +125,8 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
     ctx.fillStyle = g;
     ctx.fillRect(0, y0, W, y1 - y0);
   };
-  wash(0, H * 0.21, [[0, 0.9], [0.75, 0.9], [1, 0]]); // header zone
-  const bandTop = H * 0.585;
+  wash(0, H * 0.19, [[0, 0.9], [0.75, 0.9], [1, 0]]); // header zone
+  const bandTop = H * 0.52;
   if (dark) {
     // The footer band is drawn here (not by the model), so the white lettering always sits on solid dark.
     ctx.fillStyle = "#14100b";
@@ -134,7 +134,7 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
     ctx.fillStyle = "#b99a55";
     ctx.fillRect(0, bandTop, W, Math.max(3, H * 0.003));
   } else {
-    wash(H * 0.56, H, [[0, 0], [0.22, 0.92], [0.88, 0.92], [1, 0.4]]); // details zone
+    wash(H * 0.5, H, [[0, 0], [0.18, 0.92], [0.9, 0.92], [1, 0.4]]); // details zone
   }
 
   ctx.textAlign = "center";
@@ -163,7 +163,7 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
   ctx.fillText(header, W / 2, hy + hs * 0.35);
 
   // Details (bottom safe zone). Shrink the type until everything fits.
-  const top = H * 0.62, bottom = H * 0.965, maxH = bottom - top;
+  const top = H * 0.565, bottom = H * 0.965, maxH = bottom - top;
   const centered = (txt: string[], font: string, size: number, lh: number, cx: number): Block => ({
     h: txt.length * size * lh,
     draw: (y) => {
@@ -195,19 +195,9 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
     }
     ctx.font = `600 ${bs}px ${SANS}`;
     const bodyFont = `600 ${bs}px ${SANS}`;
-    // Style 3 (single person): memorial details in two columns when there are enough lines.
-    if (inp.styleId === "memoriam" && !joint && lines.length >= 4) {
-      const colW = W * 0.4, xs = [W * 0.27, W * 0.73];
-      const half = Math.ceil(lines.length / 2);
-      const cols = [lines.slice(0, half), lines.slice(half)].map((grp, i) => {
-        ctx.font = bodyFont;
-        return stack(grp.map((l) => centered(wrap(ctx, l, colW), bodyFont, bs, 1.45, xs[i])), gap);
-      });
-      blocks.push({ h: Math.max(...cols.map((c) => c.h)), draw: (y) => cols.forEach((c) => c.draw(y)) });
-    } else {
-      ctx.font = bodyFont;
-      blocks.push(stack(lines.map((l) => centered(wrap(ctx, l, zoneW), bodyFont, bs, 1.45, W / 2)), gap));
-    }
+    // Single person: one balanced, centred block (Style 3 uses columns only for the two people of a joint memorial).
+    ctx.font = bodyFont;
+    blocks.push(stack(lines.map((l) => centered(wrap(ctx, l, zoneW), bodyFont, bs, 1.45, W / 2)), gap));
     return stack(blocks, bs * 0.6);
   };
 

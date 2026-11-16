@@ -416,7 +416,7 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
     const first = n === 1;
     const cropOf = first ? f.photoCrop : f.photoCrop2 ?? { zoom: 1, x: 50, y: 50 };
     return (
-      <Frame url={first ? state.artwork?.previewUrl : p2.photo?.previewUrl} round={f.photoFrame === "round"} scale={(f.photoScale ?? 1) * (joint ? 0.8 : 1)} crop={cropOf}
+      <Frame url={first ? state.artwork?.previewUrl : p2.photo?.previewUrl} round={f.photoFrame === "round"} scale={(f.photoScale ?? 1) * (joint ? 0.68 : 1)} crop={cropOf}
         onCrop={editable ? (c) => update({ obituary: { ...f, ...(first ? { photoCrop: c } : { photoCrop2: c }) } }) : undefined}
         onPhoto={editable ? (file) => (first
           ? update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } })
@@ -436,7 +436,7 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
           </h4>
           <div className={cn("mt-2", showPhoto && !joint ? (narrow ? "flex flex-col items-center gap-3" : "flow-root") : "block")}>
-            {showPhoto && (joint ? <div className="mb-2 flex justify-center gap-3">{frameFor(1)}{frameFor(2)}</div> : narrow ? frameFor(1) : <div className="float-left mr-3 mb-1">{frameFor(1)}</div>)}
+            {showPhoto && (joint ? <div className="mb-1 flex justify-center gap-2">{frameFor(1)}{frameFor(2)}</div> : narrow ? frameFor(1) : <div className="float-left mr-3 mb-1">{frameFor(1)}</div>)}
             {/* The portrait floats left: the first lines sit beside it and the rest run the full width, so text never gets squeezed into a narrow column. */}
             <div lang="ml" className={cn("min-w-0 space-y-1.5 leading-[1.7] hyphens-auto [overflow-wrap:anywhere] [text-wrap:pretty]", narrow && "w-full", joint ? "text-center" : showPhoto && !narrow && align === "text-justify" ? "text-left" : align)} style={{ fontSize: textPx }}>
               {body.map((p, i) => {
