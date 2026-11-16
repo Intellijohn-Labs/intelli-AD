@@ -25,13 +25,14 @@ async function photoPayload(photo: FileMeta | null): Promise<{ mime: "image/jpeg
 }
 
 /** "✨ AI Poster Designer": three finished obituary ad designs from the notice text and the portrait; one can replace the ad artwork. */
-export function AiPosterModal({ open, onClose, name, text, category, language, widthCm, heightCm, photo, onUse }: {
+export function AiPosterModal({ open, onClose, name, text, category, colorMode, language, widthCm, heightCm, photo, onUse }: {
   open: boolean;
   onClose: () => void;
   /** Deceased's name, typeset large by the compositor. */
   name: string;
   text: string;
   category: "obituary" | "remembrance";
+  colorMode: "bw" | "color";
   language: "ml" | "en";
   widthCm: number;
   heightCm: number;
@@ -62,7 +63,7 @@ export function AiPosterModal({ open, onClose, name, text, category, language, w
   const one = async (id: PosterStyleId, ph: Awaited<ReturnType<typeof photoPayload>>, mine: number) => {
     set(id, { state: "loading" });
     try {
-      const res = await fetch("/api/ai/generate-obituary-art", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ styleId: id, text, category, language, aspect, widthCm, heightCm, photo: ph ?? undefined }) });
+      const res = await fetch("/api/ai/generate-obituary-art", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ styleId: id, colorMode, text, category, language, aspect, widthCm, heightCm, photo: ph ?? undefined }) });
       const j = await res.json().catch(() => ({}));
       if (mine !== run.current) return;
       if (!res.ok || !j.data) set(id, { state: "error", message: j.error ?? "Couldn't design this style." });

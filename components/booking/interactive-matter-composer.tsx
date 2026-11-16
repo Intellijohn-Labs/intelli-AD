@@ -70,7 +70,7 @@ export function InteractiveMatterComposer({ value, onChange, chars, words, lines
             <div className={cn("flex shrink-0 items-center justify-center overflow-hidden border-stone-800 bg-stone-100", frame, round ? "h-24 w-24 rounded-full" : "h-[120px] w-24")}>
               {photo
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={photo} alt="Uploaded portrait" className="h-full w-full object-cover grayscale" />
+                ? <img src={photo} alt="Uploaded portrait" className={cn("h-full w-full object-cover", state.display.colorMode === "bw" && "grayscale contrast-110")} />
                 : <User className="h-10 w-10 text-stone-400" aria-label="No photo yet" />}
             </div>
           )}

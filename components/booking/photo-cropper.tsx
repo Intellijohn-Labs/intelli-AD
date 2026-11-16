@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { PHOTO_ACCEPT, prepareImage } from "@/lib/image-convert";
 import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import type { FileMeta } from "@/lib/types";
+import { useBooking } from "@/lib/booking-store";
 import { cn } from "@/lib/utils";
 
 export interface Crop { zoom: number; x: number; y: number }
@@ -24,6 +25,7 @@ export function PhotoCropper({
   round: boolean;
 }) {
   const id = useId();
+  const bw = useBooking().state.display.colorMode === "bw";
   const upload = useArtworkUpload(onPhoto);
   const [convError, setConvError] = useState<string>();
   const pick = async (picked?: File) => {
@@ -43,7 +45,7 @@ export function PhotoCropper({
       <div className={cn("relative h-[120px] w-24 shrink-0 overflow-hidden border-2 border-[#0F172A] bg-zinc-100", round && "h-24 rounded-full")} aria-label="Crop preview">
         {photo?.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo.previewUrl} alt="Portrait crop preview" className="h-full w-full object-cover grayscale" style={cropStyle(crop)} />
+          <img src={photo.previewUrl} alt="Portrait crop preview" className={cn("h-full w-full object-cover", bw && "grayscale contrast-110")} style={cropStyle(crop)} />
         ) : (
           <span className="flex h-full items-center justify-center px-2 text-center text-[10px] text-zinc-500">Portrait</span>
         )}

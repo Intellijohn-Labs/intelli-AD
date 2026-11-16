@@ -183,7 +183,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28,
       )}
       {onPoster && (
         <AiPosterModal open={posterOpen} onClose={() => setPosterOpen(false)} name={f.name} text={state.text} category={anniv ? "remembrance" : "obituary"} language="ml"
-          widthCm={Math.round(displayWidth(state.display, colWidthCm) * 10) / 10} heightCm={state.display.heightCm} photo={state.artwork} onUse={onPoster} />
+          colorMode={state.display.colorMode} widthCm={Math.round(displayWidth(state.display, colWidthCm) * 10) / 10} heightCm={state.display.heightCm} photo={state.artwork} onUse={onPoster} />
       )}
       <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => { update({ obituary: { ...f, isCustomMatter: true } }); onText(txt); }} />
 
@@ -318,6 +318,7 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale
   const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const colorMode = useBooking().state.display.colorMode; // B&W prints the portrait in grayscale; colour keeps natural colours
   const upload = useArtworkUpload((f) => { if (f) onPhoto?.(f); });
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
@@ -358,7 +359,7 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale
       >
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="Portrait of the deceased" draggable={false} className="pointer-events-none h-full w-full object-cover grayscale" style={cropStyle(crop)} />
+          <img src={url} alt="Portrait of the deceased" draggable={false} className={cn("pointer-events-none h-full w-full object-cover", colorMode === "bw" && "grayscale contrast-110")} style={cropStyle(crop)} />
         ) : (
           <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] text-zinc-500">{interactive ? <>Click to add<br />photo</> : <>Photo<br />4×5 cm</>}</div>
         )}

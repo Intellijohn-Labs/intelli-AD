@@ -14,6 +14,7 @@ const body = z.object({
   text: z.string().trim().max(1200).optional(),
   category: z.enum(["obituary", "remembrance"]).default("obituary"),
   language: z.enum(["ml", "en"]).default("ml"),
+  colorMode: z.enum(["bw", "color"]).default("bw"),
   aspect: z.string().regex(/^\d:\d$/).default("4:5"),
   widthCm: z.number().min(1).max(60).optional(),
   heightCm: z.number().min(1).max(60).optional(),
@@ -34,7 +35,7 @@ function prompt(p: Input): string {
 
 ABSOLUTE RULE: generate ZERO text. No letters, words, numbers, digits, dates, symbols, captions, watermarks, logos or signatures anywhere in the image, in any script. Typography will be added later by software; any glyph you draw will ruin the ad.
 
-FORMAT: portrait ${p.aspect}, filling the whole frame. Warm cream / parchment newsprint background, crisp high-contrast artwork that still reads in black and white. No mock-up, no paper curl, no desk or device scene.
+FORMAT: portrait ${p.aspect}, filling the whole frame. ${p.colorMode === "color" ? "Warm cream / parchment background with rich, natural FULL-COLOUR artwork (natural flower and leaf colours, subtle gold or sepia accents)." : "Warm cream / parchment newsprint background, crisp high-contrast artwork that still reads in black and white."} No mock-up, no paper curl, no desk or device scene.
 
 ${STYLE_BRIEF[p.styleId]}
 
