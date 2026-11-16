@@ -14,7 +14,9 @@ import { cropStyle, PhotoCropper } from "../photo-cropper";
 import { ParagraphField } from "../paragraph-field";
 import type { FileMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 import { PreviewCaption } from "./preview-caption";
+import { PHOTO_ACCEPT, prepareImage } from "@/lib/image-convert";
 
 /** Single-line contentEditable block: commits on blur / Enter, so the notice text can be edited right on the proof. */
 function EditableLine({ value, onCommit, className, style }: { value: string; onCommit: (v: string) => void; className?: string; style?: React.CSSProperties }) {
@@ -315,6 +317,7 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale
   const interactive = !!(onCrop && onPhoto);
   const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const toast = useToast();
   const upload = useArtworkUpload((f) => { if (f) onPhoto?.(f); });
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
@@ -338,8 +341,10 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale
     drag.current = null;
     if (d && !d.moved) input.current?.click(); // a plain click replaces the photo
   };
-  const pick = (file?: File) => {
-    if (!file || !onPhoto || !/\.(jpe?g|png)$/i.test(file.name) || file.size > 15 * 1024 * 1024) return;
+  const pick = async (picked?: File) => {
+    if (!picked || !onPhoto) return;
+    let file: File;
+    try { file = await prepareImage(picked); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not read this photo."); return; } // current photo stays
     const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) };
     onPhoto(meta);
     upload.start(file, meta); // calls onPhoto again with the Supabase URL attached
@@ -359,7 +364,7 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale
         )}
         {interactive && url && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[8px] font-bold text-white opacity-0 transition-opacity group-hover/photo:opacity-100">Drag · click to replace</span>}
       </div>
-      {interactive && <input ref={input} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" tabIndex={-1} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />}
+      {interactive && <input ref={input} type="file" accept={PHOTO_ACCEPT} className="sr-only" tabIndex={-1} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />}
       {accent === "garland" && <Garland round={round} w={W + pad * 2} h={H + pad * 2} />}
       {(accent === "lamp" || accent === "candle") && (
         <span className="pointer-events-none absolute right-[-8px] bottom-0">{accent === "lamp" ? <Lamp /> : <Candle />}</span>

@@ -1,7 +1,8 @@
 "use client";
 
 import { ImagePlus, Trash2 } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
+import { PHOTO_ACCEPT, prepareImage } from "@/lib/image-convert";
 import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import type { FileMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -24,9 +25,12 @@ export function PhotoCropper({
 }) {
   const id = useId();
   const upload = useArtworkUpload(onPhoto);
-  const pick = (file?: File) => {
-    if (!file) return;
-    if (!/\.(jpe?g|png)$/i.test(file.name) || file.size > 15 * 1024 * 1024) return;
+  const [convError, setConvError] = useState<string>();
+  const pick = async (picked?: File) => {
+    if (!picked) return;
+    setConvError(undefined);
+    let file: File;
+    try { file = await prepareImage(picked); } catch (e) { setConvError(e instanceof Error ? e.message : "Could not read this photo."); return; }
     const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: URL.createObjectURL(file) };
     onPhoto(meta);
     upload.start(file, meta); // photo goes to Supabase Storage; the booking keeps the public URL
@@ -66,8 +70,9 @@ export function PhotoCropper({
           <label htmlFor={id} className="flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed border-zinc-300 bg-white px-4 py-5 text-center hover:border-navy-400 focus-within:outline-2 focus-within:outline-navy-500 dark:bg-zinc-800/50">
             <ImagePlus className="h-5 w-5 text-navy-600" aria-hidden="true" />
             <span className="text-sm font-medium">Upload portrait photo</span>
-            <span className="text-xs text-zinc-500">JPG or PNG · up to 15 MB · crop after upload</span>
-            <input id={id} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+            <span className="text-xs text-zinc-500">Any photo (JPG, PNG, WebP, HEIC…) · up to 15 MB · crop after upload</span>
+            <input id={id} type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+            {convError && <span role="alert" className="text-xs font-medium text-red-700">{convError}</span>}
           </label>
         )}
       </div>
