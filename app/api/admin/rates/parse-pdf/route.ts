@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
+import { AI_MODELS, DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
 import { resolveAiKeys } from "@/lib/ai-keys";
 import { newspapers } from "@/data/newspapers";
 import { EXTRACTION_SHAPE, extractionSchema } from "@/lib/rate-import";
@@ -126,8 +126,16 @@ export async function POST(req: Request) {
     const { data } = await admin.from("app_settings").select("value").eq("key", "ai_config").maybeSingle();
     if (data?.value) cfg = normalizeAiConfig(data.value);
   }
+  // The admin may override the engine for this one extraction; otherwise the Active Provider from AI Settings is used.
+  const askedRaw = String(form.get("provider") ?? "").trim().toLowerCase();
+  if (askedRaw && !["anthropic", "claude", "gemini"].includes(askedRaw)) return NextResponse.json({ error: 'provider must be "anthropic" or "gemini".', status: 400 }, { status: 400 });
+  if (askedRaw) {
+    const provider = askedRaw === "gemini" ? "gemini" : "claude";
+    // Keep the configured model when it belongs to that provider; otherwise use the provider's default model.
+    if (provider !== cfg.provider) cfg = { ...cfg, provider, model: AI_MODELS[provider][0].id };
+  }
   const key = cfg.provider === "claude" ? keys.claude : keys.gemini;
-  if (!key) return NextResponse.json({ error: `No ${cfg.provider === "claude" ? "Anthropic" : "Gemini"} API key is configured. Add one in Admin → AI Settings.`, status: 503 }, { status: 503 });
+  if (!key) return NextResponse.json({ error: `No ${cfg.provider === "claude" ? "Anthropic" : "Gemini"} API key is configured. Add one in Admin → AI Settings, or switch the AI engine.`, status: 503 }, { status: 503 });
 
   try {
     const text = prompt(paper.name, paper.editions.map((e) => e.name));

@@ -1,10 +1,12 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, FileText, Loader2, Save, Sparkles } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getAiSettings, type AiSettingsState } from "@/app/admin/settings/ai/actions";
 import { saveRates } from "@/app/admin/actions";
 import { useToast } from "@/components/ui/toast";
 import { newspapers } from "@/data/newspapers";
+import { AI_MODELS } from "@/lib/ai-config";
 import { mapExtraction, type ImportField, type ImportRow, type RateExtraction } from "@/lib/rate-import";
 import { RATE_COLUMNS, validateRows } from "@/lib/rates";
 import { loadRates } from "@/lib/use-rates";
@@ -24,10 +26,9 @@ const NUMS: { key: ImportField; label: string; types: ImportRow["ad_type"][]; st
 const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 
 /** Admin: upload a newspaper's tariff PDF, review the extracted rates in an editable table, then save them to the live rate book. */
-export function RatePdfImporter() {
+export function RatePdfImporter({ paperId }: { paperId: string }) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [paperId, setPaperId] = useState(newspapers[0].id);
   const [file, setFile] = useState<File | null>(null);
   const [wpl, setWpl] = useState(4);
   const [busy, setBusy] = useState<"" | "reading" | "saving">("");
@@ -36,6 +37,10 @@ export function RatePdfImporter() {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const paper = newspapers.find((n) => n.id === paperId)!;
+  const [ai, setAi] = useState<AiSettingsState | null>(null);
+  const [engine, setEngine] = useState<"claude" | "gemini">("claude");
+  useEffect(() => { void getAiSettings().then((s) => { if (s) { setAi(s); setEngine(s.config.provider); } }); }, []);
+  const engineModel = (e: "claude" | "gemini") => (ai?.config.provider === e ? ai.config.model : AI_MODELS[e][0].id);
 
   const remap = (ex: RateExtraction, words: number) => { const m = mapExtraction(paper, ex, { wordsPerLine: words }); setRows(m.rows); setNotes(m.notes); };
 
@@ -46,6 +51,7 @@ export function RatePdfImporter() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("publicationId", paperId);
+      fd.append("provider", engine === "claude" ? "anthropic" : "gemini");
       const res = await fetch("/api/admin/rates/parse-pdf", { method: "POST", body: fd });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.extraction) { setError(j.error ?? `Couldn't read the PDF (${res.status}).`); return; }
@@ -94,15 +100,27 @@ export function RatePdfImporter() {
 
   return (
     <section aria-labelledby="pdf-import-h" className={card}>
-      <h2 id="pdf-import-h" className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"><Sparkles className="h-5 w-5 text-violet-600" aria-hidden="true" /> Import from Rate Card PDF</h2>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload a publication&rsquo;s official tariff PDF. The AI reads it with the provider set in AI Settings, and you review every number before anything is saved. Existing rates are only changed where the imported rows match.</p>
+      <h2 id="pdf-import-h" className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"><Sparkles className="h-5 w-5 text-violet-600" aria-hidden="true" /> Upload Rate Card PDF · {paper.name}</h2>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload {paper.name}&rsquo;s official tariff PDF. Only this publication&rsquo;s rates are touched, and you review every number before anything is saved. Existing rates are only changed where the imported rows match.</p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr_auto] sm:items-end">
-        <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Publication
-          <select value={paperId} onChange={(e) => { setPaperId(e.target.value); setMeta(null); setRows([]); setNotes([]); }} disabled={!!busy} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800">
-            {newspapers.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
-          </select>
-        </label>
+      <div role="radiogroup" aria-label="AI engine" className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">AI Engine:</span>
+        {(["claude", "gemini"] as const).map((e) => {
+          const configured = ai ? ai.keys[e].configured : true;
+          return (
+            <button key={e} type="button" role="radio" aria-checked={engine === e} disabled={!!busy} onClick={() => setEngine(e)}
+              className={cn("rounded-md border px-3 py-1.5 text-sm font-semibold disabled:opacity-50", engine === e ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100")}>
+              {e === "claude" ? "Anthropic Claude" : "Google Gemini"}
+              {ai?.config.provider === e && <span className="ml-1.5 text-[10px] font-normal opacity-80">(active)</span>}
+              {!configured && <span className="ml-1.5 text-[10px] font-normal opacity-80">· no key</span>}
+            </button>
+          );
+        })}
+        <span className="text-xs text-slate-500">{engineModel(engine)}</span>
+      </div>
+      {ai && !ai.keys[engine].configured && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">No {engine === "claude" ? "Anthropic" : "Gemini"} key is saved yet. Add one in AI Settings, or switch the engine.</p>}
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Rate card PDF (max 4 MB)
           <input ref={fileRef} type="file" accept="application/pdf,.pdf" disabled={!!busy} className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 dark:border-slate-600 dark:bg-slate-800"
             onChange={(e) => {
@@ -123,7 +141,7 @@ export function RatePdfImporter() {
       {meta && (
         <div className="mt-5 space-y-4">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            <span>Read by <b>{meta.provider === "claude" ? "Claude" : "Gemini"}</b> · {meta.model}</span>
+            <span>Read by <b>{meta.provider === "claude" ? "Claude" : "Gemini"}</b> · {meta.model} <em className="text-slate-500">(not right? switch engine above and extract again)</em></span>
             <span>Effective date: <b>{meta.ex.effectiveDate ?? "not found"}</b></span>
             <span>GST: <b>{meta.ex.gstIncluded === true ? "included" : meta.ex.gstIncluded === false ? "extra" : "not stated"}</b></span>
             <span>Confidence: <b>{meta.ex.confidence != null ? `${Math.round(meta.ex.confidence * (meta.ex.confidence <= 1 ? 100 : 1))}%` : "n/a"}</b></span>

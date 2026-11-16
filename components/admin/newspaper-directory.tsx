@@ -16,8 +16,7 @@ const FORMATS = ["Classified Text", "Classified Display", "Commercial Display"];
 
 export function NewspaperDirectory() {
   const version = useRatesVersion();
-  const [importOpen, setImportOpen] = useState(false);
-  const [open, setOpen] = useState<{ id: string; mode: "upload" | "table" | "settings" } | null>(null);
+  const [open, setOpen] = useState<{ id: string; mode: "upload" | "pdf" | "table" | "settings" } | null>(null);
   useEffect(() => { void loadRates(); }, []);
 
   const counts = useMemo(() => {
@@ -44,8 +43,6 @@ export function NewspaperDirectory() {
     <div>
       <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Newspapers &amp; Rates</h1>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage rates one publication at a time. Saved rates go live in the booking calculator immediately.</p>
-      <button type="button" onClick={() => setImportOpen((v) => !v)} aria-expanded={importOpen} className="mt-4 inline-flex items-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700">✨ Import from Rate Card PDF</button>
-      {importOpen && <div className="mt-4"><RatePdfImporter /></div>}
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ordered.map((n) => {
@@ -70,6 +67,7 @@ export function NewspaperDirectory() {
               <div className="mt-4 grid grid-cols-2 gap-2 pt-1">
                 <button type="button" onClick={() => void downloadProtectedTemplate(n, getActiveRates() ?? [])} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"><Download className="h-3.5 w-3.5" aria-hidden="true" />Download Template</button>
                 <button type="button" onClick={() => setOpen({ id: n.id, mode: "upload" })} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><Upload className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel</button>
+                <button type="button" onClick={() => setOpen({ id: n.id, mode: "pdf" })} className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700">✨ Upload Rate Card PDF</button>
                 <button type="button" onClick={() => setOpen({ id: n.id, mode: "table" })} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Table2 className="h-3.5 w-3.5" aria-hidden="true" />Edit in Table</button>
                 <button type="button" onClick={() => setOpen({ id: n.id, mode: "settings" })} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Settings className="h-3.5 w-3.5" aria-hidden="true" />Publication Settings</button>
               </div>
@@ -103,11 +101,11 @@ export function NewspaperDirectory() {
           <div className="relative flex h-full w-full max-w-4xl flex-col overflow-y-auto bg-slate-50 shadow-2xl dark:bg-slate-900">
             <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
               <Newspaper className="h-5 w-5 text-slate-500" aria-hidden="true" />
-              <h2 className="flex-1 truncate text-lg font-extrabold text-slate-900 dark:text-white">{paper.name} <span className="text-sm font-normal text-slate-500">· {open.mode === "upload" ? "upload rate sheet" : open.mode === "table" ? "edit rates" : "publication settings"}</span></h2>
+              <h2 className="flex-1 truncate text-lg font-extrabold text-slate-900 dark:text-white">{paper.name} <span className="text-sm font-normal text-slate-500">· {open.mode === "upload" ? "upload rate sheet" : open.mode === "pdf" ? "rate card PDF (AI)" : open.mode === "table" ? "edit rates" : "publication settings"}</span></h2>
               <FileSpreadsheet className="hidden h-4 w-4 text-emerald-600 sm:block" aria-hidden="true" />
               <button type="button" onClick={() => setOpen(null)} aria-label="Close drawer" className="rounded p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button>
             </div>
-            <div className="p-4 sm:p-6">{open.mode === "upload" ? <RateManager key={paper.id} paper={paper.name} /> : open.mode === "table" ? <RateTableEditor key={paper.id} paper={paper} /> : <PaperSettingsPanel key={paper.id} paper={paper} />}</div>
+            <div className="p-4 sm:p-6">{open.mode === "upload" ? <RateManager key={paper.id} paper={paper.name} /> : open.mode === "pdf" ? <RatePdfImporter key={paper.id} paperId={paper.id} /> : open.mode === "table" ? <RateTableEditor key={paper.id} paper={paper} /> : <PaperSettingsPanel key={paper.id} paper={paper} />}</div>
           </div>
         </div>
       )}
