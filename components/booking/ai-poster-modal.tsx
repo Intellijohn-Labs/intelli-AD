@@ -133,7 +133,7 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={() => generate()} disabled={busy} aria-busy={busy}
               className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.5)] disabled:opacity-70">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} ✨ AI പോസ്റ്റർ നിർമ്മിക്കുക (Generate 3 Ad Styles)
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} AI പോസ്റ്റർ നിർമ്മിക്കുക (Generate 3 Ad Styles)
             </button>
             <span className="text-xs text-slate-500 dark:text-slate-300">{photo ? "അപ്‌ലോഡ് ചെയ്ത ഫോട്ടോ ഉപയോഗിക്കും." : "ഫോട്ടോ ഇല്ല: ഫോട്ടോ ഇല്ലാതെ അലങ്കാര ഡിസൈൻ ഉണ്ടാക്കും."} ഓരോ ഡിസൈനും ഉണ്ടാക്കാൻ അര മിനിറ്റോളം എടുക്കും.</span>
           </div>
@@ -145,9 +145,12 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
             {POSTER_STYLES.map((st) => {
               const s = slots[st.id];
               return (
-                <div key={st.id} className="flex flex-col rounded-xl border border-slate-200 p-2 dark:border-slate-700">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">{st.ml}</p>
-                  <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-300">{st.en} · {st.note}</p>
+                <div key={st.id} className="flex h-full flex-col rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+                  <div className="min-h-[84px]">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{st.ml}</p>
+                    <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-300">{st.en} · {st.note}</p>
+                  </div>
+                  <div className="mt-auto">
                   <div className="relative w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800" style={{ aspectRatio: aspect.replace(":", " / ") }}>
                     {s.state === "ready" && (
                       <button type="button" onClick={() => setZoom(st.id)} aria-label={`Expand ${st.en}`} className="group absolute inset-0">
@@ -161,8 +164,9 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
                     {s.state === "idle" && <p className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-slate-400">ഡിസൈൻ ഇവിടെ കാണാം</p>}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <button type="button" onClick={() => use(st.id)} disabled={s.state !== "ready"} className="flex-1 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-40">Use This Design / ഈ ഡിസൈൻ തിരഞ്ഞെടുക്കുക</button>
-                    {(s.state === "ready" || s.state === "error") && <button type="button" onClick={() => generate(st.id)} disabled={busy} aria-label={`Regenerate ${st.en}`} className="rounded-full border border-slate-300 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /></button>}
+                    <button type="button" onClick={() => use(st.id)} disabled={s.state !== "ready"} className="flex-1 rounded-xl bg-violet-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-40">Use This Design / തിരഞ്ഞെടുക്കുക</button>
+                    {(s.state === "ready" || s.state === "error") && <button type="button" onClick={() => generate(st.id)} disabled={busy} aria-label={`Regenerate ${st.en}`} className="rounded-xl border border-slate-300 p-2.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /></button>}
+                  </div>
                   </div>
                 </div>
               );
