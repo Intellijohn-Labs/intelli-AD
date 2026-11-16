@@ -231,7 +231,7 @@ export function Step1Selection() {
                               return (
                                 <button key={c.name} type="button" aria-pressed={on} onClick={() => setEditions(paper.id, on ? selected.filter((id) => !c.ids.includes(id)) : [...new Set([...selected, ...c.ids])])}
                                   className={cn("rounded border px-3 py-1.5 text-sm font-semibold transition-colors", on ? "border-navy-600 bg-navy-700 text-white" : "border-dashed border-zinc-500 bg-white hover:border-navy-400")}>
-                                  {c.name} <span className="font-normal opacity-80">· {c.ids.length} editions · {(c.rate!.word_rate ?? 0) > 0 ? `${formatINR(c.rate!.word_rate!)}/${t("word")}` : `${formatINR(c.rate!.sq_cm_rate)}/cm²`}</span>
+                                  {c.name} <span className="font-normal opacity-80">· {(c.rate!.word_rate ?? 0) > 0 ? `${formatINR(c.rate!.word_rate!)}/${t("word")}` : state.display.colorMode === "color" && (c.rate!.color_sq_cm_rate ?? 0) > 0 ? `${formatINR(c.rate!.color_sq_cm_rate!)}/cm² (${t("Colour")})` : `${formatINR(c.rate!.sq_cm_rate)}/cm² (${t("B/W")})`}</span>
                                 </button>
                               );
                             })}

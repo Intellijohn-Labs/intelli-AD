@@ -75,6 +75,11 @@ export interface EditionLine {
   discountLabel: string;
   discount: number;
   net: number;
+  /** Display ads: the exact per-cm² rate actually multiplied (B/W, exact printed colour, or position rate), and the exact per-insertion product. Absent when colour is a derived percentage. */
+  appliedRate?: number;
+  appliedTotal?: number;
+  /** Colour was requested but this page position only prints a B/W rate: priced at the printed B/W rate. */
+  bwOnly?: boolean;
 }
 
 export interface Quote {
@@ -173,7 +178,7 @@ export function calculateQuote(input: QuoteInput): Quote {
     // ── Pricing of one rate source (an edition's rate row, or a combo / slab entry from the rate card) ─────────────────
     const addon = addonsFor(extras, paper.name);
     type Src = Partial<Pick<RateRow, "word_rate" | "eng_word_rate" | "caps_word_rate" | "heading_line_rate" | "min_words" | "base_rate" | "extra_line_rate" | "min_lines" | "bold_heading_rate" | "tick_rate" | "border_rate" | "color_sq_cm_rate" | "min_sq_cm">> & { sq_cm_rate: number; color_surcharge_percent: number };
-    interface Charge { unitLabel: string; extraUnitLabel: string; baseUnits: number; extraUnits: number; rate: number; base: number; extra: number; enh: number; parts: Record<string, number> }
+    interface Charge { appliedRate?: number; appliedTotal?: number; bwOnly?: boolean; unitLabel: string; extraUnitLabel: string; baseUnits: number; extraUnits: number; rate: number; base: number; extra: number; enh: number; parts: Record<string, number> }
     const charge = (src: Src, net: number, prem: PagePremiumData | null): Charge | null => {
       const parts: Record<string, number> = {};
       const add = (k: string, v: number) => { if (v) parts[k] = round2((parts[k] ?? 0) + v); };
@@ -213,14 +218,19 @@ export function calculateQuote(input: QuoteInput): Quote {
       const base = round2(baseUnits * rate);
       const extraUnits = Math.max(0, round2(area - baseUnits));
       const extra = round2(extraUnits * rate);
+      let appliedRate: number | undefined = rate, appliedTotal: number | undefined = round2(base + extra), bwOnly = false;
       if (display.colorMode === "color") {
         let exact = 0;
-        if (prem?.rate_per_sq_cm) { if (!((prem.color_rate_per_sq_cm ?? 0) > 0)) return null; exact = round2(prem.color_rate_per_sq_cm! * net); } // colour at this position must be printed on the card
+        if (prem?.rate_per_sq_cm) { if ((prem.color_rate_per_sq_cm ?? 0) > 0) exact = round2(prem.color_rate_per_sq_cm! * net); else bwOnly = true; } // position prints only a B/W rate: priced at that printed rate, never ₹0
         else if ((src.color_sq_cm_rate ?? 0) > 0) exact = round2(src.color_sq_cm_rate! * net);
-        add("color", exact ? round2(round2(baseUnits * exact) + round2(extraUnits * exact) - base - extra) : round2((base + extra) * (src.color_surcharge_percent / 100)));
+        if (exact) {
+          const colourTotal = round2(round2(baseUnits * exact) + round2(extraUnits * exact));
+          add("color", round2(colourTotal - base - extra));
+          appliedRate = exact; appliedTotal = colourTotal;
+        } else if (!bwOnly) { add("color", round2((base + extra) * (src.color_surcharge_percent / 100))); appliedRate = undefined; appliedTotal = undefined; }
       }
       if (prem?.percent && !prem.rate_per_sq_cm) add(`pos:${prem.label} (+${prem.percent}%)`, round2((base + extra) * (prem.percent / 100)));
-      return { unitLabel: "cm²", extraUnitLabel: "cm²", baseUnits, extraUnits, rate, base, extra, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
+      return { appliedRate, appliedTotal, bwOnly, unitLabel: "cm²", extraUnitLabel: "cm²", baseUnits, extraUnits, rate, base, extra, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
     };
     const totalOf = (c: Charge) => round2(c.base + c.extra + c.enh);
 
@@ -275,6 +285,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         unitLabel: best.ch.unitLabel, baseUnits: best.ch.baseUnits, extraUnits: best.ch.extraUnits, extraUnitLabel: best.ch.extraUnitLabel, rate: best.ch.rate,
         base: round2(best.ch.base * count), extra: round2(best.ch.extra * count), enhancements: round2(best.ch.enh * count), gross: round2(best.total * count),
         discountPct: 0, discountLabel: "", discount: 0, net: round2(best.total * count),
+        appliedRate: best.ch.appliedRate, appliedTotal: best.ch.appliedTotal, bwOnly: best.ch.bwOnly,
       });
     }
 
@@ -299,6 +310,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         unitLabel: ch.unitLabel, baseUnits: ch.baseUnits, extraUnits: ch.extraUnits, extraUnitLabel: ch.extraUnitLabel, rate: ch.rate,
         base: round2(ch.base * k), extra: round2(ch.extra * k), enhancements: round2(ch.enh * k), gross: round2(gross * k),
         discountPct, discountLabel, discount: round2(discount * k), net: round2((gross - discount) * k),
+        appliedRate: ch.appliedRate, appliedTotal: ch.appliedTotal, bwOnly: ch.bwOnly,
       });
     }
 

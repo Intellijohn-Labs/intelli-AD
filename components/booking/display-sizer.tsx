@@ -99,15 +99,22 @@ export function DisplaySizer({
       )}
 
       {line && (() => {
+        const k = Math.max(1, quote.totals.insertions);
+        const units = Math.round((line.baseUnits + line.extraUnits) * 100) / 100; // billed cm²
+        const posLabel = position ? positions.find((p) => p.id === position)?.label : "";
+        const exact = line.appliedRate !== undefined && line.appliedTotal !== undefined;
         const mult = colorMode === "color" ? 1 + colorPremiumPct / 100 : 1;
-        const perEdition = Math.round(billed * line.rate * mult * 100) / 100; // exactly what the sentence below multiplies out to
+        const perEdition = exact ? line.appliedTotal! : Math.round(units * line.rate * mult * 100) / 100;
         const n = quote.editionCount;
+        const bwOnly = quote.lines.some((l) => l.bwOnly);
         return (
           <div className="rounded-md border border-dashed border-zinc-400 bg-white/60 p-3 font-mono text-xs leading-relaxed dark:bg-transparent" aria-live="polite">
-            <p className="font-bold">Price = area × base rate × colour multiplier, then GST</p>
-            <p>{Number(billed.toFixed(2))} cm² × {formatINR(line.rate, { decimals: true })}/cm² × {mult.toFixed(2)} = {formatINR(perEdition, { decimals: true })}{n > 1 ? " per edition" : ""}</p>
+            <p className="font-bold">Price = area × printed rate{posLabel ? ` · ${posLabel}` : ""}, then GST</p>
+            {bwOnly && <p className="my-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 font-sans font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-100">B/W only for {posLabel || "this position"} on rate card, so it is priced at the printed B/W rate</p>}
+            <p>{Number(units.toFixed(2))} cm² × {formatINR(exact ? line.appliedRate! : line.rate, { decimals: true })}/cm²{exact ? "" : ` × ${mult.toFixed(2)}`} = {formatINR(perEdition, { decimals: true })}{n > 1 ? " per edition" : ""}</p>
             {area < minAreaCm2 && <p className="text-amber-700 dark:text-amber-200">Minimum billable area is {minAreaCm2} cm²; smaller boxes are billed at the minimum.</p>}
             {n > 1 && <p>× {n} editions = {formatINR(quote.totals.gross, { decimals: true })}</p>}
+            {k > 1 && <p>× {k} insertions</p>}
             {quote.totals.discount > 0 && <p>− multi-edition discount {formatINR(quote.totals.discount, { decimals: true })} = {formatINR(quote.totals.taxable, { decimals: true })}</p>}
             {quote.enhancementItems.filter((e) => e.key.startsWith("pos:")).map((e) => <p key={e.key}>+ {e.label} {formatINR(e.amount, { decimals: true })}</p>)}
             <p>+ {Math.round(GST_RATE * 100)}% GST {formatINR(quote.totals.gst, { decimals: true })} → <b>{formatINR(quote.totals.total, { decimals: true })}</b></p>
