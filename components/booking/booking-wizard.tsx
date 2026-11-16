@@ -177,6 +177,8 @@ function MiniSummary({ state }: { state: BookingState }) {
   const paperLines = quote.lines.filter((l) => l.newspaperId === paper.id);
   const pkg = paperLines.find((l) => l.packageName);
   const covered = paperLines.reduce((a, l) => a + (l.editionsCovered ?? 1), 0);
+  const capsLine = paperLines.find((l) => l.capsApplied && l.unitLabel === "words" && (l.packageName || l.editionName === edition?.name));
+  const capsTag = capsLine ? ` (${t("All Caps")})` : "";
   const unitWord = (u: string) => (u === "words" ? t("word") : u === "lines" ? t("line") : t("cm²"));
   return (
     <Card className="p-5 sm:p-6">
@@ -195,7 +197,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       )}
       <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
-        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName!, price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
+        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName! + (pkg.capsApplied ? ` (${t("All Caps")})` : ""), price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name) + capsTag, price: formatINR(capsLine ? capsLine.rate : rate.amount), unit: capsLine ? unitWord("words") : t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
       {user && (

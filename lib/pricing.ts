@@ -82,6 +82,8 @@ export interface EditionLine {
   /** Combo / slab lines: the package name and how many editions it covers (1 for a single edition). */
   packageName?: string;
   editionsCovered?: number;
+  /** Per-word classified: the capitals rate (not the ordinary word rate) was applied. */
+  capsApplied?: boolean;
   /** Colour was requested but this page position only prints a B/W rate: priced at the printed B/W rate. */
   bwOnly?: boolean;
 }
@@ -182,7 +184,7 @@ export function calculateQuote(input: QuoteInput): Quote {
     // ── Pricing of one rate source (an edition's rate row, or a combo / slab entry from the rate card) ─────────────────
     const addon = addonsFor(extras, paper.name);
     type Src = Partial<Pick<RateRow, "word_rate" | "eng_word_rate" | "caps_word_rate" | "heading_line_rate" | "min_words" | "base_rate" | "extra_line_rate" | "min_lines" | "bold_heading_rate" | "tick_rate" | "border_rate" | "color_sq_cm_rate" | "min_sq_cm">> & { sq_cm_rate: number; color_surcharge_percent: number };
-    interface Charge { appliedRate?: number; appliedTotal?: number; bwOnly?: boolean; unitLabel: string; extraUnitLabel: string; baseUnits: number; extraUnits: number; rate: number; base: number; extra: number; enh: number; parts: Record<string, number> }
+    interface Charge { capsApplied?: boolean; appliedRate?: number; appliedTotal?: number; bwOnly?: boolean; unitLabel: string; extraUnitLabel: string; baseUnits: number; extraUnits: number; rate: number; base: number; extra: number; enh: number; parts: Record<string, number> }
     const charge = (src: Src, net: number, prem: PagePremiumData | null): Charge | null => {
       const parts: Record<string, number> = {};
       const add = (k: string, v: number) => { if (v) parts[k] = round2((parts[k] ?? 0) + v); };
@@ -199,12 +201,13 @@ export function calculateQuote(input: QuoteInput): Quote {
           const allCaps = !malayalam && (!!enh.caps || (/[A-Za-z]/.test(text) && !/[a-z]/.test(text)));
           const wr = malayalam ? src.word_rate! : allCaps && (src.caps_word_rate ?? 0) > 0 ? src.caps_word_rate! : (src.eng_word_rate ?? 0) > 0 ? src.eng_word_rate! : src.word_rate!;
           const rate = round2(wr * net);
+          const capsApplied = allCaps && (src.caps_word_rate ?? 0) > 0;
           const billed = Math.max(m.words, src.min_words ?? 0);
           const base = round2(billed * rate);
           if (enh.bold && (src.heading_line_rate ?? 0) > 0) add("bold", round2(src.heading_line_rate! * net)); // heading: one line at the printed heading rate
           addPct("tint", base); addPct("underline", base); addPct("border", base);
           if (enh.tick && src.tick_rate) add("tick", round2(src.tick_rate * net));
-          return { unitLabel: "words", extraUnitLabel: "words", baseUnits: billed, extraUnits: 0, rate, base, extra: 0, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
+          return { capsApplied, unitLabel: "words", extraUnitLabel: "words", baseUnits: billed, extraUnits: 0, rate, base, extra: 0, enh: round2(Object.values(parts).reduce((a, b) => a + b, 0)), parts };
         }
         // Per-line tariff: base_rate covers the minimum lines, then extra_line_rate per additional line.
         const baseUnits = src.min_lines ?? r.textMinLines;
@@ -289,7 +292,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         unitLabel: best.ch.unitLabel, baseUnits: best.ch.baseUnits, extraUnits: best.ch.extraUnits, extraUnitLabel: best.ch.extraUnitLabel, rate: best.ch.rate,
         base: round2(best.ch.base * count), extra: round2(best.ch.extra * count), enhancements: round2(best.ch.enh * count), gross: round2(best.total * count),
         discountPct: 0, discountLabel: "", discount: 0, net: round2(best.total * count),
-        appliedRate: best.ch.appliedRate, appliedTotal: best.ch.appliedTotal, bwOnly: best.ch.bwOnly, packageName: best.name, editionsCovered: best.members.length,
+        appliedRate: best.ch.appliedRate, appliedTotal: best.ch.appliedTotal, bwOnly: best.ch.bwOnly, capsApplied: best.ch.capsApplied, packageName: best.name, editionsCovered: best.members.length,
       });
     }
 
@@ -314,7 +317,7 @@ export function calculateQuote(input: QuoteInput): Quote {
         unitLabel: ch.unitLabel, baseUnits: ch.baseUnits, extraUnits: ch.extraUnits, extraUnitLabel: ch.extraUnitLabel, rate: ch.rate,
         base: round2(ch.base * k), extra: round2(ch.extra * k), enhancements: round2(ch.enh * k), gross: round2(gross * k),
         discountPct, discountLabel, discount: round2(discount * k), net: round2((gross - discount) * k),
-        appliedRate: ch.appliedRate, appliedTotal: ch.appliedTotal, bwOnly: ch.bwOnly, editionsCovered: 1,
+        appliedRate: ch.appliedRate, appliedTotal: ch.appliedTotal, bwOnly: ch.bwOnly, capsApplied: ch.capsApplied, editionsCovered: 1,
       });
     }
 
