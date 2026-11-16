@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/components/ui/toast";
 import { composePoster } from "@/lib/poster-compositor";
-import { nearestAspect, POSTER_STYLES, type PosterStyleId } from "@/lib/obituary-art";
+import { nearestAspect, POSTER_STYLES, type PosterPerson, type PosterStyleId } from "@/lib/obituary-art";
 import type { FileMeta } from "@/lib/types";
 
 type Slot = { state: "idle" } | { state: "loading" } | { state: "ready"; mime: string; data: string } | { state: "error"; message: string };
@@ -26,11 +26,11 @@ async function photoPayload(photo: FileMeta | null): Promise<{ mime: "image/jpeg
 }
 
 /** "✨ AI Poster Designer": three finished obituary ad designs from the notice text and the portrait; one can replace the ad artwork. */
-export function AiPosterModal({ open, onClose, name, text, category, colorMode, language, widthCm, heightCm, photo, onUse }: {
+export function AiPosterModal({ open, onClose, people, text, category, colorMode, language, widthCm, heightCm, photo, photo2, onUse }: {
   open: boolean;
   onClose: () => void;
-  /** Deceased's name, typeset large by the compositor. */
-  name: string;
+  /** The deceased (one, or two for a joint memorial); names are typeset large by the compositor. */
+  people: PosterPerson[];
   text: string;
   category: "obituary" | "remembrance";
   colorMode: "bw" | "color";
@@ -38,6 +38,8 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
   widthCm: number;
   heightCm: number;
   photo: FileMeta | null;
+  /** Joint memorial: the second (right-hand) portrait. */
+  photo2?: FileMeta | null;
   onUse: (file: File, meta: FileMeta) => void;
 }) {
   const toast = useToast();
@@ -62,17 +64,18 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
   const set = (id: PosterStyleId, s: Slot) => setSlots((cur) => ({ ...cur, [id]: s }));
   const aspect = nearestAspect(widthCm, heightCm);
 
-  const one = async (id: PosterStyleId, ph: Awaited<ReturnType<typeof photoPayload>>, mine: number) => {
+  const joint = people.length > 1;
+  const one = async (id: PosterStyleId, ph: Awaited<ReturnType<typeof photoPayload>>, ph2: Awaited<ReturnType<typeof photoPayload>>, mine: number) => {
     set(id, { state: "loading" });
     try {
-      const res = await fetch("/api/ai/generate-obituary-art", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ styleId: id, colorMode, customDesignPrompt: custom.trim() || undefined, text, category, language, aspect, widthCm, heightCm, photo: ph ?? undefined }) });
+      const res = await fetch("/api/ai/generate-obituary-art", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ styleId: id, colorMode, customDesignPrompt: custom.trim() || undefined, text, category, language, aspect, widthCm, heightCm, photo: ph ?? undefined, photo2: joint ? ph2 ?? undefined : undefined, joint }) });
       const j = await res.json().catch(() => ({}));
       if (mine !== run.current) return;
       if (!res.ok || !j.data) set(id, { state: "error", message: j.error ?? "Couldn't design this style." });
       else {
         // The model's artwork is text-free; our exact wording is typeset over it on a canvas.
         const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-        const png = await composePoster({ artworkUrl: `data:${j.mime};base64,${j.data}`, styleId: id, name: name.trim() || lines[0] || "", lines, aspect });
+        const png = await composePoster({ artworkUrl: `data:${j.mime};base64,${j.data}`, styleId: id, category, people: people.some((p) => p.name.trim()) ? people : [{ name: lines[0] ?? "" }], lines, aspect });
         if (mine !== run.current) return;
         set(id, { state: "ready", mime: "image/png", data: png });
       }
@@ -88,8 +91,9 @@ export function AiPosterModal({ open, onClose, name, text, category, colorMode, 
     if (!text.trim()) { toast.error("ആദ്യം മാറ്റർ തയ്യാറാക്കുക (Fill in the notice details first)"); return; }
     const mine = ++run.current;
     let ph: Awaited<ReturnType<typeof photoPayload>> = null;
-    try { ph = await photoPayload(photo); } catch { toast.error("Couldn't read the photo; designing without it."); }
-    await Promise.all((only ? [only] : POSTER_STYLES.map((s) => s.id)).map((id) => one(id, ph, mine)));
+    let ph2: Awaited<ReturnType<typeof photoPayload>> = null;
+    try { ph = await photoPayload(photo); if (joint) ph2 = await photoPayload(photo2 ?? null); } catch { toast.error("Couldn't read the photo; designing without it."); }
+    await Promise.all((only ? [only] : POSTER_STYLES.map((s) => s.id)).map((id) => one(id, ph, ph2, mine)));
   };
 
   const use = (id: PosterStyleId) => {

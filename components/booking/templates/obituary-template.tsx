@@ -8,7 +8,7 @@ import { AiPosterModal } from "../ai-poster-modal";
 import { displayWidth } from "@/lib/display";
 import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
-import { composeObituary, DEFAULT_OBITUARY, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
+import { composeObituary, DEFAULT_OBITUARY, EMPTY_PERSON2, posterPeople, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
 import { useBooking, type BookingState } from "@/lib/booking-store";
 import { cropStyle, PhotoCropper } from "../photo-cropper";
 import { ParagraphField } from "../paragraph-field";
@@ -58,13 +58,18 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
   const { text: aiReady, poster: posterReady } = useAiStatus();
   const [aiOpen, setAiOpen] = useState(false);
   const [posterOpen, setPosterOpen] = useState(false);
-  const hasPhoto = !!(state.artwork?.previewUrl || state.artwork?.url);
   const paperName = getNewspaper(Object.keys(state.selection).find((k) => state.selection[k].length))?.name ?? "";
   // The category decides the notice type: Obituary = death notice, Remembrance = death anniversary.
   const kind: ObituaryKind = state.categoryId === "remembrance" ? "anniversary" : "demise";
   const f = { ...DEFAULT_OBITUARY, ...state.obituary, kind }; // merge keeps older saved drafts valid
   const isText = state.adType === "classified-text";
   const anniv = kind === "anniversary";
+  const p2 = { ...EMPTY_PERSON2, ...f.person2 };
+  const fRef = useRef(f);
+  fRef.current = f; // upload callbacks finish later: always merge into the latest fields
+  const setPhoto2 = (m: FileMeta | null) => update({ obituary: { ...fRef.current, person2: { ...EMPTY_PERSON2, ...fRef.current.person2, photo: m } } });
+  const setP2 = (patch: Partial<typeof p2>) => set({ person2: { ...p2, ...patch } });
+  const hasPhoto = !!(state.artwork?.previewUrl || state.artwork?.url) && (!f.joint || !!(p2.photo?.previewUrl || p2.photo?.url));
 
   // The matter is custom when flagged (AI text applied) or when it no longer matches what the fields would generate
   // (edited by hand in the text box or the proof). Compared loosely: spacing / blank lines don't count as edits.
@@ -178,7 +183,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
         </div>
       )}
       {onPoster && (
-        <AiPosterModal open={posterOpen} onClose={() => setPosterOpen(false)} name={f.name} text={state.text} category={anniv ? "remembrance" : "obituary"} language="ml"
+        <AiPosterModal open={posterOpen} onClose={() => setPosterOpen(false)} people={posterPeople(f)} photo2={f.joint ? p2.photo ?? null : null} text={state.text} category={anniv ? "remembrance" : "obituary"} language="ml"
           colorMode={state.display.colorMode} widthCm={Math.round(displayWidth(state.display, colWidthCm) * 10) / 10} heightCm={state.display.heightCm} photo={state.artwork} onUse={onPoster} />
       )}
       <AiAssistantModal open={aiOpen} onClose={() => setAiOpen(false)} initialText={state.text} category={anniv ? "remembrance" : "obituary"} newspaper={paperName} language="ml" charsPerLine={charsPerLine} onUse={(txt) => { update({ obituary: { ...f, isCustomMatter: true } }); onText(txt); }} />
@@ -190,7 +195,30 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
       ) : (
       <fieldset className="space-y-4 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
         <legend className="text-sm font-bold">Photo, frame &amp; heading · ഫോട്ടോ</legend>
-        <PhotoCropper photo={state.artwork} onPhoto={onPhoto} crop={f.photoCrop} onCrop={(c) => set({ photoCrop: c })} round={f.photoFrame === "round"} />
+        <div role="radiogroup" aria-label="Memorial type" className="grid grid-cols-2 gap-2">
+          {([[false, "ഒരാൾ (Single)"], [true, "രണ്ട് പേർ (Joint / Couple Memorial)"]] as const).map(([j, label]) => (
+            <button key={String(j)} type="button" role="radio" aria-checked={!!f.joint === j} onClick={() => set({ joint: j })}
+              className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", !!f.joint === j ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {f.joint && (
+          <p className="text-xs text-zinc-600 dark:text-slate-200">രണ്ട് ഫോട്ടോകൾ അടുത്തടുത്തായി വരും. ആദ്യത്തെ ആളുടെ പേരും വിവരങ്ങളും മുകളിലെ ഫോമിൽ നൽകുക; രണ്ടാമത്തെ ആളുടേത് താഴെ. (Two portraits sit side by side. Enter the first person above; the second person below.)</p>
+        )}
+        <PhotoCropper label={f.joint ? "Left portrait · ഇടതുവശത്തെ ഫോട്ടോ" : undefined} photo={state.artwork} onPhoto={onPhoto} crop={f.photoCrop} onCrop={(c) => set({ photoCrop: c })} round={f.photoFrame === "round"} />
+        {f.joint && (
+          <div className="space-y-3 rounded-lg border border-zinc-300 bg-white/60 p-3 dark:border-[#1F2F57] dark:bg-slate-900/30">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field id="ob-b1" label="First person · birth date · ജനന തീയതി"><Input id="ob-b1" {...input("birthDate", "date")} /></Field>
+              <Field id="ob-d1" label="First person · death date · മരണ തീയതി" hint={anniv ? undefined : "Blank uses the date of demise"}><Input id="ob-d1" {...input("deathDate", "date")} /></Field>
+              <Field id="ob-n2" label="Second person · name · രണ്ടാമത്തെ ആളുടെ പേര്" className="sm:col-span-2"><Input id="ob-n2" value={p2.name} onChange={(e) => setP2({ name: e.target.value })} /></Field>
+              <Field id="ob-b2" label="Second person · birth date · ജനന തീയതി"><Input id="ob-b2" type="date" value={p2.birthDate} onChange={(e) => setP2({ birthDate: e.target.value })} /></Field>
+              <Field id="ob-d2" label="Second person · death date · മരണ തീയതി"><Input id="ob-d2" type="date" value={p2.deathDate} onChange={(e) => setP2({ deathDate: e.target.value })} /></Field>
+            </div>
+            <PhotoCropper label="Right portrait · വലതുവശത്തെ ഫോട്ടോ" photo={p2.photo} onPhoto={setPhoto2} crop={f.photoCrop2 ?? { zoom: 1, x: 50, y: 50 }} onCrop={(c) => set({ photoCrop2: c })} round={f.photoFrame === "round"} />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Photo shape">
           {(["round", "rect"] as const).map((fr) => (
             <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
@@ -242,7 +270,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
             className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-500 to-rose-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(225,29,72,0.45)] hover:shadow-[0_0_22px_rgba(225,29,72,0.7)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
             <Sparkles className="h-4 w-4" aria-hidden="true" /> ✨ AI Poster Generation
           </button>
-          {!hasPhoto && <p id="poster-hint" className="text-xs text-zinc-500">Upload a photo first to generate AI posters · AI പോസ്റ്റർ ഉണ്ടാക്കാൻ ആദ്യം ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക.</p>}
+          {!hasPhoto && <p id="poster-hint" className="text-xs text-zinc-500">{f.joint ? "Upload both photos first to generate AI posters" : "Upload a photo first to generate AI posters"} · AI പോസ്റ്റർ ഉണ്ടാക്കാൻ ആദ്യം ഫോട്ടോ{f.joint ? "കൾ" : ""} അപ്‌ലോഡ് ചെയ്യുക.</p>}
         </div>
       )}
     </section>
@@ -382,6 +410,20 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
   const showPhoto = !isText;
   const narrow = !isText && (state.display.widthCm ?? state.display.columns * 4) < 6; // a ~1 column box stacks the portrait on top
 
+  const joint = !!f.joint && showPhoto;
+  const p2 = { ...EMPTY_PERSON2, ...f.person2 };
+  const frameFor = (n: 1 | 2) => {
+    const first = n === 1;
+    const cropOf = first ? f.photoCrop : f.photoCrop2 ?? { zoom: 1, x: 50, y: 50 };
+    return (
+      <Frame url={first ? state.artwork?.previewUrl : p2.photo?.previewUrl} round={f.photoFrame === "round"} scale={(f.photoScale ?? 1) * (joint ? 0.8 : 1)} crop={cropOf}
+        onCrop={editable ? (c) => update({ obituary: { ...f, ...(first ? { photoCrop: c } : { photoCrop2: c }) } }) : undefined}
+        onPhoto={editable ? (file) => (first
+          ? update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } })
+          : update({ obituary: { ...f, person2: { ...p2, photo: file }, ...(file.url ? {} : { photoCrop2: { zoom: 1, x: 50, y: 50 } }) } })) : undefined} />
+    );
+  };
+
   const notice = (
     <div className="paper-grain flex flex-1 flex-col bg-[#faf8f5] p-2 text-zinc-950" style={SERIF}>
       {!header ? (
@@ -393,10 +435,10 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
             {inlineText ? <EditableLine value={header} onCommit={commit(0)} /> : header}
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
           </h4>
-          <div className={cn("mt-2", showPhoto ? (narrow ? "flex flex-col items-center gap-3" : "flow-root") : "block")}>
-            {showPhoto && (narrow ? <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /> : <div className="float-left mr-3 mb-1"><Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /></div>)}
+          <div className={cn("mt-2", showPhoto && !joint ? (narrow ? "flex flex-col items-center gap-3" : "flow-root") : "block")}>
+            {showPhoto && (joint ? <div className="mb-2 flex justify-center gap-3">{frameFor(1)}{frameFor(2)}</div> : narrow ? frameFor(1) : <div className="float-left mr-3 mb-1">{frameFor(1)}</div>)}
             {/* The portrait floats left: the first lines sit beside it and the rest run the full width, so text never gets squeezed into a narrow column. */}
-            <div lang="ml" className={cn("min-w-0 space-y-1.5 leading-[1.7] hyphens-auto [overflow-wrap:anywhere] [text-wrap:pretty]", narrow && "w-full", showPhoto && !narrow && align === "text-justify" ? "text-left" : align)} style={{ fontSize: textPx }}>
+            <div lang="ml" className={cn("min-w-0 space-y-1.5 leading-[1.7] hyphens-auto [overflow-wrap:anywhere] [text-wrap:pretty]", narrow && "w-full", joint ? "text-center" : showPhoto && !narrow && align === "text-justify" ? "text-left" : align)} style={{ fontSize: textPx }}>
               {body.map((p, i) => {
                 const cls = cn(prayerLines.has(p) && "text-center font-semibold italic", !prayer && anniv && i === body.length - 1 && "text-center font-semibold italic");
                 return inlineText ? <EditableLine key={i} value={p} onCommit={commit(i + 1)} className={cls} /> : <p key={i} className={cls}>{p}</p>;

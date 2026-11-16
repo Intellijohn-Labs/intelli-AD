@@ -1,16 +1,16 @@
 /**
  * Client-only: lays our exact notice wording (crisp Malayalam/English type) over the text-free artwork from the image
- * model, so the printed words are always correct. Safe zones: top ~15% for the header, bottom ~40% for the details.
+ * model, so the printed words are always correct. Safe zones: top ~18% for the title, bottom ~42% for the details.
+ * Styles follow Kerala newspaper memorial layouts; supports one person or a joint (two-person) memorial.
  */
-import { aspectRatio, POSTER_HEADERS, type PosterStyleId } from "./obituary-art";
+import { aspectRatio, posterHeader, type PosterPerson, type PosterStyleId } from "./obituary-art";
 
 const SERIF = '"Noto Serif Malayalam", "Noto Serif", Georgia, serif';
 const SANS = '"Noto Sans Malayalam", "Noto Sans", Inter, system-ui, sans-serif';
-const INK = "#1c140a";
 
 async function loadFonts(sample: string) {
   if (typeof document === "undefined" || !document.fonts) return;
-  const specs = [`800 48px "Noto Serif Malayalam"`, `700 48px "Noto Serif Malayalam"`, `600 48px "Noto Serif Malayalam"`, `700 48px "Noto Sans Malayalam"`, `500 48px "Noto Sans Malayalam"`];
+  const specs = [`800 48px "Noto Serif Malayalam"`, `700 48px "Noto Serif Malayalam"`, `600 48px "Noto Serif Malayalam"`, `700 48px "Noto Sans Malayalam"`, `600 48px "Noto Sans Malayalam"`, `500 48px "Noto Sans Malayalam"`];
   try {
     await Promise.all(specs.map((s) => document.fonts.load(s, sample || "അആഇ")));
     await document.fonts.ready;
@@ -47,15 +47,23 @@ function wrap(ctx: Ctx, text: string, maxW: number): string[] {
   return out;
 }
 
-/** Drops lines that repeat the header, and strips the leading name (printed large above) from the line that starts with it. */
-export function tidyLines(name: string, lines: string[]): string[] {
-  const headers = new Set([...Object.values(POSTER_HEADERS), "ആദരാഞ്ജലികൾ"]);
+/**
+ * Cleans the notice lines for the poster: drops lines that repeat a title, and removes the person's name from the
+ * line that starts with it (the name is printed large). For two people, the name lines are dropped entirely
+ * (they are shown as columns).
+ */
+export function tidyLines(names: string[], lines: string[]): string[] {
+  const headers = new Set(["ആദരാഞ്ജലികൾ", "വേദനയോടെ ഓർക്കുന്നു", "കണ്ണീർപ്പൂക്കൾ", "ചരമവാർഷികം", "സ്മരണാഞ്ജലി"]);
+  const ns = names.map((n) => n.trim()).filter(Boolean);
+  const joint = ns.length > 1;
   let stripped = false;
   return lines
     .map((l) => l.trim())
     .filter((l) => l && !headers.has(l.replace(/[.\s]+$/, "")))
+    .filter((l) => !(joint && ns.some((n) => l.startsWith(n))))
     .map((l) => {
-      if (stripped || !name || !l.startsWith(name)) return l;
+      const name = ns[0];
+      if (joint || stripped || !name || !l.startsWith(name)) return l;
       stripped = true;
       let r = l.slice(name.length).replace(/^[\s,.:;–-]+/, "");
       const m = r.match(/^\(([^)]*)\)\s*,?\s*(.*)$/);
@@ -69,8 +77,9 @@ export interface ComposeInput {
   /** Text-free artwork as a data: URL. */
   artworkUrl: string;
   styleId: PosterStyleId;
-  /** Deceased's name, printed large. */
-  name: string;
+  category: "obituary" | "remembrance";
+  /** One person, or two for a joint memorial (left, right). */
+  people: PosterPerson[];
   /** Remaining notice wording, one paragraph per entry. */
   lines: string[];
   /** Gemini aspect label, e.g. "4:5". */
@@ -79,12 +88,17 @@ export interface ComposeInput {
   width?: number;
 }
 
+type Block = { h: number; draw: (y: number) => void };
+
 /** Returns the finished poster as PNG base64 (no data: prefix). */
 export async function composePoster(inp: ComposeInput): Promise<string> {
   const W = inp.width ?? 1200;
   const H = Math.round(W / aspectRatio(inp.aspect));
-  const header = POSTER_HEADERS[inp.styleId];
-  await loadFonts([header, inp.name, ...inp.lines].join(" "));
+  const header = posterHeader(inp.styleId, inp.category);
+  const people = inp.people.filter((p) => p.name.trim());
+  const joint = people.length > 1;
+  const lines = tidyLines(people.map((p) => p.name), inp.lines);
+  await loadFonts([header, ...people.flatMap((p) => [p.name, p.dates ?? ""]), ...lines].join(" "));
   const art = await loadImage(inp.artworkUrl);
 
   const canvas = document.createElement("canvas");
@@ -101,7 +115,10 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(art, (W - aw) / 2, (H - ah) / 2, aw, ah);
 
-  // Soft parchment wash behind the text zones so type stays readable even if the artwork drifts into them.
+  const dark = inp.styleId === "classic"; // Style 1: dark footer band with white lettering
+  const INK = dark ? "#f7f2e8" : "#1c140a";
+  const HEAD_INK = "#1c140a";
+
   const wash = (y0: number, y1: number, stops: [number, number][]) => {
     const g = ctx.createLinearGradient(0, y0, 0, y1);
     for (const [at, a] of stops) g.addColorStop(at, `rgba(250,244,230,${a})`);
@@ -109,46 +126,94 @@ export async function composePoster(inp: ComposeInput): Promise<string> {
     ctx.fillRect(0, y0, W, y1 - y0);
   };
   wash(0, H * 0.21, [[0, 0.9], [0.75, 0.9], [1, 0]]); // header zone
-  wash(H * 0.56, H, [[0, 0], [0.22, 0.92], [0.88, 0.92], [1, 0.4]]); // details zone
+  const bandTop = H * 0.585;
+  if (dark) {
+    // The footer band is drawn here (not by the model), so the white lettering always sits on solid dark.
+    ctx.fillStyle = "#14100b";
+    ctx.fillRect(0, bandTop, W, H - bandTop);
+    ctx.fillStyle = "#b99a55";
+    ctx.fillRect(0, bandTop, W, Math.max(3, H * 0.003));
+  } else {
+    wash(H * 0.56, H, [[0, 0], [0.22, 0.92], [0.88, 0.92], [1, 0.4]]); // details zone
+  }
 
-  ctx.fillStyle = INK;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-
-  // Header: top safe zone (~15% of height), auto-shrunk to fit one line.
   const zoneW = W * 0.8;
-  let hs = W * 0.075;
-  ctx.font = `800 ${hs}px ${SERIF}`;
-  while (ctx.measureText(header).width > zoneW && hs > 20) { hs -= 2; ctx.font = `800 ${hs}px ${SERIF}`; }
-  ctx.fillText(header, W / 2, H * 0.015 + (H * 0.12) / 2 + hs * 0.35);
 
-  // Details: bottom safe zone, below the portrait. Shrink type until everything fits.
+  // Title (top safe zone), auto-shrunk to one line. Style 2 puts it in a bordered badge.
+  let hs = W * 0.072;
+  const hMax = inp.styleId === "honored" ? zoneW * 0.8 : zoneW;
+  ctx.font = `800 ${hs}px ${SERIF}`;
+  while (ctx.measureText(header).width > hMax && hs > 20) { hs -= 2; ctx.font = `800 ${hs}px ${SERIF}`; }
+  const hy = H * 0.015 + (H * 0.12) / 2;
+  if (inp.styleId === "honored") {
+    const tw = ctx.measureText(header).width;
+    const bw = tw + hs * 1.8, bh = hs * 1.9, bx = (W - bw) / 2, by = hy - bh / 2;
+    ctx.fillStyle = "#fbf6ea";
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = HEAD_INK;
+    ctx.lineWidth = Math.max(3, hs * 0.07);
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.lineWidth = Math.max(1.5, hs * 0.03);
+    ctx.strokeRect(bx + hs * 0.14, by + hs * 0.14, bw - hs * 0.28, bh - hs * 0.28);
+  }
+  ctx.fillStyle = HEAD_INK;
+  ctx.font = `800 ${hs}px ${SERIF}`;
+  ctx.fillText(header, W / 2, hy + hs * 0.35);
+
+  // Details (bottom safe zone). Shrink the type until everything fits.
   const top = H * 0.62, bottom = H * 0.965, maxH = bottom - top;
-  const name = inp.name.trim();
-  const lines = tidyLines(name, inp.lines);
-  let scale = 1;
-  let layout: { nameLines: string[]; body: string[][]; ns: number; bs: number } | null = null;
-  for (; scale > 0.45; scale -= 0.03) {
-    const ns = W * 0.064 * scale, bs = W * 0.042 * scale; // ~9 pt body at 8 cm wide; min scale keeps it >= ~7 pt
-    ctx.font = `800 ${ns}px ${SERIF}`;
-    const nameLines = name ? wrap(ctx, name, zoneW) : [];
-    ctx.font = `600 ${bs}px ${SANS}`;
-    const body = lines.map((l) => wrap(ctx, l, zoneW));
-    const h = nameLines.length * ns * 1.3 + (nameLines.length ? ns * 0.35 : 0) + body.reduce((s, b) => s + b.length * bs * 1.45 + bs * 0.45, 0);
-    layout = { nameLines, body, ns, bs };
-    if (h <= maxH) break;
-  }
-  if (layout) {
-    const { nameLines, body, ns, bs } = layout;
-    let y = top;
-    ctx.font = `800 ${ns}px ${SERIF}`;
-    for (const l of nameLines) { y += ns * 1.15; ctx.fillText(l, W / 2, y); y += ns * 0.15; }
-    if (nameLines.length) y += ns * 0.35;
-    ctx.font = `600 ${bs}px ${SANS}`;
-    for (const para of body) {
-      for (const l of para) { y += bs * 1.2; ctx.fillText(l, W / 2, y); y += bs * 0.25; }
-      y += bs * 0.45;
+  const centered = (txt: string[], font: string, size: number, lh: number, cx: number): Block => ({
+    h: txt.length * size * lh,
+    draw: (y) => {
+      ctx.font = font; ctx.fillStyle = INK; ctx.textAlign = "center";
+      txt.forEach((l, i) => ctx.fillText(l, cx, y + i * size * lh + size * (0.85 + (lh - 1) * 0.5)));
+    },
+  });
+  const stack = (blocks: Block[], gap: number): Block => ({
+    h: blocks.reduce((s, b) => s + b.h, 0) + gap * Math.max(0, blocks.length - 1),
+    draw: (y) => { let cy = y; for (const b of blocks) { b.draw(cy); cy += b.h + gap; } },
+  });
+  const build = (scale: number): Block => {
+    const blocks: Block[] = [];
+    const ns = W * (joint ? 0.046 : 0.064) * scale, ds = W * 0.034 * scale, bs = W * (joint ? 0.038 : 0.042) * scale;
+    const gap = bs * 0.45;
+    if (joint) {
+      const colW = W * 0.42, xs = [W * 0.27, W * 0.73];
+      const cols = people.slice(0, 2).map((p, i) => {
+        ctx.font = `800 ${ns}px ${SERIF}`;
+        const nm = wrap(ctx, p.name, colW);
+        ctx.font = `600 ${ds}px ${SANS}`;
+        const dt = p.dates ? wrap(ctx, p.dates, colW) : [];
+        return stack([centered(nm, `800 ${ns}px ${SERIF}`, ns, 1.2, xs[i]), ...(dt.length ? [centered(dt, `600 ${ds}px ${SANS}`, ds, 1.3, xs[i])] : [])], ds * 0.3);
+      });
+      blocks.push({ h: Math.max(...cols.map((c) => c.h)), draw: (y) => cols.forEach((c) => c.draw(y)) });
+    } else if (people[0]) {
+      ctx.font = `800 ${ns}px ${SERIF}`;
+      blocks.push(centered(wrap(ctx, people[0].name, zoneW), `800 ${ns}px ${SERIF}`, ns, 1.2, W / 2));
     }
-  }
+    ctx.font = `600 ${bs}px ${SANS}`;
+    const bodyFont = `600 ${bs}px ${SANS}`;
+    // Style 3 (single person): memorial details in two columns when there are enough lines.
+    if (inp.styleId === "memoriam" && !joint && lines.length >= 4) {
+      const colW = W * 0.4, xs = [W * 0.27, W * 0.73];
+      const half = Math.ceil(lines.length / 2);
+      const cols = [lines.slice(0, half), lines.slice(half)].map((grp, i) => {
+        ctx.font = bodyFont;
+        return stack(grp.map((l) => centered(wrap(ctx, l, colW), bodyFont, bs, 1.45, xs[i])), gap);
+      });
+      blocks.push({ h: Math.max(...cols.map((c) => c.h)), draw: (y) => cols.forEach((c) => c.draw(y)) });
+    } else {
+      ctx.font = bodyFont;
+      blocks.push(stack(lines.map((l) => centered(wrap(ctx, l, zoneW), bodyFont, bs, 1.45, W / 2)), gap));
+    }
+    return stack(blocks, bs * 0.6);
+  };
+
+  let layout = build(1);
+  for (let scale = 0.97; layout.h > maxH && scale > 0.4; scale -= 0.03) layout = build(scale);
+  layout.draw(top);
+
   return canvas.toDataURL("image/png").split(",")[1];
 }

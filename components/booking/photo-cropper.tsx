@@ -17,12 +17,15 @@ export function PhotoCropper({
   crop,
   onCrop,
   round,
+  label,
 }: {
   photo: FileMeta | null | undefined;
   onPhoto: (f: FileMeta | null) => void;
   crop: Crop;
   onCrop: (c: Crop) => void;
   round: boolean;
+  /** Heading for the picker when several portraits are shown (joint memorial). */
+  label?: string;
 }) {
   const id = useId();
   const bw = useBooking().state.display.colorMode === "bw";
@@ -71,7 +74,7 @@ export function PhotoCropper({
         ) : (
           <label htmlFor={id} className="flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed border-zinc-300 bg-white px-4 py-5 text-center hover:border-navy-400 focus-within:outline-2 focus-within:outline-navy-500 dark:bg-zinc-800/50">
             <ImagePlus className="h-5 w-5 text-navy-600" aria-hidden="true" />
-            <span className="text-sm font-medium">Upload portrait photo</span>
+            <span className="text-sm font-medium">{label ? `Upload · ${label}` : "Upload portrait photo"}</span>
             <span className="text-xs text-zinc-500">Any photo (JPG, PNG, WebP, HEIC…) · up to 15 MB · crop after upload</span>
             <input id={id} type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
             {convError && <span role="alert" className="text-xs font-medium text-red-700">{convError}</span>}

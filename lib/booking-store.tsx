@@ -90,6 +90,7 @@ function stripPreview(state: BookingState): BookingState {
   return {
     ...state,
     artwork: clean(state.artwork),
+    obituary: state.obituary?.person2 ? { ...state.obituary, person2: { ...state.obituary.person2, photo: clean(state.obituary.person2.photo ?? null) } } : state.obituary,
     documents: Object.fromEntries(Object.entries(state.documents).map(([k, v]) => [k, clean(v)!])),
   };
 }

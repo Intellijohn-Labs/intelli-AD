@@ -1,5 +1,7 @@
 /** Marana Vartha (obituary) and Death Anniversary (In Memoriam) templates: fields, presets and text composer. */
 
+import type { FileMeta } from "@/lib/types";
+
 export type ObituaryKind = "demise" | "anniversary";
 export type Gender = "m" | "f";
 export type FrameStyle = "traditional" | "christian" | "minimal";
@@ -18,6 +20,14 @@ export const HEADING_STYLES: { id: HeadingStyle; label: string; family: string; 
   { id: "elegant", label: "എലഗന്റ്", family: '"Noto Serif Malayalam", serif', weight: 400, spacing: "0.08em", italic: true },
   { id: "script", label: "ലിപി", family: '"Chilanka", "Manjari", cursive', weight: 400 },
 ];
+
+export interface Person2 {
+  name: string;
+  birthDate: string;
+  deathDate: string;
+  photo?: FileMeta | null;
+}
+export const EMPTY_PERSON2: Person2 = { name: "", birthDate: "", deathDate: "", photo: null };
 
 export interface ObituaryFields {
   kind: ObituaryKind;
@@ -49,6 +59,14 @@ export interface ObituaryFields {
   prayer: string;
   /** Portrait crop: zoom (1–3) and focus point (0–100 %). */
   photoCrop: { zoom: number; x: number; y: number };
+  /** Joint / couple memorial: two portraits side by side (the first portrait is the booking's artwork). */
+  joint?: boolean;
+  /** Joint mode, first person: life dates (the notice shows "birth – death"; death falls back to the demise date). */
+  birthDate?: string;
+  deathDate?: string;
+  /** Joint mode, second person (right-hand portrait). */
+  person2?: Person2;
+  photoCrop2?: { zoom: number; x: number; y: number };
   /** Portrait frame size relative to the standard 4×5 cm (0.5–1.5). Missing = 1. */
   photoScale?: number;
   /** True once the notice text is custom (applied from the AI assistant or edited by hand): field edits then leave it alone. */
@@ -136,7 +154,56 @@ export function fmtTime(v: string) {
 }
 
 /** Turn the form into the print text. Required fields left empty become [BRACKETED] so booking is blocked until filled. */
+/** The two people on a joint memorial, with their life dates, for the notice and the poster. */
+export function jointPeople(f: ObituaryFields): { name: string; dates: string }[] {
+  const p2 = { ...EMPTY_PERSON2, ...f.person2 };
+  const d1 = f.deathDate || (f.kind === "demise" ? f.demiseDate : "");
+  const d2 = p2.deathDate || d1;
+  const dates = (b?: string, d?: string) => [b && fmtDate(b), d && fmtDate(d)].filter(Boolean).join(" – ");
+  return [
+    { name: f.name.trim() || "[പേര്]", dates: dates(f.birthDate, d1) },
+    { name: p2.name.trim() || "[രണ്ടാമത്തെ പേര്]", dates: dates(p2.birthDate, d2) },
+  ];
+}
+
+/** People shown on a poster: one, or two for a joint memorial. Dates only appear for joint memorials. */
+export function posterPeople(f: ObituaryFields): { name: string; dates?: string }[] {
+  if (f.joint) return jointPeople(f).map((p) => ({ name: p.name, dates: p.dates || undefined }));
+  return [{ name: f.name.trim() }];
+}
+
+function composeJoint(f: ObituaryFields): string {
+  const [a, b] = jointPeople(f);
+  const where = [f.house.trim(), f.place.trim()].filter(Boolean).join(", ");
+  const nameLine = (p: { name: string; dates: string }) => `${p.name}${p.dates ? ` (${p.dates})` : ""}`;
+  const lines: string[] = [];
+  if (f.kind === "anniversary") {
+    lines.push(MILESTONES.find((m) => m.id === f.milestone)?.label ?? "വാർഷിക സ്മരണാഞ്ജലി");
+    lines.push(nameLine(a), nameLine(b));
+    if (where) lines.push(where);
+    if (f.remembranceDate) lines.push(`സ്മരണ തീയതി: ${fmtDate(f.remembranceDate)}`);
+    if (f.tribute.trim()) lines.push(f.tribute.trim());
+    if (f.prayer.trim()) lines.push(f.prayer.trim());
+    lines.push(`ഓർമ്മകളോടെ: ${f.family.trim().replace(/\s*\n\s*/g, ", ") || "കുടുംബാംഗങ്ങൾ"}`);
+    return lines.join("\n");
+  }
+  const prefix = PREFIXES.find((p) => p.id === f.prefixId) ?? PREFIXES[0];
+  lines.push(prefix.isVerb ? "നിര്യാതരായി" : prefix.text); // plural verb for two people
+  lines.push(nameLine(a), nameLine(b));
+  if (where) lines.push(where);
+  const when = [f.demiseDate && fmtDate(f.demiseDate), f.demiseTime && fmtTime(f.demiseTime)].filter(Boolean).join(", ");
+  if (when) lines.push(`മരണം: ${when}`);
+  const funeral = [f.funeralDate && fmtDate(f.funeralDate), f.funeralTime && fmtTime(f.funeralTime), f.funeralPlace.trim()].filter(Boolean).join(", ");
+  if (funeral) lines.push(`സംസ്കാരം: ${funeral}`);
+  if (f.family.trim()) lines.push(f.family.trim());
+  if (f.tribute.trim()) lines.push(f.tribute.trim());
+  if (f.prayer.trim()) lines.push(f.prayer.trim());
+  if (f.contact.trim()) lines.push(`ഫോൺ: ${f.contact.trim()}`);
+  return lines.join("\n");
+}
+
 export function composeObituary(f: ObituaryFields): string {
+  if (f.joint) return composeJoint(f);
   const name = f.name.trim() || "[പേര്]";
   const where = [f.house.trim(), f.place.trim()].filter(Boolean).join(", ");
   const who = `${name}${f.age.trim() ? ` (${f.age.trim()} വയസ്സ്)` : ""}${where ? `, ${where}` : ""}`;

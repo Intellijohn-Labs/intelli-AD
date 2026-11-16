@@ -27,7 +27,7 @@ function write(userId: string, drafts: Draft[]) {
 /** Drop in-memory file previews (blob URLs don't survive a reload). */
 function clean(state: BookingState): BookingState {
   const c = (f: FileMeta | null) => (f ? { name: f.name, size: f.size, type: f.type, url: f.url } : null);
-  return { ...state, receipt: null, artwork: c(state.artwork), documents: Object.fromEntries(Object.entries(state.documents).map(([k, v]) => [k, c(v)!])) };
+  return { ...state, receipt: null, artwork: c(state.artwork), obituary: state.obituary?.person2 ? { ...state.obituary, person2: { ...state.obituary.person2, photo: c(state.obituary.person2.photo ?? null) } } : state.obituary, documents: Object.fromEntries(Object.entries(state.documents).map(([k, v]) => [k, c(v)!])) };
 }
 
 export function saveDraft(userId: string, state: BookingState): Draft | null {
