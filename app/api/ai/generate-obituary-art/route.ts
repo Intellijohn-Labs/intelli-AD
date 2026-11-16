@@ -46,7 +46,7 @@ LAYOUT (strict; percentages are of the image height, measured from the top):
 - The only thing allowed to run through the header and text zones is, at most, a very thin plain outer border line hugging the extreme edges of the image (2% margin), and only if the theme has one.
 
 ${hasPhoto
-    ? "PHOTO: the attached image is the portrait of the deceased. Use THIS person's face exactly as it is: do not re-draw, beautify, age, stylise or replace it; only crop it into the frame."
+    ? `PHOTO: the attached image is the portrait of the deceased. Use THIS person's face exactly as it is: do not re-draw, beautify, age, stylise or replace it; only crop it into the frame. ${p.colorMode === "color" ? "Keep the photo's natural colours; do not convert it to black and white or sepia." : "Present the photo in clean black and white."}`
     : "PHOTO: none was supplied. Do NOT invent a face or a portrait; leave the central frame as ornament only (for example an empty ornamental cartouche or floral medallion)."}
 
 Respectful, solemn and dignified in every detail.`;
