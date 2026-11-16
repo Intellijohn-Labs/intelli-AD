@@ -6,7 +6,6 @@ import { getAiSettings, type AiSettingsState } from "@/app/admin/settings/ai/act
 import { saveRates } from "@/app/admin/actions";
 import { useToast } from "@/components/ui/toast";
 import { newspapers } from "@/data/newspapers";
-import { AI_MODELS } from "@/lib/ai-config";
 import { mapExtraction, type ImportField, type ImportRow, type RateExtraction } from "@/lib/rate-import";
 import { RATE_COLUMNS, validateRows } from "@/lib/rates";
 import { loadRates } from "@/lib/use-rates";
@@ -40,25 +39,58 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   const [ai, setAi] = useState<AiSettingsState | null>(null);
   const [engine, setEngine] = useState<"claude" | "gemini">("claude");
   useEffect(() => { void getAiSettings().then((s) => { if (s) { setAi(s); setEngine(s.config.provider); } }); }, []);
-  const engineModel = (e: "claude" | "gemini") => (ai?.config.provider === e ? ai.config.model : AI_MODELS[e][0].id);
+  const engineModel = (e: "claude" | "gemini") => (e === "claude" ? "claude-haiku-4-5-20251001" : "gemini-2.5-flash"); // fast models used for PDF reading
+
+  // Progress: real upload progress fills 0–20%; after that the bar eases toward 96% while the AI works, then snaps to 100%.
+  const [pct, setPct] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const [finishing, setFinishing] = useState(false);
+  const prog = useRef({ start: 0, uploadedAt: 0, uploadFrac: 0, done: false });
+  useEffect(() => {
+    if (busy !== "reading") return;
+    const id = setInterval(() => {
+      const p = prog.current, now = Date.now();
+      setElapsed((now - p.start) / 1000);
+      if (p.done) return;
+      let target: number;
+      if (!p.uploadedAt) target = p.uploadFrac * 20;
+      else { const t = (now - p.uploadedAt) / 1000; target = 20 + 76 * (1 - Math.exp(-t / 10)); } // 20→96%: ~54% at 6 s, ~77% at 14 s, holds near 96%
+      setPct((cur) => Math.min(96, Math.max(cur, cur + (target - cur) * 0.25))); // smoothed, never goes backwards
+    }, 100);
+    return () => clearInterval(id);
+  }, [busy]);
+  const stage = pct < 20 ? "Uploading PDF document…" : pct < 55 ? "AI reading edition columns & tables…" : pct < 85 ? "Extracting Display, Obituary & Classified rates…" : "Formatting review table…";
 
   const remap = (ex: RateExtraction, words: number) => { const m = mapExtraction(paper, ex, { wordsPerLine: words }); setRows(m.rows); setNotes(m.notes); };
 
   async function extract() {
     if (!file) return;
-    setError(""); setMeta(null); setRows([]); setNotes([]); setBusy("reading");
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("publicationId", paperId);
-      fd.append("provider", engine === "claude" ? "anthropic" : "gemini");
-      const res = await fetch("/api/admin/rates/parse-pdf", { method: "POST", body: fd });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.extraction) { setError(j.error ?? `Couldn't read the PDF (${res.status}).`); return; }
-      setMeta({ ex: j.extraction, provider: j.provider, model: j.model });
-      remap(j.extraction, wpl);
-    } catch { setError("Couldn't reach the server. Check your connection and try again."); }
-    finally { setBusy(""); }
+    setError(""); setMeta(null); setRows([]); setNotes([]); setBusy("reading"); setPct(0); setElapsed(0); setFinishing(false);
+    prog.current = { start: Date.now(), uploadedAt: 0, uploadFrac: 0, done: false };
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("publicationId", paperId);
+    fd.append("provider", engine === "claude" ? "anthropic" : "gemini");
+    // XMLHttpRequest (not fetch) so the upload itself reports real progress.
+    const result = await new Promise<{ ok: boolean; body: Record<string, unknown> }>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/admin/rates/parse-pdf");
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) prog.current.uploadFrac = e.loaded / e.total; };
+      xhr.upload.onload = () => { prog.current.uploadFrac = 1; prog.current.uploadedAt = Date.now(); };
+      xhr.onload = () => { let body: Record<string, unknown> = {}; try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ } resolve({ ok: xhr.status >= 200 && xhr.status < 300, body: { ...body, _status: xhr.status } }); };
+      xhr.onerror = () => resolve({ ok: false, body: { error: "Couldn't reach the server. Check your connection and try again." } });
+      xhr.ontimeout = () => resolve({ ok: false, body: { error: "The request timed out. Try a smaller PDF." } });
+      xhr.timeout = 70_000;
+      xhr.send(fd);
+    });
+    const j = result.body as { extraction?: RateExtraction; provider?: string; model?: string; error?: string; _status?: number };
+    if (!result.ok || !j.extraction) { prog.current.done = true; setError(j.error ?? `Couldn't read the PDF (${j._status ?? "error"}).`); setBusy(""); return; }
+    prog.current.done = true;
+    setPct(100); setFinishing(true); // snap to 100% with a checkmark, then reveal the table
+    await new Promise((r) => setTimeout(r, 700));
+    setMeta({ ex: j.extraction, provider: j.provider ?? engine, model: j.model ?? "" });
+    remap(j.extraction, wpl);
+    setFinishing(false); setBusy("");
   }
 
   const included = rows.filter((r) => r.include);
@@ -135,7 +167,18 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
           {busy === "reading" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />} {busy === "reading" ? "Reading PDF…" : "Extract rates"}
         </button>
       </div>
-      {busy === "reading" && <p className="mt-2 text-xs text-slate-500">Reading a multi-page tariff can take up to a minute or two.</p>}
+      {busy === "reading" && (
+        <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10" aria-live="polite">
+          <div className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+            <span className="flex items-center gap-2">{finishing ? <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> : <Loader2 className="h-4 w-4 animate-spin text-violet-600" aria-hidden="true" />}{finishing ? "Done! Preparing your review…" : stage}</span>
+            <span className="tabular-nums">{Math.round(pct)}%</span>
+          </div>
+          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Rate card extraction progress" className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-slate-700">
+            <div className={cn("h-full rounded-full transition-[width] duration-300 ease-out", finishing ? "bg-emerald-500" : "bg-linear-to-r from-violet-600 to-blue-500")} style={{ width: `${pct}%` }} />
+          </div>
+          <p className="mt-1.5 text-xs text-slate-500 tabular-nums">Elapsed {elapsed.toFixed(0)}s · usually 8–15 seconds</p>
+        </div>
+      )}
       {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{error}</p>}
 
       {meta && (

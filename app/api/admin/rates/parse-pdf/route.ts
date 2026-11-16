@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
-import { AI_MODELS, DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
+import { DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-config";
 import { resolveAiKeys } from "@/lib/ai-keys";
 import { newspapers } from "@/data/newspapers";
-import { EXTRACTION_SHAPE, extractionSchema } from "@/lib/rate-import";
+import { buildExtractionPrompt, extractionSchema } from "@/lib/rate-import";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 // Vercel rejects request bodies over ~4.5 MB, so larger cards must be compressed or split.
 const MAX_BYTES = 4 * 1024 * 1024;
 const PUBLICATION_ALIASES: Record<string, string> = { manorama: "malayala-manorama", mm: "malayala-manorama", hindu: "the-hindu", toi: "times-of-india", ht: "hindustan-times" };
+
+/** Fast models for PDF extraction (a tariff read should take seconds, not a minute). */
+const FAST_MODEL = { claude: "claude-haiku-4-5-20251001", gemini: "gemini-2.5-flash" } as const;
 
 class ProviderError extends Error { constructor(m: string, public status: number) { super(m); } }
 
@@ -22,32 +25,15 @@ async function providerError(name: string, res: Response) {
   return new ProviderError(`${name} API error (${res.status}): ${detail}`, res.status);
 }
 
-function prompt(paperName: string, editions: string[]): string {
-  return `You are extracting a newspaper advertising TARIFF / RATE CARD from the attached PDF into structured JSON. The publication is "${paperName}". Our system's edition names for it are: ${editions.join(", ")}.
-
-Read every page, including multi-column tables and footnotes. Extract:
-- editions: every individual edition, combination package (All Kerala, All India, Gulf / Overseas, Metros...) and "any N editions" tier.
-- displayRates: display / classified-display prices PER SQUARE CM, by edition and category: Normal (general display), Personal / Obituary, Matrimonial, Recruitment, Financial, Tender / Notice. Give black & white ("bw") and colour ("colour") separately.
-- pagePremiums: Front page, Back page, Page 3, Page 5 / Business, Solus and similar position surcharges (percent, or per sq cm).
-- classifiedText: per-word (or per-line) rates for Malayalam and English classifieds, minimum words / lines, bold / heading charge per line, box fee, background tint % and underline %.
-- effectiveDate (ISO YYYY-MM-DD) if a date such as "w.e.f. 1 April 2024" appears, and whether rates include GST.
-
-Rules:
-- Copy numbers exactly as printed (rupees). NEVER guess or invent a number: use null when a value is absent, illegible or ambiguous, set "uncertain": true when you are not sure, and explain in "notes".
-- Use edition names exactly as printed (the app maps spelling variants such as Trivandrum / Thiruvananthapuram itself). Use "ALL" only when one rate truly applies to the whole card.
-- Output ONLY one JSON object with exactly this shape, no markdown and no commentary:
-${EXTRACTION_SHAPE}`;
-}
-
 async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<string> {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ inline_data: { mime_type: "application/pdf", data: pdfB64 } }, { text }] }],
-      generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 32000 },
+      generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 16000 },
     }),
-    signal: AbortSignal.timeout(110_000),
+    signal: AbortSignal.timeout(55_000),
   });
   if (!res.ok) throw await providerError("Gemini", res);
   const j = await res.json();
@@ -60,10 +46,10 @@ async function callClaude(cfg: AiConfig, key: string, pdfB64: string, text: stri
     headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: cfg.model,
-      max_tokens: 16000,
+      max_tokens: 12000,
       messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfB64 } }, { type: "text", text }] }],
     }),
-    signal: AbortSignal.timeout(110_000),
+    signal: AbortSignal.timeout(55_000),
   });
   if (!res.ok) throw await providerError("Claude", res);
   const j = await res.json();
@@ -129,16 +115,13 @@ export async function POST(req: Request) {
   // The admin may override the engine for this one extraction; otherwise the Active Provider from AI Settings is used.
   const askedRaw = String(form.get("provider") ?? "").trim().toLowerCase();
   if (askedRaw && !["anthropic", "claude", "gemini"].includes(askedRaw)) return NextResponse.json({ error: 'provider must be "anthropic" or "gemini".', status: 400 }, { status: 400 });
-  if (askedRaw) {
-    const provider = askedRaw === "gemini" ? "gemini" : "claude";
-    // Keep the configured model when it belongs to that provider; otherwise use the provider's default model.
-    if (provider !== cfg.provider) cfg = { ...cfg, provider, model: AI_MODELS[provider][0].id };
-  }
+  const provider = askedRaw ? (askedRaw === "gemini" ? "gemini" : "claude") : cfg.provider;
+  cfg = { ...cfg, provider, model: FAST_MODEL[provider] };
   const key = cfg.provider === "claude" ? keys.claude : keys.gemini;
   if (!key) return NextResponse.json({ error: `No ${cfg.provider === "claude" ? "Anthropic" : "Gemini"} API key is configured. Add one in Admin → AI Settings, or switch the AI engine.`, status: 503 }, { status: 503 });
 
   try {
-    const text = prompt(paper.name, paper.editions.map((e) => e.name));
+    const text = buildExtractionPrompt(paper.name, paper.editions.map((e) => e.name));
     const b64 = bytes.toString("base64");
     const raw = cfg.provider === "claude" ? await callClaude(cfg, key, b64, text) : await callGemini(cfg, key, b64, text);
     const parsed = extractionSchema.safeParse(firstJsonObject(raw));

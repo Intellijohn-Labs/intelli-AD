@@ -54,6 +54,25 @@ export const EXTRACTION_SHAPE = `{
       "boldHeadingPerLine": number | null, "boxFee": number | null, "tintPercent": number | null, "underlinePercent": number | null, "uncertain": boolean } ]
 }`;
 
+/** Prompt for the PDF extraction (shared by the API route and offline checks). Asks for compact JSON to keep the reply fast. */
+export function buildExtractionPrompt(paperName: string, editionNames: string[]): string {
+  return `You are extracting a newspaper advertising TARIFF / RATE CARD from the attached PDF into structured JSON. The publication is "${paperName}". Our system's edition names for it are: ${editionNames.join(", ")}.
+
+Read every page, including multi-column tables and footnotes. Extract:
+- editions: every individual edition, combination package (All Kerala, All India, Gulf / Overseas, Metros...) and "any N editions" tier.
+- displayRates: display / classified-display prices PER SQUARE CM, by edition and category: Normal (general display), Personal / Obituary, Matrimonial, Recruitment, Financial, Tender / Notice. Give ONE object per edition + category, with both "bw" and "colour" filled in that same object (never one object per column).
+- pagePremiums: Front page, Back page, Page 3, Page 5 / Business, Solus and similar position surcharges (percent, or per sq cm).
+- classifiedText: per-word (or per-line) rates for Malayalam and English classifieds, minimum words / lines, bold / heading charge per line, box fee, background tint % and underline %.
+- effectiveDate (ISO YYYY-MM-DD) if a date such as "w.e.f. 1 April 2024" appears, and whether rates include GST.
+
+Rules:
+- Copy numbers exactly as printed (rupees). NEVER guess or invent a number: omit a value that is absent, illegible or ambiguous, set "uncertain": true when you are not sure, and explain briefly in "notes".
+- Use edition names exactly as printed (the app maps spelling variants such as Trivandrum / Thiruvananthapuram itself). Use "ALL" only when one rate truly applies to the whole card.
+- Be COMPACT so the reply is quick: output minified JSON on a single line (no indentation or line breaks), omit any key whose value is null, empty or false, keep "notes" to at most 8 short entries, and add no commentary.
+- Output ONLY one JSON object with this shape (every key optional except where you have data):
+${EXTRACTION_SHAPE}`;
+}
+
 const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9ഀ-ൿ ]+/g, " ").replace(/\s+/g, " ").trim();
 const ALIASES: Record<string, string> = {
   trivandrum: "thiruvananthapuram", tvm: "thiruvananthapuram", calicut: "kozhikode", cochin: "kochi", ernakulam: "kochi", trichur: "thrissur",
@@ -123,7 +142,15 @@ export function mapExtraction(paper: Newspaper, ex: RateExtraction, opts: { word
     return r;
   };
 
+  // Models sometimes emit one entry per column (B/W, then Colour): merge entries for the same edition + category.
+  const merged = new Map<string, (typeof ex.displayRates)[number]>();
   for (const d of ex.displayRates) {
+    const k = `${norm(d.edition)}|${norm(d.category)}`;
+    const m = merged.get(k);
+    if (!m) { merged.set(k, { ...d }); continue; }
+    m.bw ??= d.bw; m.colour ??= d.colour; m.minSqCm ??= d.minSqCm; m.uncertain = m.uncertain || d.uncertain;
+  }
+  for (const d of merged.values()) {
     const t = DISPLAY_TARGETS[norm(d.category)];
     const ed = resolveEdition(paper, d.edition);
     if (ed.kind === "none") { unmapped.add(ed.reason); continue; }
