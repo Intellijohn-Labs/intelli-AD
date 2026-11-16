@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, FileText, Loader2, Save, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, Loader2, Save } from "lucide-react";
+import { CourierLoader } from "@/components/admin/courier-loader";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getAiSettings, type AiSettingsState } from "@/app/admin/settings/ai/actions";
 import { replacePublicationRates } from "@/app/admin/actions";
@@ -28,7 +29,8 @@ const NUMS: { key: ImportField; label: string; types: ImportRow["ad_type"][]; st
   { key: "color_sq_cm_rate", label: "Colour ₹ / cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
   { key: "color_surcharge_percent", label: "Colour +% (info)", types: ["classified-display", "commercial-display"], step: "0.01" },
 ];
-const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
+const card = "rounded-xl border border-[#E7E5E4] bg-[#FAF8F5] p-4 shadow-sm sm:p-6 dark:border-stone-700 dark:bg-stone-900";
+const fmtSize = (b: number) => (b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
 /** Admin: upload a newspaper's tariff PDF, review the extracted rates in an editable table, then save them to the live rate book. */
 export function RatePdfImporter({ paperId }: { paperId: string }) {
@@ -47,9 +49,8 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   const [ai, setAi] = useState<AiSettingsState | null>(null);
   const [engine, setEngine] = useState<"claude" | "gemini">("claude");
   useEffect(() => { void getAiSettings().then((s) => { if (s) { setAi(s); setEngine(s.config.provider); } }); }, []);
-  const engineModel = (e: "claude" | "gemini") => (e === "claude" ? "claude-haiku-4-5-20251001" : "gemini-2.5-flash"); // fast models used for PDF reading
 
-  // Progress: real upload progress fills 0–20%; after that the bar eases toward 96% while the AI works, then snaps to 100%.
+  // Progress: real upload progress fills 0–20%; after that the bar eases toward 96% while the sheet is being read, then snaps to 100%.
   const [pct, setPct] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [finishing, setFinishing] = useState(false);
@@ -68,7 +69,6 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
     }, 100);
     return () => clearInterval(id);
   }, [busy]);
-  const stage = pct < 20 ? "Uploading PDF document…" : pct < 55 ? "AI reading edition columns & tables…" : pct < 85 ? "Extracting Display, Obituary & Classified rates…" : "Formatting review table…";
 
   const remap = (ex: RateExtraction) => { const m = mapExtraction(paper, ex); setRows(m.rows); setExtras(m.extras); setNotes(m.notes); setConfirming(false); };
 
@@ -145,65 +145,63 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   }
 
   const flagged = included.reduce((n, r) => n + Object.keys(r.flags).length, 0);
-  const cellCls = (f?: "missing" | "uncertain") => cn("w-20 rounded border px-1.5 py-1 text-right text-xs tabular-nums dark:bg-slate-800 dark:text-white",
-    f === "missing" ? "border-red-500 bg-red-50 ring-1 ring-red-400 dark:bg-red-950/40" : f === "uncertain" ? "border-amber-500 bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-950/30" : "border-slate-300 dark:border-slate-600");
+  const cellCls = (f?: "missing" | "uncertain") => cn("w-20 rounded border px-1.5 py-1 text-right text-xs tabular-nums dark:bg-stone-800 dark:text-white",
+    f === "missing" ? "border-red-500 bg-red-50 ring-1 ring-red-400 dark:bg-red-950/40" : f === "uncertain" ? "border-amber-500 bg-amber-50 ring-1 ring-amber-300 dark:bg-amber-950/30" : "border-stone-300 dark:border-stone-600");
 
   return (
     <section aria-labelledby="pdf-import-h" className={card}>
-      <h2 id="pdf-import-h" className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"><Sparkles className="h-5 w-5 text-violet-600" aria-hidden="true" /> Upload Rate Card PDF · {paper.name}</h2>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload {paper.name}&rsquo;s official tariff PDF. Only this publication&rsquo;s rates are touched, and you review every number before anything is saved. When you save you choose to merge into the existing rates (default, so a Display PDF and a Classifieds PDF can be uploaded separately) or to replace them all.</p>
+      <h2 id="pdf-import-h" className="font-serif text-xl font-bold tracking-tight text-stone-900 dark:text-stone-50">Import Official Rate Card · {paper.name}</h2>
+      <p className="mt-1 max-w-2xl text-sm text-stone-600 dark:text-stone-300">Drop in {paper.name}&rsquo;s tariff sheet and we&rsquo;ll pull out the rates. Nothing goes live until you&rsquo;ve checked every number below.</p>
 
-      <div role="radiogroup" aria-label="AI engine" className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">AI Engine:</span>
-        {(["claude", "gemini"] as const).map((e) => {
-          const configured = ai ? ai.keys[e].configured : true;
-          return (
-            <button key={e} type="button" role="radio" aria-checked={engine === e} disabled={!!busy} onClick={() => setEngine(e)}
-              className={cn("rounded-md border px-3 py-1.5 text-sm font-semibold disabled:opacity-50", engine === e ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100")}>
-              {e === "claude" ? "Anthropic Claude" : "Google Gemini"}
-              {ai?.config.provider === e && <span className="ml-1.5 text-[10px] font-normal opacity-80">(active)</span>}
-              {!configured && <span className="ml-1.5 text-[10px] font-normal opacity-80">· no key</span>}
-            </button>
-          );
-        })}
-        <span className="text-xs text-slate-500">{engineModel(engine)}</span>
+      <div role="radiogroup" aria-label="Parser" className="mt-5 flex flex-wrap items-center gap-3">
+        <span className="text-sm font-semibold text-stone-800 dark:text-stone-100">Parser:</span>
+        <div className="inline-flex rounded-lg border border-[#E7E5E4] bg-[#F5F5F4] p-0.5 dark:border-stone-700 dark:bg-stone-800">
+          {(["claude", "gemini"] as const).map((e) => {
+            const configured = ai ? ai.keys[e].configured : true;
+            return (
+              <button key={e} type="button" role="radio" aria-checked={engine === e} disabled={!!busy} onClick={() => setEngine(e)}
+                className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50", engine === e ? "bg-[#C2410C] text-white shadow-[inset_0_-1px_0_rgba(0,0,0,.18)]" : "text-stone-600 hover:bg-white dark:text-stone-300 dark:hover:bg-stone-700")}>
+                {e === "claude" ? "Claude" : "Gemini"}
+                {!configured && <span className="ml-1.5 text-[10px] font-normal opacity-80">no key</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      {ai && !ai.keys[engine].configured && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">No {engine === "claude" ? "Anthropic" : "Gemini"} key is saved yet. Add one in AI Settings, or switch the engine.</p>}
+      {ai && !ai.keys[engine].configured && <p className="mt-1.5 text-xs text-[#9A3412] dark:text-amber-300">There&rsquo;s no {engine === "claude" ? "Claude" : "Gemini"} key saved yet. Add one in AI Settings, or pick the other parser.</p>}
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Rate card PDF (max 4 MB)
-          <input ref={fileRef} type="file" accept="application/pdf,.pdf" disabled={!!busy} className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 dark:border-slate-600 dark:bg-slate-800"
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-stretch">
+        <div className={cn("flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3", file ? "border-[#C2410C]/60 bg-white dark:bg-stone-800" : "border-stone-300 bg-[#F5F5F4] dark:border-stone-600 dark:bg-stone-800/60")}>
+          <input ref={fileRef} id="rate-pdf-file" type="file" accept="application/pdf,.pdf" disabled={!!busy} className="sr-only"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               setError("");
-              if (f && !/\.pdf$/i.test(f.name) && f.type !== "application/pdf") { setError("Please choose a PDF file."); setFile(null); return; }
+              if (f && !/\.pdf$/i.test(f.name) && f.type !== "application/pdf") { setError("That doesn\u2019t look like a PDF."); setFile(null); return; }
               if (f && f.size > MAX_BYTES) { setError(`That PDF is ${(f.size / 1048576).toFixed(1)} MB; the limit is 4 MB. Compress it or upload only the rate pages.`); setFile(null); return; }
               setFile(f);
             }} />
-        </label>
-        <button type="button" onClick={() => void extract()} disabled={!file || !!busy} className="inline-flex items-center justify-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">
-          {busy === "reading" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />} {busy === "reading" ? "Reading PDF…" : "Extract rates"}
+          {file ? (
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="grid h-10 w-9 shrink-0 place-items-center rounded-sm border border-[#E7E5E4] bg-[#FAF8F5] text-[9px] font-black tracking-wider text-[#C2410C] shadow-[1px_1px_0_#E7E5E4] dark:border-stone-600 dark:bg-stone-900">PDF</span>
+              <span className="min-w-0"><span className="block truncate text-sm font-semibold text-stone-900 dark:text-stone-50">{file.name}</span><span className="block text-xs text-stone-500">{fmtSize(file.size)} · ready to extract</span></span>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-stone-800 dark:text-stone-100">No sheet in the tray yet</p><p className="text-xs text-stone-500">PDF only, up to 4 MB.</p></div>
+          )}
+          <label htmlFor="rate-pdf-file" className={cn("cursor-pointer rounded-md border border-stone-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-stone-800 shadow-[0_1px_0_#D6D3D1] hover:bg-stone-50 focus-within:outline-2 dark:border-stone-600 dark:bg-stone-700 dark:text-stone-50", !!busy && "pointer-events-none opacity-50")}>{file ? "Change PDF" : "Browse PDF"}</label>
+        </div>
+        <button type="button" onClick={() => void extract()} disabled={!file || !!busy} className="inline-flex items-center justify-center gap-2 rounded-md border border-[#18181B] bg-[#18181B] px-5 py-2.5 text-sm font-bold text-white shadow-[0_2px_0_#000] hover:bg-[#27272A] active:transtone-y-px active:shadow-none disabled:opacity-50">
+          {busy === "reading" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />} {busy === "reading" ? "Reading…" : "Extract Rates"}
         </button>
       </div>
-      {busy === "reading" && (
-        <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10" aria-live="polite">
-          <div className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
-            <span className="flex items-center gap-2">{finishing ? <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> : <Loader2 className="h-4 w-4 animate-spin text-violet-600" aria-hidden="true" />}{finishing ? "Done! Preparing your review…" : stage}</span>
-            <span className="tabular-nums">{Math.round(pct)}%</span>
-          </div>
-          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Rate card extraction progress" className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-slate-700">
-            <div className={cn("h-full rounded-full transition-[width] duration-300 ease-out", finishing ? "bg-emerald-500" : "bg-linear-to-r from-violet-600 to-blue-500")} style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-1.5 text-xs text-slate-500 tabular-nums">Elapsed {elapsed.toFixed(0)}s · usually 8–15 seconds</p>
-        </div>
-      )}
+      {busy === "reading" && <div className="mt-3"><CourierLoader pct={pct} finishing={finishing} /><p className="mt-1.5 text-xs text-stone-500 tabular-nums">{elapsed.toFixed(0)}s so far · usually 10–25 seconds</p></div>}
       {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{error}</p>}
 
       {meta && (
         <div className="mt-5 space-y-4">
-          {truncated && <p role="alert" className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />The AI&rsquo;s reply was cut off, so the last rows may be missing. Compare the table with the PDF, or upload fewer pages and extract again.</p>}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            <span>Read by <b>{meta.provider === "claude" ? "Claude" : "Gemini"}</b> · {meta.model} <em className="text-slate-500">(not right? switch engine above and extract again)</em></span>
+          {truncated && <p role="alert" className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />The read was cut short, so the last rows may be missing. Compare the table with the PDF, or upload fewer pages and extract again.</p>}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-stone-100 px-3 py-2 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+            <span>Read by <b>{meta.provider === "claude" ? "Claude" : "Gemini"}</b> <em className="text-stone-500">(numbers look off? switch parser above and extract again)</em></span>
             <span>Effective date: <b>{meta.ex.effectiveDate ?? "not found"}</b></span>
             <span>GST: <b>{meta.ex.gstIncluded === true ? "included" : meta.ex.gstIncluded === false ? "extra" : "not stated"}</b></span>
             <span>Confidence: <b>{meta.ex.confidence != null ? `${Math.round(meta.ex.confidence * (meta.ex.confidence <= 1 ? 100 : 1))}%` : "n/a"}</b></span>
@@ -213,12 +211,12 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
             <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100">No rates could be matched to {paper.name}&rsquo;s editions and categories. See the notes below, or check you picked the right publication.</p>
           ) : (
             <>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
+              <p className="text-xs text-stone-600 dark:text-stone-300">
                 <span className="inline-block h-2.5 w-2.5 rounded-sm border border-red-500 bg-red-100 align-middle" /> missing &nbsp; <span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-500 bg-amber-100 align-middle" /> uncertain / derived (check against the PDF). Editing a cell marks it as checked. {flagged > 0 && <b className="text-amber-800 dark:text-amber-300">{flagged} cell{flagged === 1 ? "" : "s"} to verify.</b>}
               </p>
-              <div className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="max-h-[28rem] overflow-auto rounded-lg border border-stone-200 dark:border-stone-700">
                 <table className="w-full min-w-[1400px] text-left text-xs">
-                  <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>
+                  <thead className="sticky top-0 z-10 bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-200"><tr>
                     <th className="px-2 py-2">Use</th><th className="px-2 py-2">Edition</th><th className="px-2 py-2">Category</th><th className="px-2 py-2">Ad type</th>
                     {NUMS.map((c) => <th key={c.key} className="px-2 py-2 text-right whitespace-nowrap">{c.label}</th>)}<th className="px-2 py-2">Source</th>
                   </tr></thead>
@@ -226,8 +224,8 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                     {rows.map((r) => {
                       const errs = r.include ? problems.get(r.uid) ?? [] : [];
                       return (
-                        <tr key={r.uid} className={cn("border-t border-slate-200 align-top dark:border-slate-700", !r.include && "opacity-45", errs.length > 0 && "bg-red-50/60 dark:bg-red-950/20")}>
-                          <td className="px-2 py-1.5"><input type="checkbox" checked={r.include} onChange={(e) => edit(r.uid, { include: e.target.checked })} aria-label={`Include ${r.edition} ${r.category} ${r.ad_type}`} className="h-4 w-4 accent-violet-600" /></td>
+                        <tr key={r.uid} className={cn("border-t border-stone-200 align-top dark:border-stone-700", !r.include && "opacity-45", errs.length > 0 && "bg-red-50/60 dark:bg-red-950/20")}>
+                          <td className="px-2 py-1.5"><input type="checkbox" checked={r.include} onChange={(e) => edit(r.uid, { include: e.target.checked })} aria-label={`Include ${r.edition} ${r.category} ${r.ad_type}`} className="h-4 w-4 accent-[#C2410C]" /></td>
                           <td className="px-2 py-1.5 font-semibold whitespace-nowrap">{r.edition === "all" ? "All editions" : r.edition}</td>
                           <td className="px-2 py-1.5">{r.category === "all" ? "All" : r.category}</td>
                           <td className="px-2 py-1.5 whitespace-nowrap">{r.ad_type}</td>
@@ -236,10 +234,10 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                               {c.types.includes(r.ad_type)
                                 ? <input type="number" min={0} step={c.step} value={r[c.key] ?? ""} aria-label={`${c.label} for ${r.edition} ${r.category}`} className={cellCls(r.flags[c.key])}
                                     onChange={(e) => edit(r.uid, { [c.key]: e.target.value === "" ? (c.key === "min_lines" || c.key === "min_sq_cm" || c.key === "color_sq_cm_rate" || c.key === "word_rate" || c.key === "eng_word_rate" || c.key === "caps_word_rate" || c.key === "heading_line_rate" || c.key === "min_words" ? null : 0) : Number(e.target.value) } as Partial<ImportRow>, c.key)} />
-                                : <span className="text-slate-300">—</span>}
+                                : <span className="text-stone-300">—</span>}
                             </td>
                           ))}
-                          <td className="px-2 py-1.5 text-slate-500">{r.source}{errs.length > 0 && <span className="mt-0.5 block font-semibold text-red-700 dark:text-red-300">{errs[0]}</span>}</td>
+                          <td className="px-2 py-1.5 text-stone-500">{r.source}{errs.length > 0 && <span className="mt-0.5 block font-semibold text-red-700 dark:text-red-300">{errs[0]}</span>}</td>
                         </tr>
                       );
                     })}
@@ -250,7 +248,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
           )}
 
           {notes.length > 0 && (
-            <details className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
+            <details className="rounded-md border border-stone-200 bg-stone-50 p-3 text-xs text-stone-700 dark:border-stone-700 dark:bg-stone-800/50 dark:text-stone-200">
               <summary className="cursor-pointer font-semibold">Notes &amp; items not imported ({notes.length})</summary>
               <ul className="mt-2 list-disc space-y-1 pl-5">{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
             </details>
@@ -258,26 +256,26 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
 
           {extras.length > 0 && (
             <div>
-              <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Page premiums, combo packages &amp; add-ons</h3>
-              <div className="max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <h3 className="mb-1 text-sm font-bold text-stone-900 dark:text-white">Page premiums, combo packages &amp; add-ons</h3>
+              <div className="max-h-96 overflow-auto rounded-lg border border-stone-200 dark:border-stone-700">
                 <table className="w-full min-w-[640px] text-left text-xs">
-                  <thead className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr><th className="px-2 py-2">Use</th><th className="px-2 py-2">Item</th><th className="px-2 py-2">Type</th><th className="px-2 py-2">Printed values (editable)</th></tr></thead>
+                  <thead className="bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-200"><tr><th className="px-2 py-2">Use</th><th className="px-2 py-2">Item</th><th className="px-2 py-2">Type</th><th className="px-2 py-2">Printed values (editable)</th></tr></thead>
                   <tbody>
                     {extras.map((x) => (
-                      <tr key={x.uid} className={cn("border-t border-slate-200 align-top dark:border-slate-700", !x.include && "opacity-45")}>
-                        <td className="px-2 py-1.5"><input type="checkbox" checked={x.include} aria-label={`Include ${x.label}`} className="h-4 w-4 accent-violet-600" onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, include: e.target.checked } : y))} /></td>
+                      <tr key={x.uid} className={cn("border-t border-stone-200 align-top dark:border-stone-700", !x.include && "opacity-45")}>
+                        <td className="px-2 py-1.5"><input type="checkbox" checked={x.include} aria-label={`Include ${x.label}`} className="h-4 w-4 accent-[#C2410C]" onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, include: e.target.checked } : y))} /></td>
                         <td className="px-2 py-1.5 font-semibold">{x.label}</td>
-                        <td className="px-2 py-1.5 text-slate-500">{x.source}</td>
+                        <td className="px-2 py-1.5 text-stone-500">{x.source}</td>
                         <td className="px-2 py-1.5">
                           <div className="flex flex-wrap gap-2">
                             {(x.kind === "page_premium" ? [["percent", "+ %"], ["rate_per_sq_cm", "B&W ₹ / cm²"], ["color_rate_per_sq_cm", "Colour ₹ / cm²"]] : x.kind === "addon" ? [["tint_percent", "Tint %"], ["underline_percent", "Underline %"], ["box_percent", "Box %"], ["box_fee", "Box ₹"]] : []).map(([k, lab]) => (
                               <label key={k} className="flex items-center gap-1">{lab}
-                                <input type="number" min={0} step="0.01" value={(x.data[k] as number | null) ?? ""} className="w-20 rounded border border-slate-300 px-1.5 py-1 text-right tabular-nums dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                <input type="number" min={0} step="0.01" value={(x.data[k] as number | null) ?? ""} className="w-20 rounded border border-stone-300 px-1.5 py-1 text-right tabular-nums dark:border-stone-600 dark:bg-stone-800 dark:text-white"
                                   onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, data: { ...y.data, [k]: e.target.value === "" ? null : Number(e.target.value) } } : y))} />
                               </label>
                             ))}
-                            {x.kind === "addon" && Array.isArray(x.data.highlighter) && <span className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">Highlighter: {(x.data.highlighter as { min: number; max: number | null; fee: number }[]).map((h) => `${h.min}${h.max == null ? "+" : h.max !== h.min ? `–${h.max}` : ""} ed. ₹${h.fee}`).join(" · ")}</span>}
-                            {x.kind === "combo" && ((x.data.rates as { ad_type: string; category: string; sq_cm_rate: number; color_sq_cm_rate?: number | null; word_rate?: number | null; caps_word_rate?: number | null; heading_line_rate?: number | null }[]) ?? []).map((r) => <span key={r.ad_type + r.category} className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{r.ad_type === "classified-text" ? `classified text: ₹${r.word_rate ?? "?"}/word${r.caps_word_rate ? ` · caps ₹${r.caps_word_rate}` : ""}${r.heading_line_rate ? ` · heading ₹${r.heading_line_rate}/line` : ""}` : `${r.category === "all" ? "all" : r.category} · ${r.ad_type === "commercial-display" ? "display" : "classified display"}: ₹${r.sq_cm_rate}/cm²${r.color_sq_cm_rate ? ` · colour ₹${r.color_sq_cm_rate}` : ""}`}</span>)}
+                            {x.kind === "addon" && Array.isArray(x.data.highlighter) && <span className="rounded bg-stone-100 px-1.5 py-0.5 dark:bg-stone-800">Highlighter: {(x.data.highlighter as { min: number; max: number | null; fee: number }[]).map((h) => `${h.min}${h.max == null ? "+" : h.max !== h.min ? `–${h.max}` : ""} ed. ₹${h.fee}`).join(" · ")}</span>}
+                            {x.kind === "combo" && ((x.data.rates as { ad_type: string; category: string; sq_cm_rate: number; color_sq_cm_rate?: number | null; word_rate?: number | null; caps_word_rate?: number | null; heading_line_rate?: number | null }[]) ?? []).map((r) => <span key={r.ad_type + r.category} className="rounded bg-stone-100 px-1.5 py-0.5 dark:bg-stone-800">{r.ad_type === "classified-text" ? `classified text: ₹${r.word_rate ?? "?"}/word${r.caps_word_rate ? ` · caps ₹${r.caps_word_rate}` : ""}${r.heading_line_rate ? ` · heading ₹${r.heading_line_rate}/line` : ""}` : `${r.category === "all" ? "all" : r.category} · ${r.ad_type === "commercial-display" ? "display" : "classified display"}: ₹${r.sq_cm_rate}/cm²${r.color_sq_cm_rate ? ` · colour ₹${r.color_sq_cm_rate}` : ""}`}</span>)}
                           </div>
                         </td>
                       </tr>
@@ -292,27 +290,27 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 {!confirming ? (
-                  <button type="button" onClick={() => setConfirming(true)} disabled={!included.length || blocked || !!busy} className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <button type="button" onClick={() => setConfirming(true)} disabled={!included.length || blocked || !!busy} className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-sm font-bold text-white hover:bg-[#166534] disabled:opacity-50">
                     {busy === "saving" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />} Apply &amp; Save Rates ({included.length})
                   </button>
                 ) : (
                   <div role="alertdialog" aria-label="Confirm import mode" className="w-full max-w-2xl space-y-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100">
                     <fieldset className="space-y-1.5">
                       <legend className="font-semibold">How should these {included.length} rows be saved for {paper.name}?</legend>
-                      <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-emerald-600" checked={mode === "merge"} onChange={() => setMode("merge")} />
+                      <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-[#15803D]" checked={mode === "merge"} onChange={() => setMode("merge")} />
                         <span><b>Merge / Update matching rows (keep existing ad types)</b><span className="block text-xs opacity-80">Adds new rows and updates rows with the same edition, category and ad type. Nothing else is deleted, so Display and Classified PDFs can be uploaded one after the other.</span></span></label>
-                      <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-emerald-600" checked={mode === "replace"} onChange={() => setMode("replace")} />
+                      <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-[#15803D]" checked={mode === "replace"} onChange={() => setMode("replace")} />
                         <span><b>Replace all rates for this publication</b><span className="block text-xs opacity-80">Deletes every other existing {paper.name} rate (old, seed and dummy ones included) and its page premiums, combos and add-ons.</span></span></label>
                     </fieldset>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => void apply()} className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">{mode === "merge" ? "Yes, merge & save" : "Yes, replace & save"}</button>
+                      <button type="button" onClick={() => void apply()} className="rounded-md bg-[#15803D] px-3 py-1 text-xs font-bold text-white hover:bg-[#166534]">{mode === "merge" ? "Yes, merge & save" : "Yes, replace & save"}</button>
                       <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-amber-500 px-3 py-1 text-xs font-bold">Cancel</button>
                     </div>
                   </div>
                 )}
                 {blocked && <span className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-300"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Fix the highlighted rows (or untick them) to continue.</span>}
               </div>
-              {!blocked && included.length > 0 && <p className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> Rows you approve go live in the booking calculator at once (merge keeps other existing rows; replace removes them). Unticked rows are not saved.</p>}
+              {!blocked && included.length > 0 && <p className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> Rows you approve go live in the booking calculator at once (merge keeps other existing rows; replace removes them). Unticked rows are not saved.</p>}
             </div>
           )}
         </div>

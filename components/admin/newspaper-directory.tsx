@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Download, FileSpreadsheet, Newspaper, Settings, Table2, TriangleAlert, Upload, X } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, FileUp, Newspaper, Settings, Table2, TriangleAlert, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BRAND, DEFAULT_BRAND } from "@/data/brand-colors";
 import { newspapers } from "@/data/newspapers";
@@ -96,7 +96,7 @@ export function NewspaperDirectory() {
               <div className="mt-4 grid grid-cols-2 gap-2 pt-1">
                 <button type="button" onClick={() => void downloadProtectedTemplate(n, getActiveRates() ?? [])} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"><Download className="h-3.5 w-3.5" aria-hidden="true" />Download Template</button>
                 <button type="button" onClick={() => setOpen({ id: n.id, mode: "upload" })} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><Upload className="h-3.5 w-3.5" aria-hidden="true" />Upload Excel</button>
-                <button type="button" onClick={() => setOpen({ id: n.id, mode: "pdf" })} className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700">✨ Upload Rate Card PDF</button>
+                <button type="button" onClick={() => setOpen({ id: n.id, mode: "pdf" })} className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md border border-[#18181B] bg-[#18181B] px-3 py-2 text-xs font-bold text-white shadow-[0_2px_0_#000] hover:bg-[#27272A] active:translate-y-px active:shadow-none"><FileUp className="h-3.5 w-3.5 text-[#FDBA74]" aria-hidden="true" /> Upload Rate Card PDF</button>
                 <button type="button" onClick={() => setOpen({ id: n.id, mode: "table" })} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Table2 className="h-3.5 w-3.5" aria-hidden="true" />Edit in Table</button>
                 <button type="button" onClick={() => setOpen({ id: n.id, mode: "settings" })} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Settings className="h-3.5 w-3.5" aria-hidden="true" />Publication Settings</button>
               </div>
@@ -127,10 +127,10 @@ export function NewspaperDirectory() {
       {paper && open && (
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`${paper.name} rates`}>
           <button type="button" aria-label="Close" className="absolute inset-0 bg-slate-900/50" onClick={() => setOpen(null)} />
-          <div className="relative flex h-full w-full max-w-4xl flex-col overflow-y-auto bg-slate-50 shadow-2xl dark:bg-slate-900">
-            <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+          <div className="relative flex h-full w-full max-w-4xl flex-col overflow-y-auto bg-[#F5F5F4] shadow-2xl dark:bg-stone-900">
+            <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-[#E7E5E4] bg-[#FAF8F5] px-4 py-3 dark:border-stone-700 dark:bg-stone-900">
               <Newspaper className="h-5 w-5 text-slate-500" aria-hidden="true" />
-              <h2 className="flex-1 truncate text-lg font-extrabold text-slate-900 dark:text-white">{paper.name} <span className="text-sm font-normal text-slate-500">· {open.mode === "upload" ? "upload rate sheet" : open.mode === "pdf" ? "rate card PDF (AI)" : open.mode === "table" ? "edit rates" : "publication settings"}</span></h2>
+              <h2 className="flex-1 truncate text-lg font-extrabold text-slate-900 dark:text-white">{paper.name} <span className="text-sm font-normal text-slate-500">· {open.mode === "upload" ? "upload rate sheet" : open.mode === "pdf" ? "Tariff Sheet Importer" : open.mode === "table" ? "edit rates" : "publication settings"}</span></h2>
               <FileSpreadsheet className="hidden h-4 w-4 text-emerald-600 sm:block" aria-hidden="true" />
               <button type="button" onClick={() => setOpen(null)} aria-label="Close drawer" className="rounded p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button>
             </div>
