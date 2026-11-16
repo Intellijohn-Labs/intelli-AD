@@ -8,7 +8,7 @@ import { AiPosterModal } from "../ai-poster-modal";
 import { displayWidth } from "@/lib/display";
 import { useArtworkUpload } from "@/lib/supabase/use-artwork-upload";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
-import { composeObituary, DEFAULT_OBITUARY, FRAME_ACCENTS, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type FrameAccent, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
+import { composeObituary, DEFAULT_OBITUARY, FRAME_STYLES, HEADING_STYLES, MILESTONES, OBITUARY_PRESETS, PREFIXES, TRIBUTES, tributeText, type ObituaryFields, type ObituaryKind } from "@/data/obituary";
 import { useBooking, type BookingState } from "@/lib/booking-store";
 import { cropStyle, PhotoCropper } from "../photo-cropper";
 import { ParagraphField } from "../paragraph-field";
@@ -219,19 +219,8 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28,
             {HEADING_STYLES.map((h) => (
               <button key={h.id} type="button" role="radio" aria-checked={f.headingStyle === h.id} onClick={() => set({ headingStyle: h.id })}
                 className={cn("rounded border px-2 py-2 text-center text-base focus-visible:outline-2 focus-visible:outline-navy-500", f.headingStyle === h.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}
-                style={{ fontFamily: h.family, fontWeight: h.weight }}>
+                style={{ fontFamily: h.family, fontWeight: h.weight, fontStyle: h.italic ? "italic" : "normal", letterSpacing: h.spacing }}>
                 {h.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="mb-1.5 text-xs font-semibold text-zinc-600 dark:text-slate-200">Portrait ornament · അലങ്കാരം</p>
-          <div role="radiogroup" aria-label="Frame accent" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {FRAME_ACCENTS.map((a) => (
-              <button key={a.id} type="button" role="radio" aria-checked={f.frameAccent === a.id} onClick={() => set({ frameAccent: a.id })}
-                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameAccent === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
-                {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
               </button>
             ))}
           </div>
@@ -242,78 +231,10 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, charsPerLine = 28,
   );
 }
 
-/** Flowers spaced evenly along the frame outline (viewBox units). */
-function garlandPoints(round: boolean, w: number, h: number, n: number) {
-  const pts: [number, number][] = [];
-  if (round) {
-    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; pts.push([w / 2 + (w / 2 - 6) * Math.cos(a), h / 2 + (h / 2 - 6) * Math.sin(a)]); }
-  } else {
-    const per = 2 * (w - 12 + h - 12);
-    for (let i = 0; i < n; i++) {
-      let d = (i / n) * per;
-      if (d < w - 12) pts.push([6 + d, 6]);
-      else if ((d -= w - 12) < h - 12) pts.push([w - 6, 6 + d]);
-      else if ((d -= h - 12) < w - 12) pts.push([w - 6 - d, h - 6]);
-      else pts.push([6, h - 6 - (d - (w - 12))]);
-    }
-  }
-  return pts;
-}
-
-/** Garland: a ring of flowers around the portrait (black outlines, white petals, so it prints in mono). */
-export function Garland({ round, w, h }: { round: boolean; w: number; h: number }) {
-  const pts = garlandPoints(round, w, h, round ? 14 : 18);
-  return (
-    <svg aria-hidden="true" viewBox={`0 0 ${w} ${h}`} className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-      {pts.map(([x, y], i) => (
-        <g key={i} transform={`translate(${x} ${y})`} stroke="#000" strokeWidth="1" fill="#fff">
-          {[0, 72, 144, 216, 288].map((r) => <circle key={r} cx={0} cy={-4} r={3} transform={`rotate(${r})`} />)}
-          <circle r="2" fill="#000" />
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-/** Nilavilakku: Kerala brass lamp with a lit wick. White halo keeps it readable over the photo. */
-export function Lamp() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 32 48" className="h-12 w-8" strokeLinejoin="round">
-      <g stroke="#fff" strokeWidth="3" paintOrder="stroke" fill="#000">
-        <path className="lamp-flame" d="M16 3c2.6 3 3.4 5.2 0 8.4-3.4-3.2-2.6-5.4 0-8.4z" />
-        <path d="M5 14h22l-3 5H8z" />
-        <path d="M14.5 19h3v14h-3z" />
-        <path d="M10 33h12l2 4H8z" />
-        <path d="M5 37h22l3 8H2z" />
-      </g>
-      <path className="lamp-flame" d="M16 6c1.2 1.6 1.6 2.6 0 4.2-1.6-1.6-1.2-2.6 0-4.2z" fill="#fff" />
-    </svg>
-  );
-}
-
-/** Memorial candle with a glowing flame (the glow shows in the digital preview only). */
-function Candle() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 48" className="h-12 w-6" strokeLinejoin="round">
-      <defs>
-        <radialGradient id="candle-glow"><stop offset="0" stopColor="#fbbf24" stopOpacity="0.9" /><stop offset="1" stopColor="#fbbf24" stopOpacity="0" /></radialGradient>
-      </defs>
-      <circle cx="12" cy="9" r="9" fill="url(#candle-glow)" className="print:hidden" />
-      <g stroke="#fff" strokeWidth="3" paintOrder="stroke" fill="#000">
-        <path d="M12 2c2.4 3 3 5.6 0 8.6-3-3-2.4-5.6 0-8.6z" />
-        <path d="M11.4 10h1.2v4h-1.2z" />
-        <rect x="6" y="14" width="12" height="26" rx="1" />
-        <path d="M3 40h18v4H3z" />
-      </g>
-      <path d="M12 5c1 1.6 1.4 2.8 0 4.2-1.4-1.4-1-2.6 0-4.2z" fill="#fbbf24" />
-    </svg>
-  );
-}
-
-/** 4×5 cm portrait (aspect 4:5) with the chosen accent. Overflow stays visible so ornaments can sit on the frame. */
-function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale?: number; url?: string; round: boolean; accent: FrameAccent; crop: { zoom: number; x: number; y: number }; onCrop?: (c: { zoom: number; x: number; y: number }) => void; onPhoto?: (f: FileMeta) => void }) {
+/** 4×5 cm portrait (aspect 4:5) in a clean frame; decorative motifs come from the AI Poster Designer. */
+function Frame({ url, round, crop, onCrop, onPhoto, scale = 1 }: { scale?: number; url?: string; round: boolean; crop: { zoom: number; x: number; y: number }; onCrop?: (c: { zoom: number; x: number; y: number }) => void; onPhoto?: (f: FileMeta) => void }) {
   const W = Math.round(96 * scale), H = Math.round((round ? 96 : 120) * scale); // px; a 4×5 cm print area at preview scale
-  const pad = accent === "garland" ? 12 : 4;
+  const pad = 4;
   const interactive = !!(onCrop && onPhoto);
   const drag = useRef<{ x: number; y: number; cx: number; cy: number; moved: boolean } | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -366,10 +287,6 @@ function Frame({ url, round, accent, crop, onCrop, onPhoto, scale = 1 }: { scale
         {interactive && url && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[8px] font-bold text-white opacity-0 transition-opacity group-hover/photo:opacity-100">Drag · click to replace</span>}
       </div>
       {interactive && <input ref={input} type="file" accept={PHOTO_ACCEPT} className="sr-only" tabIndex={-1} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />}
-      {accent === "garland" && <Garland round={round} w={W + pad * 2} h={H + pad * 2} />}
-      {(accent === "lamp" || accent === "candle") && (
-        <span className="pointer-events-none absolute right-[-8px] bottom-0">{accent === "lamp" ? <Lamp /> : <Candle />}</span>
-      )}
     </div>
   );
 }
@@ -453,13 +370,13 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
         <p className="py-6 text-center text-sm text-zinc-400 italic">Your notice appears here as you fill the form…</p>
       ) : (
         <NoticeFrame style={isText ? "minimal" : f.frameStyle}>
-          <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug" style={{ fontFamily: heading.family, fontWeight: heading.weight, letterSpacing: heading.spacing }}>
+          <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug" style={{ fontFamily: heading.family, fontWeight: heading.weight, fontStyle: heading.italic ? "italic" : "normal", letterSpacing: heading.spacing }}>
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
             {inlineText ? <EditableLine value={header} onCommit={commit(0)} /> : header}
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
           </h4>
           <div className={cn("mt-2", showPhoto ? (narrow ? "flex flex-col items-center gap-3" : "flow-root") : "block")}>
-            {showPhoto && (narrow ? <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /> : <div className="float-left mr-3 mb-1"><Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} accent={f.frameAccent} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /></div>)}
+            {showPhoto && (narrow ? <Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /> : <div className="float-left mr-3 mb-1"><Frame url={state.artwork?.previewUrl} round={f.photoFrame === "round"} scale={f.photoScale ?? 1} crop={f.photoCrop} onCrop={editable ? (c) => update({ obituary: { ...f, photoCrop: c } }) : undefined} onPhoto={editable ? (file) => update(file.url ? { artwork: file } : { artwork: file, obituary: { ...f, photoCrop: { zoom: 1, x: 50, y: 50 } } }) : undefined} /></div>)}
             {/* The portrait floats left: the first lines sit beside it and the rest run the full width, so text never gets squeezed into a narrow column. */}
             <div lang="ml" className={cn("min-w-0 space-y-1.5 leading-[1.7] hyphens-auto [overflow-wrap:anywhere] [text-wrap:pretty]", narrow && "w-full", showPhoto && !narrow && align === "text-justify" ? "text-left" : align)} style={{ fontSize: textPx }}>
               {body.map((p, i) => {

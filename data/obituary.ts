@@ -2,7 +2,6 @@
 
 export type ObituaryKind = "demise" | "anniversary";
 export type Gender = "m" | "f";
-export type FrameAccent = "none" | "garland" | "lamp" | "candle";
 export type FrameStyle = "traditional" | "christian" | "minimal";
 export type HeadingStyle = "classic" | "bold" | "elegant" | "script";
 
@@ -12,18 +11,12 @@ export const FRAME_STYLES: { id: FrameStyle; ml: string; en: string }[] = [
   { id: "minimal", ml: "ലളിതം", en: "Minimal rule" },
 ];
 
-export const HEADING_STYLES: { id: HeadingStyle; label: string; family: string; weight: number; spacing?: string }[] = [
+export const HEADING_STYLES: { id: HeadingStyle; label: string; family: string; weight: number; spacing?: string; italic?: boolean }[] = [
+  // Four clearly different looks: serif heavy / sans heavy / italic light serif with tracking / handwritten script.
   { id: "classic", label: "ക്ലാസിക്", family: '"Noto Serif Malayalam", serif', weight: 800 },
   { id: "bold", label: "ബോൾഡ്", family: '"Anek Malayalam", "Noto Sans Malayalam", sans-serif', weight: 800 },
-  { id: "elegant", label: "എലഗന്റ്", family: '"Noto Serif Malayalam", serif', weight: 600, spacing: "0.04em" },
+  { id: "elegant", label: "എലഗന്റ്", family: '"Noto Serif Malayalam", serif', weight: 400, spacing: "0.08em", italic: true },
   { id: "script", label: "ലിപി", family: '"Chilanka", "Manjari", cursive', weight: 400 },
-];
-
-export const FRAME_ACCENTS: { id: FrameAccent; ml: string; en: string }[] = [
-  { id: "garland", ml: "പൂമാല", en: "Garland frame" },
-  { id: "lamp", ml: "നിലവിളക്ക്", en: "Traditional lamp" },
-  { id: "candle", ml: "മെഴുകുതിരി", en: "Memorial candle" },
-  { id: "none", ml: "പ്ലെയിൻ ഫ്രെയിം", en: "Classic minimal" },
 ];
 
 export interface ObituaryFields {
@@ -48,8 +41,6 @@ export interface ObituaryFields {
   remembranceDate: string;
   tribute: string;
   photoFrame: "round" | "rect";
-  /** Ornament around the portrait: none (plain frame), garland, nilavilakku lamp, or memorial candle. */
-  frameAccent: FrameAccent;
   /** Border around the whole notice: floral (traditional), cross (christian) or a thin rule (minimal). */
   frameStyle: FrameStyle;
   /** Malayalam typeface used for the heading. */
@@ -125,7 +116,6 @@ export const DEFAULT_OBITUARY: ObituaryFields = {
   remembranceDate: "",
   tribute: "",
   photoFrame: "round",
-  frameAccent: "garland",
   frameStyle: "traditional",
   headingStyle: "classic",
   prayer: "",
@@ -225,7 +215,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
       demiseDate: iso(now), demiseTime: "21:15",
       funeralDate: iso(new Date(now.getTime() + 2 * 864e5)), funeralTime: "15:00", funeralPlace: "ഭവനത്തിൽ ശുശ്രൂഷ, തുടർന്ന് സെന്റ് ജോർജ് പള്ളിയിൽ",
       family: "ഭർത്താവ്: പരേതനായ ജോസഫ് പി.ജെ. മക്കൾ: സിബി, ഷീബ, ജിജോ. മരുമക്കൾ: ലിജി, തോമസ്, ആൻസി.",
-      photoFrame: "rect", frameAccent: "none", frameStyle: "christian",
+      photoFrame: "rect", frameStyle: "christian",
     }),
   },
   {
@@ -242,7 +232,7 @@ export const OBITUARY_PRESETS: ObituaryPreset[] = [
       remembranceDate: iso(now),
       tribute: tributeText("t1", "ഗോപാലൻ നായർ"),
       family: "ഭാര്യ, മക്കൾ, മരുമക്കൾ, കൊച്ചുമക്കൾ, ബന്ധുമിത്രാദികൾ",
-      photoFrame: "round", frameAccent: "garland",
+      photoFrame: "round",
     }),
   },
 ];
