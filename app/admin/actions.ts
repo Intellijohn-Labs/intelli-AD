@@ -160,7 +160,7 @@ export async function saveRates(raw: unknown, allowClear = false): Promise<SaveR
 
   // The exact printed colour rate (₹/cm²) isn't a spreadsheet column, so it's carried alongside the validated row.
   // Spreadsheet rows carry no per-word / exact-colour columns, so those keys are simply not written (existing values stay).
-  const rows = results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() }));
+  const rows = dedupeLast(results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() })), rateKey);
   if (rows.length) {
     const { error } = await admin.from("publication_rates").upsert(rows, { onConflict: CONFLICT_KEY });
     if (error) return { ok: false, message: error.message, saved: 0, cleared: 0, errors: [] };
@@ -229,6 +229,11 @@ export async function clearNewspaperRates(newspaperName: unknown): Promise<Actio
 // ── PDF rate card import: replace a publication's rates, and purge legacy rates ───────────────────────────────────────
 
 const EXTRAS_TABLE = "publication_extras";
+/** Keeps the LAST item per conflict key: a single upsert must never contain the same key twice (Postgres: "ON CONFLICT DO UPDATE command cannot affect row a second time"). */
+function dedupeLast<T>(items: T[], key: (x: T) => string): T[] {
+  return [...new Map(items.map((x) => [key(x), x] as const)).values()];
+}
+const rateKey = (r: { newspaper_name: string; edition: string; category: string; ad_type: string }) => [r.newspaper_name, r.edition, r.category, r.ad_type].join("\u0000");
 const extrasMissing = (m: string) => /does not exist|schema cache|relation .* does not exist|could not find the table/i.test(m);
 const extraSchema = z.object({
   kind: z.enum(["page_premium", "combo", "addon"]),
@@ -266,7 +271,7 @@ export async function replacePublicationRates(input: unknown): Promise<ReplaceRe
   const results = validateRows(raw);
   const errors = results.filter((r) => r.errors.length);
   if (errors.length) return bad(`${errors.length} row${errors.length === 1 ? " has" : "s have"} errors (row ${errors[0].line}: ${errors[0].errors[0]}). Nothing was saved.`);
-  const rows = results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() }));
+  const rows = dedupeLast(results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() })), rateKey);
   if (rows.some((r) => r.newspaper_name !== paper.name)) return bad(`Every row must be for ${paper.name}.`);
   if (!rows.length) return bad("No rates with values to save.");
 
@@ -300,10 +305,11 @@ export async function replacePublicationRates(input: unknown): Promise<ReplaceRe
       if (prev) x.data = { ...prev, ...Object.fromEntries(Object.entries(x.data).filter(([, v]) => v != null)) };
     }
   }
-  const items = [
+  let items = [
     ...extras.map((x) => ({ newspaper_name: paper.name, kind: x.kind, name: x.name, data: x.data })),
     { newspaper_name: paper.name, kind: "import_meta" as const, name: "pdf", data: { importedAt: new Date().toISOString(), rowCount: rows.length, ...meta } },
   ].map((x) => ({ ...x, updated_at: new Date().toISOString() }));
+  items = dedupeLast(items, (x) => [x.newspaper_name, x.kind, x.name].join("\u0000")); // unique (newspaper_name, kind, name)
   let extrasSaved = false, warning: string | undefined;
   const { error: exErr } = await admin.from(EXTRAS_TABLE).upsert(items, { onConflict: "newspaper_name,kind,name" });
   if (exErr) warning = extrasMissing(exErr.message) ? "Rates saved, but the publication_extras table doesn't exist yet, so page premiums, combos and add-on percentages were not saved. Run the new SQL block in supabase/schema.sql, then import again." : `Rates saved, but extras failed: ${exErr.message}`;
