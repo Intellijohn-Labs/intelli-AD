@@ -128,14 +128,7 @@ export const categories: Category[] = [
     description: "Death announcements with funeral schedule and family details.",
     descriptionMl: "സംസ്കാര വിവരങ്ങളും കുടുംബാംഗങ്ങളുടെ വിവരങ്ങളും സഹിതമുള്ള മരണ അറിയിപ്പുകൾ.",
     rateMultiplier: 0.9,
-    documents: [
-      {
-        id: "death-cert",
-        label: "Death certificate",
-        hint: "Optional. Speeds up approval for obituary display ads.",
-        required: false,
-      },
-    ],
+    documents: [],
   },
   {
     id: "remembrance",
