@@ -188,7 +188,7 @@ export function Step1Selection() {
                       {locked && <Badge tone="amber">{t(loaded ? "Rates Updating / Unavailable" : "Checking rates…")}</Badge>}
                     </span>
                     <span className="block text-xs text-zinc-500">
-                      {t("{n}M readers", { n: parseFloat(paper.readership) })} · {rate ? t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) }) : t(loaded ? "Rates not yet published by admin" : "Checking rates…")}
+                      {t("{n}M readers", { n: parseFloat(paper.readership) })} · {rate ? t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) }) : t(loaded ? "Rate not available — upload rate card" : "Checking rates…")}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
@@ -226,13 +226,16 @@ export function Step1Selection() {
                             {eds.map((e) => {
                               const on = selected.includes(e.id);
                               return (
-                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rates not yet published by admin")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
+                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rate not available — upload rate card")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
                                   <input type="checkbox" className="sr-only" checked={on} disabled={!edOk(paper, e.name)} onChange={() => setEditions(paper.id, on ? selected.filter((id) => id !== e.id) : [...selected, e.id])} />
                                   {place(e.name)}
                                 </label>
                               );
                             })}
                           </div>
+                          {eds.some((e) => !edOk(paper, e.name)) && (
+                            <p className="mt-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">{t("Rate not available — upload rate card")}: {eds.filter((e) => !edOk(paper, e.name)).map((e) => place(e.name)).join(", ")}</p>
+                          )}
                         </div>
                       );
                     })}

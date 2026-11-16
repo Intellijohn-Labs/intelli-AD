@@ -17,6 +17,8 @@ export interface Enhancements {
   /** Tick mark (✔) at the beginning of the ad. */
   tick: boolean;
   tint: boolean;
+  /** Underline (classified text): a percentage printed on the rate card. */
+  underline?: boolean;
 }
 
 export type ColorMode = "bw" | "color";
@@ -27,6 +29,8 @@ export interface DisplaySpec {
   widthCm?: number;
   heightCm: number;
   colorMode: ColorMode;
+  /** Page position id ("front", "back"...) when the rate card prints a premium for it; empty = run of paper. */
+  position?: string;
 }
 
 export interface FileMeta {

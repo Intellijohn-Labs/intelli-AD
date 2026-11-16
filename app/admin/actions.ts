@@ -223,3 +223,104 @@ export async function clearNewspaperRates(newspaperName: unknown): Promise<Actio
   revalidatePath("/admin/rates");
   return { ok: true, message: `All rates for ${paper.name} have been cleared.`, deleted: data?.length ?? 0 };
 }
+
+// ── PDF rate card import: replace a publication's rates, and purge legacy rates ───────────────────────────────────────
+
+const EXTRAS_TABLE = "publication_extras";
+const extrasMissing = (m: string) => /does not exist|schema cache|relation .* does not exist|could not find the table/i.test(m);
+const extraSchema = z.object({
+  kind: z.enum(["page_premium", "combo", "addon"]),
+  name: z.string().trim().min(1).max(120),
+  data: z.record(z.string(), z.unknown()),
+});
+const replaceSchema = z.object({
+  newspaperName: z.string(),
+  rows: z.array(z.record(z.string(), z.unknown())).max(MAX_BATCH),
+  extras: z.array(extraSchema).max(200).default([]),
+  meta: z.object({ fileName: z.string().max(200).default(""), effectiveDate: z.string().max(20).nullable().default(null), engine: z.string().max(60).default("") }).default({ fileName: "", effectiveDate: null, engine: "" }),
+});
+export interface ReplaceResult extends ActionResult { saved: number; removed: number; extrasSaved: boolean; warning?: string }
+
+/**
+ * Replaces ALL of one publication's rates with the reviewed PDF import: the new rows are upserted first, then every
+ * older row (seed / dummy / previous upload) for that newspaper that isn't in the new set is deleted. If the upsert
+ * fails nothing is deleted. Page premiums, combos and add-on percentages are replaced the same way, and the import is
+ * recorded so "Purge legacy rates" keeps it.
+ */
+export async function replacePublicationRates(input: unknown): Promise<ReplaceResult> {
+  const none = { saved: 0, removed: 0, extrasSaved: false };
+  const bad = (message: string): ReplaceResult => ({ ok: false, message, ...none });
+  if (!(await requireAdmin())) return bad("Not authorised.");
+  const admin = createAdminClient();
+  if (!admin) return bad(NO_KEY);
+  const parsed = replaceSchema.safeParse(input);
+  if (!parsed.success) return bad("Invalid import data.");
+  const { newspaperName, rows: raw, extras, meta } = parsed.data;
+  const paper = newspapers.find((n) => n.name === newspaperName);
+  if (!paper) return bad("Unknown newspaper.");
+  if (!raw.length) return bad("Nothing to save.");
+
+  const results = validateRows(raw);
+  const errors = results.filter((r) => r.errors.length);
+  if (errors.length) return bad(`${errors.length} row${errors.length === 1 ? " has" : "s have"} errors (row ${errors[0].line}: ${errors[0].errors[0]}). Nothing was saved.`);
+  const rows = results.filter((r) => r.row).map((r) => ({ ...(r.row as RateRow), updated_at: new Date().toISOString() }));
+  if (rows.some((r) => r.newspaper_name !== paper.name)) return bad(`Every row must be for ${paper.name}.`);
+  if (!rows.length) return bad("No rates with values to save.");
+
+  const { error: upErr } = await admin.from("publication_rates").upsert(rows, { onConflict: CONFLICT_KEY });
+  if (upErr) return bad(upErr.message);
+
+  // Remove every older row for this publication that is not part of the new set.
+  const keep = new Set(rows.map((r) => [r.edition, r.category, r.ad_type].join("|")));
+  const { data: existing, error: listErr } = await admin.from("publication_rates").select("id,edition,category,ad_type").eq("newspaper_name", paper.name);
+  if (listErr) return { ok: false, message: `Saved ${rows.length}, but couldn't remove older rates: ${listErr.message}`, saved: rows.length, removed: 0, extrasSaved: false };
+  const stale = (existing ?? []).filter((r) => !keep.has([r.edition, r.category, r.ad_type].join("|"))).map((r) => r.id as string);
+  for (let i = 0; i < stale.length; i += 200) {
+    const { error } = await admin.from("publication_rates").delete().in("id", stale.slice(i, i + 200));
+    if (error) return { ok: false, message: `Saved ${rows.length}, but removing older rates failed: ${error.message}`, saved: rows.length, removed: i, extrasSaved: false };
+  }
+
+  // Extras (page premiums, combos, add-ons) + the import record. Optional: the table may not exist yet.
+  const items = [
+    ...extras.map((x) => ({ newspaper_name: paper.name, kind: x.kind, name: x.name, data: x.data })),
+    { newspaper_name: paper.name, kind: "import_meta" as const, name: "pdf", data: { importedAt: new Date().toISOString(), rowCount: rows.length, ...meta } },
+  ].map((x) => ({ ...x, updated_at: new Date().toISOString() }));
+  let extrasSaved = false, warning: string | undefined;
+  const { error: exErr } = await admin.from(EXTRAS_TABLE).upsert(items, { onConflict: "newspaper_name,kind,name" });
+  if (exErr) warning = extrasMissing(exErr.message) ? "Rates saved, but the publication_extras table doesn't exist yet, so page premiums, combos and add-on percentages were not saved. Run the new SQL block in supabase/schema.sql, then import again." : `Rates saved, but extras failed: ${exErr.message}`;
+  else {
+    extrasSaved = true;
+    const keepX = new Set(items.map((x) => `${x.kind}|${x.name}`));
+    const { data: oldX } = await admin.from(EXTRAS_TABLE).select("id,kind,name").eq("newspaper_name", paper.name);
+    const staleX = (oldX ?? []).filter((x) => !keepX.has(`${x.kind}|${x.name}`)).map((x) => x.id as string);
+    if (staleX.length) await admin.from(EXTRAS_TABLE).delete().in("id", staleX);
+  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/rates");
+  return { ok: true, message: `${paper.name}: ${rows.length} rate${rows.length === 1 ? "" : "s"} saved, ${stale.length} older rate${stale.length === 1 ? "" : "s"} removed.`, saved: rows.length, removed: stale.length, extrasSaved, warning };
+}
+
+/**
+ * Deletes every rate (and extra) for publications that have NO verified PDF import, i.e. pre-seeded / hand-typed /
+ * dummy data. Publications with a recorded PDF import are untouched. Refuses to run if the import records can't be read.
+ */
+export async function purgeLegacyRates(): Promise<ActionResult & { deleted: number; kept: string[] }> {
+  const bad = (message: string) => ({ ok: false, message, deleted: 0, kept: [] as string[] });
+  if (!(await requireAdmin())) return bad("Not authorised.");
+  const admin = createAdminClient();
+  if (!admin) return bad(NO_KEY);
+  const { data: meta, error } = await admin.from(EXTRAS_TABLE).select("newspaper_name").eq("kind", "import_meta");
+  if (error) return bad(extrasMissing(error.message) ? "Can't tell which publications are PDF-verified: the publication_extras table doesn't exist yet. Run the new SQL block in supabase/schema.sql first. Nothing was deleted." : error.message);
+  const verified = new Set((meta ?? []).map((m) => m.newspaper_name as string));
+  const toPurge = newspapers.map((n) => n.name).filter((n) => !verified.has(n));
+  let deleted = 0;
+  if (toPurge.length) {
+    const { count, error: delErr } = await admin.from("publication_rates").delete({ count: "exact" }).in("newspaper_name", toPurge);
+    if (delErr) return bad(delErr.message);
+    deleted = count ?? 0;
+    await admin.from(EXTRAS_TABLE).delete().in("newspaper_name", toPurge);
+  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/rates");
+  return { ok: true, message: deleted ? `Purged ${deleted} legacy rate${deleted === 1 ? "" : "s"}; ${verified.size} PDF-verified publication${verified.size === 1 ? "" : "s"} kept.` : `Nothing to purge. ${verified.size} PDF-verified publication${verified.size === 1 ? "" : "s"} kept.`, deleted, kept: [...verified] };
+}

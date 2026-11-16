@@ -4,7 +4,7 @@ import { getAdType, getCategory } from "@/data/categories";
 import { getNewspaper } from "@/data/newspapers";
 import type { BookingState } from "./booking-store";
 import { cutoffFor, cutoffRuleFor } from "./cutoff";
-import { ENHANCEMENT_LABEL, type Quote } from "./pricing";
+import { ENHANCEMENT_LABEL, GST_RATE, type Quote } from "./pricing";
 import { formatDate, formatDateTime, formatINR } from "./utils";
 import { COMPANY } from "./company";
 
@@ -120,7 +120,7 @@ ${r.adText ? `<div class="ad">${esc(r.adText)}</div>` : `<p>${esc(r.displaySpec 
 ${r.enhancements.length ? `<p>Enhancements: ${r.enhancements.map(esc).join(", ")}</p>` : ""}
 <h3>Insertions &amp; charges</h3>
 <table><thead><tr><th>Publication / edition</th><th class="n">Charge</th><th class="n">Discount</th><th class="n">Net</th></tr></thead><tbody>${rows}
-${t.multiDay > 0 ? `<tr><td colspan="3">Multi-day savings (${t.multiDayPct}% for ${t.insertions} insertions)</td><td class="n">−${formatINR(t.multiDay, { decimals: true })}</td></tr>` : ""}${row("Subtotal after discounts", t.taxable)}${row("GST (18%)", t.gst)}${row("Total paid", t.total, true)}</tbody></table>
+${t.multiDay > 0 ? `<tr><td colspan="3">Multi-day savings (${t.multiDayPct}% for ${t.insertions} insertions)</td><td class="n">−${formatINR(t.multiDay, { decimals: true })}</td></tr>` : ""}${row("Subtotal after discounts", t.taxable)}${row(`GST (${Math.round(GST_RATE * 100)}%)`, t.gst)}${row("Total paid", t.total, true)}</tbody></table>
 <p style="font-family:Arial;font-size:11px;color:#666">This is a computer-generated Release Order for a demo booking. Booking cut-offs: ${r.cutoffs.map((c) => esc(c.paper) + " – " + esc(formatDateTime(c.cutoff))).join("; ")}.</p>
 </body></html>`;
 }

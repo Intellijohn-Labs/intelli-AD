@@ -25,8 +25,9 @@ export function composeSchema(adType: BookingState["adType"], requiredDocIds: st
       widthCm: z.number().catch(0),
       heightCm: z.number().catch(0),
       colorMode: z.enum(["bw", "color"]).catch("bw"),
+      position: z.string().catch(""),
       // Optional nested objects: undefined and null both mean "nothing entered", never a validation failure.
-      enhancements: z.preprocess((v) => v ?? {}, z.object({ bold: z.boolean().catch(false), border: z.boolean().catch(false), tick: z.boolean().catch(false), tint: z.boolean().catch(false) })),
+      enhancements: z.preprocess((v) => v ?? {}, z.object({ bold: z.boolean().catch(false), border: z.boolean().catch(false), tick: z.boolean().catch(false), tint: z.boolean().catch(false), underline: z.boolean().catch(false) })),
       artwork: z.preprocess((v) => v ?? null, fileMeta.nullable()),
       documents: z.preprocess((v) => v ?? {}, z.record(z.string(), z.any())) as unknown as z.ZodType<Record<string, z.infer<typeof fileMeta>>>,
     })
@@ -74,7 +75,8 @@ export type ComposeValues = {
   widthCm: number;
   heightCm: number;
   colorMode: "bw" | "color";
-  enhancements: { bold: boolean; border: boolean; tick: boolean; tint: boolean };
+  position?: string;
+  enhancements: { bold: boolean; border: boolean; tick: boolean; tint: boolean; underline?: boolean };
   artwork: z.infer<typeof fileMeta> | null;
   documents: Record<string, z.infer<typeof fileMeta>>;
 };

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "./auth";
 import { createClient } from "./supabase/client";
 import { newBookingRef, type BookingRow } from "./supabase/bookings";
+import { GST_RATE } from "./pricing";
 
 export type ExpressKind = "classified-text" | "obituary" | "tender";
 
@@ -225,7 +226,7 @@ export function customerReceiptsHtml(user: AuthUser, list: AgencyBooking[]): str
   <div class="ad">${esc(b.text)}</div>
   <table class="amt">
     <tr><td>Ad charges</td><td class="n">${inr(b.taxable)}</td></tr>
-    <tr><td>GST (18%)</td><td class="n">${inr(b.gst)}</td></tr>
+    <tr><td>GST (${Math.round(GST_RATE * 100)}%)</td><td class="n">${inr(b.gst)}</td></tr>
     <tr class="tot"><td>Total paid</td><td class="n">${inr(b.total)}</td></tr>
   </table>
   <footer><p>Issued on ${esc(new Date(b.createdAt).toLocaleString("en-IN"))}. Verify this booking with the ID above at intelliad.in.</p><div class="sign"><span>Authorised signatory &amp; seal</span></div></footer>

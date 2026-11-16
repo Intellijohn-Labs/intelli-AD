@@ -33,6 +33,22 @@ export interface RateRow {
   border_rate: number;
 }
 
+/**
+ * Extra tariff items from an imported rate card (table `publication_extras`): page-position premiums, combo
+ * packages and classified add-on percentages. All numbers are exactly as printed on the card.
+ */
+export type ExtraKind = "page_premium" | "combo" | "addon" | "import_meta";
+export interface RateExtra {
+  newspaper_name: string;
+  kind: ExtraKind;
+  /** page_premium: position id (+ "|edition"); combo: package name; addon: "classified"; import_meta: "pdf". */
+  name: string;
+  data: Record<string, unknown>;
+}
+export interface PagePremiumData { label: string; edition?: string | null; percent?: number | null; rate_per_sq_cm?: number | null }
+export interface ComboData { includes: string[]; gst_included?: boolean; rates: { ad_type: AdType; category: string; sq_cm_rate: number; color_surcharge_percent: number; min_sq_cm?: number | null }[] }
+export interface AddonData { tint_percent?: number | null; underline_percent?: number | null; box_percent?: number | null }
+
 /** Per-newspaper settings (table `newspaper_settings`). */
 export interface PaperSettings {
   newspaper_name: string;
@@ -261,6 +277,36 @@ export function headlineRate(rates: RateBook | null, paperName: string, adType: 
     .filter((v) => v > 0);
   return vals.length ? { amount: Math.round(Math.min(...vals)), unit: adType === "classified-text" ? "line" : "cm²" } : null;
 }
+
+// ── Imported tariff extras (page premiums, combos, add-on percentages) ───────────────────────────────────────────────
+
+let extrasBook: RateExtra[] = [];
+export function setActiveExtras(rows: RateExtra[]) {
+  extrasBook = rows;
+  version++;
+  listeners.forEach((l) => l());
+}
+export const getActiveExtras = () => extrasBook;
+const sameName = (a: string, b: string) => norm(a) === norm(b);
+
+/** Page-position premium for a newspaper (edition-specific entry wins over a card-wide one). */
+export function pagePremium(extras: RateExtra[], paperName: string, editionName: string, positionId: string): PagePremiumData | null {
+  const mine = extras.filter((x) => x.kind === "page_premium" && sameName(x.newspaper_name, paperName) && x.name.split("|")[0] === positionId);
+  const hit = mine.find((x) => (x.data as unknown as PagePremiumData).edition && sameName(String((x.data as unknown as PagePremiumData).edition), editionName)) ?? mine.find((x) => !(x.data as unknown as PagePremiumData).edition);
+  return hit ? (hit.data as unknown as PagePremiumData) : null;
+}
+/** Position ids (with labels) that every one of the given newspapers has a printed premium for. */
+export function commonPositions(extras: RateExtra[], paperNames: string[]): { id: string; label: string }[] {
+  if (!paperNames.length) return [];
+  const per = paperNames.map((n) => new Map(extras.filter((x) => x.kind === "page_premium" && sameName(x.newspaper_name, n)).map((x) => [x.name.split("|")[0], (x.data as unknown as PagePremiumData).label])));
+  return [...per[0]].filter(([id]) => per.every((m) => m.has(id))).map(([id, label]) => ({ id, label }));
+}
+export function addonsFor(extras: RateExtra[], paperName: string): AddonData {
+  return (extras.find((x) => x.kind === "addon" && sameName(x.newspaper_name, paperName))?.data ?? {}) as AddonData;
+}
+export const combosFor = (extras: RateExtra[], paperName: string) =>
+  extras.filter((x) => x.kind === "combo" && sameName(x.newspaper_name, paperName)).map((x) => ({ name: x.name, ...(x.data as unknown as ComboData) }));
+export const hasVerifiedImport = (extras: RateExtra[], paperName: string) => extras.some((x) => x.kind === "import_meta" && sameName(x.newspaper_name, paperName));
 
 // ── Publication settings and effective per-card configuration ─────────────────────────────────────────────────────
 

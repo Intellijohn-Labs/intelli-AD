@@ -3,10 +3,10 @@
 import { AlertTriangle, CheckCircle2, FileText, Loader2, Save, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getAiSettings, type AiSettingsState } from "@/app/admin/settings/ai/actions";
-import { saveRates } from "@/app/admin/actions";
+import { replacePublicationRates } from "@/app/admin/actions";
 import { useToast } from "@/components/ui/toast";
 import { newspapers } from "@/data/newspapers";
-import { mapExtraction, type ImportField, type ImportRow, type RateExtraction } from "@/lib/rate-import";
+import { mapExtraction, type ImportExtra, type ImportField, type ImportRow, type RateExtraction } from "@/lib/rate-import";
 import { RATE_COLUMNS, validateRows } from "@/lib/rates";
 import { loadRates } from "@/lib/use-rates";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,8 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   const [error, setError] = useState("");
   const [meta, setMeta] = useState<{ ex: RateExtraction; provider: string; model: string } | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
+  const [extras, setExtras] = useState<ImportExtra[]>([]);
+  const [confirming, setConfirming] = useState(false);
   const [notes, setNotes] = useState<string[]>([]);
   const paper = newspapers.find((n) => n.id === paperId)!;
   const [ai, setAi] = useState<AiSettingsState | null>(null);
@@ -62,11 +64,11 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   }, [busy]);
   const stage = pct < 20 ? "Uploading PDF document…" : pct < 55 ? "AI reading edition columns & tables…" : pct < 85 ? "Extracting Display, Obituary & Classified rates…" : "Formatting review table…";
 
-  const remap = (ex: RateExtraction, words: number) => { const m = mapExtraction(paper, ex, { wordsPerLine: words }); setRows(m.rows); setNotes(m.notes); };
+  const remap = (ex: RateExtraction, words: number) => { const m = mapExtraction(paper, ex, { wordsPerLine: words }); setRows(m.rows); setExtras(m.extras); setNotes(m.notes); setConfirming(false); };
 
   async function extract() {
     if (!file) return;
-    setError(""); setMeta(null); setRows([]); setNotes([]); setBusy("reading"); setPct(0); setElapsed(0); setFinishing(false);
+    setError(""); setMeta(null); setRows([]); setExtras([]); setNotes([]); setBusy("reading"); setPct(0); setElapsed(0); setFinishing(false);
     prog.current = { start: Date.now(), uploadedAt: 0, uploadFrac: 0, done: false };
     const fd = new FormData();
     fd.append("file", file);
@@ -113,15 +115,19 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
 
   async function apply() {
     if (!included.length || blocked) return;
-    setBusy("saving"); setError("");
+    setBusy("saving"); setError(""); setConfirming(false);
     try {
       const raw = included.map((r) => Object.fromEntries(RATE_COLUMNS.map((c) => [c, r[c]])));
-      for (let i = 0; i < raw.length; i += 500) {
-        const res = await saveRates(raw.slice(i, i + 500));
-        if (!res.ok) { setError(res.message + (res.errors[0] ? ` (${res.errors[0].errors[0]})` : "")); return; }
-      }
-      toast(`${raw.length} ${paper.name} rate${raw.length === 1 ? "" : "s"} saved and live`);
-      setMeta(null); setRows([]); setNotes([]); setFile(null);
+      const res = await replacePublicationRates({
+        newspaperName: paper.name,
+        rows: raw,
+        extras: extras.filter((x) => x.include).map((x) => ({ kind: x.kind, name: x.name, data: x.data })),
+        meta: { fileName: file?.name ?? "", effectiveDate: meta?.ex.effectiveDate ?? null, engine: meta ? `${meta.provider}:${meta.model}` : "" },
+      });
+      if (!res.ok) { setError(res.message); return; }
+      toast(res.message);
+      if (res.warning) setError(res.warning);
+      setMeta(null); setRows([]); setExtras([]); setNotes([]); setFile(null);
       if (fileRef.current) fileRef.current.value = "";
       await loadRates(); // the booking calculator reads this rate book
     } catch (e) { setError(e instanceof Error ? e.message : "Couldn't save the rates."); }
@@ -135,7 +141,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
   return (
     <section aria-labelledby="pdf-import-h" className={card}>
       <h2 id="pdf-import-h" className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white"><Sparkles className="h-5 w-5 text-violet-600" aria-hidden="true" /> Upload Rate Card PDF · {paper.name}</h2>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload {paper.name}&rsquo;s official tariff PDF. Only this publication&rsquo;s rates are touched, and you review every number before anything is saved. Existing rates are only changed where the imported rows match.</p>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Upload {paper.name}&rsquo;s official tariff PDF. Only this publication&rsquo;s rates are touched, and you review every number before anything is saved. Saving REPLACES all of this publication\u2019s existing rates (old, seed and dummy ones included) with the rows you approve.</p>
 
       <div role="radiogroup" aria-label="AI engine" className="mt-4 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">AI Engine:</span>
@@ -243,13 +249,54 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
             </details>
           )}
 
+          {extras.length > 0 && (
+            <div>
+              <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Page premiums, combo packages &amp; add-ons</h3>
+              <div className="overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table className="w-full min-w-[640px] text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr><th className="px-2 py-2">Use</th><th className="px-2 py-2">Item</th><th className="px-2 py-2">Type</th><th className="px-2 py-2">Printed values (editable)</th></tr></thead>
+                  <tbody>
+                    {extras.map((x) => (
+                      <tr key={x.uid} className={cn("border-t border-slate-200 align-top dark:border-slate-700", !x.include && "opacity-45")}>
+                        <td className="px-2 py-1.5"><input type="checkbox" checked={x.include} aria-label={`Include ${x.label}`} className="h-4 w-4 accent-violet-600" onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, include: e.target.checked } : y))} /></td>
+                        <td className="px-2 py-1.5 font-semibold">{x.label}</td>
+                        <td className="px-2 py-1.5 text-slate-500">{x.source}</td>
+                        <td className="px-2 py-1.5">
+                          <div className="flex flex-wrap gap-2">
+                            {(x.kind === "page_premium" ? [["percent", "+ %"], ["rate_per_sq_cm", "₹ / cm²"]] : x.kind === "addon" ? [["tint_percent", "Tint %"], ["underline_percent", "Underline %"]] : []).map(([k, lab]) => (
+                              <label key={k} className="flex items-center gap-1">{lab}
+                                <input type="number" min={0} step="0.01" value={(x.data[k] as number | null) ?? ""} className="w-20 rounded border border-slate-300 px-1.5 py-1 text-right tabular-nums dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                  onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, data: { ...y.data, [k]: e.target.value === "" ? null : Number(e.target.value) } } : y))} />
+                              </label>
+                            ))}
+                            {x.kind === "combo" && ((x.data.rates as { ad_type: string; category: string; sq_cm_rate: number; color_surcharge_percent: number }[]) ?? []).map((r) => <span key={r.ad_type + r.category} className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{r.category === "all" ? "all" : r.category} · {r.ad_type === "commercial-display" ? "display" : "classified display"}: ₹{r.sq_cm_rate}/cm² (+{r.color_surcharge_percent}% colour)</span>)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {rows.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => void apply()} disabled={!included.length || blocked || !!busy} className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
-                {busy === "saving" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />} Apply &amp; Save Rates ({included.length})
-              </button>
-              {blocked && <span className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-300"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Fix the highlighted rows (or untick them) to continue.</span>}
-              {!blocked && included.length > 0 && <span className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> Saved rows update matching {paper.name} rates and go live in the booking calculator at once.</span>}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                {!confirming ? (
+                  <button type="button" onClick={() => setConfirming(true)} disabled={!included.length || blocked || !!busy} className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+                    {busy === "saving" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />} Apply &amp; Save Rates ({included.length})
+                  </button>
+                ) : (
+                  <div role="alertdialog" aria-label="Confirm replace" className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100">
+                    <span className="font-semibold">This replaces ALL existing {paper.name} rates (including any old or dummy ones) with these {included.length}. Continue?</span>
+                    <button type="button" onClick={() => void apply()} className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">Yes, replace &amp; save</button>
+                    <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-amber-500 px-3 py-1 text-xs font-bold">Cancel</button>
+                  </div>
+                )}
+                {blocked && <span className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-300"><AlertTriangle className="h-4 w-4" aria-hidden="true" /> Fix the highlighted rows (or untick them) to continue.</span>}
+              </div>
+              {!blocked && included.length > 0 && <p className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden="true" /> {paper.name}&rsquo;s old rates are deleted and only these (verified by you) go live in the booking calculator at once. Unticked rows are not saved.</p>}
             </div>
           )}
         </div>

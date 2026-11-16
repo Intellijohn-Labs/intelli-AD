@@ -13,7 +13,7 @@ import { FullScreenProofEditorModal } from "./full-screen-proof-editor";
 import { Card } from "@/components/ui/card";
 import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
-import { flagshipEdition, flagshipRate } from "@/lib/pricing";
+import { flagshipEdition, flagshipRate, GST_RATE } from "@/lib/pricing";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
 import { getActiveRates, matchRate } from "@/lib/rates";
 import { cutoffRuleFor, formatClock } from "@/lib/cutoff";
@@ -175,7 +175,7 @@ function MiniSummary({ state }: { state: BookingState }) {
     <Card className="p-5 sm:p-6">
       <p className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>
       <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#0F172A] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
-      <p className="text-xs text-zinc-500">{t("incl. 18% GST")}</p>
+      <p className="text-xs text-zinc-500">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</p>
       <dl className="mt-4 space-y-1.5 border-t border-dashed border-zinc-400 pt-4 text-sm">
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Type")}</dt><dd className="font-medium">{t(getAdType(state.adType).short)}</dd></div>
         <div className="flex justify-between gap-3"><dt className="text-zinc-500">{t("Category")}</dt><dd className="text-right font-medium">{(() => { const c = getCategory(state.categoryId); return c ? tl(c.name, c.nameMl) : "—"; })()}</dd></div>
@@ -188,7 +188,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       )}
       <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
-        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : <p>{t("Rates not yet published by admin")}</p>}
+        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name), price: formatINR(rate.amount), unit: t(rate.unit) })}</p> : <p>{t("Rate not available — upload rate card")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
       {user && (

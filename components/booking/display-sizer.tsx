@@ -1,9 +1,10 @@
 "use client";
 
-import { Field, Input } from "@/components/ui/field";
+import { Field, Input, Select } from "@/components/ui/field";
 import { HEIGHT_LIMITS, SIZE_PRESETS, WIDTH_LIMITS } from "@/lib/display";
 import type { ColorMode } from "@/lib/types";
 import type { Quote } from "@/lib/pricing";
+import { GST_RATE } from "@/lib/pricing";
 import { cn, formatINR } from "@/lib/utils";
 
 /**
@@ -20,6 +21,9 @@ export function DisplaySizer({
   errors,
   onSize,
   onColor,
+  positions = [],
+  position = "",
+  onPosition,
 }: {
   widthCm: number;
   heightCm: number;
@@ -30,6 +34,10 @@ export function DisplaySizer({
   errors: { widthCm?: string; heightCm?: string };
   onSize: (widthCm: number, heightCm: number) => void;
   onColor: (c: ColorMode) => void;
+  /** Page positions every selected publication prints a premium for (empty: run of paper only). */
+  positions?: { id: string; label: string }[];
+  position?: string;
+  onPosition?: (id: string) => void;
 }) {
   const w = Number.isFinite(widthCm) ? widthCm : 0;
   const h = Number.isFinite(heightCm) ? heightCm : 0;
@@ -81,6 +89,15 @@ export function DisplaySizer({
         ))}
       </div>
 
+      {onPosition && positions.length > 0 && (
+        <Field id="ad-position" label="Page position · പേജ് സ്ഥാനം" hint="Premium rates printed on the rate card">
+          <Select id="ad-position" value={position} onChange={(e) => onPosition(e.target.value)}>
+            <option value="">Run of paper (no premium)</option>
+            {positions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </Select>
+        </Field>
+      )}
+
       {line && (() => {
         const mult = colorMode === "color" ? 1 + colorPremiumPct / 100 : 1;
         const perEdition = Math.round(billed * line.rate * mult * 100) / 100; // exactly what the sentence below multiplies out to
@@ -92,7 +109,8 @@ export function DisplaySizer({
             {area < minAreaCm2 && <p className="text-amber-700 dark:text-amber-200">Minimum billable area is {minAreaCm2} cm²; smaller boxes are billed at the minimum.</p>}
             {n > 1 && <p>× {n} editions = {formatINR(quote.totals.gross, { decimals: true })}</p>}
             {quote.totals.discount > 0 && <p>− multi-edition discount {formatINR(quote.totals.discount, { decimals: true })} = {formatINR(quote.totals.taxable, { decimals: true })}</p>}
-            <p>+ 18% GST {formatINR(quote.totals.gst, { decimals: true })} → <b>{formatINR(quote.totals.total, { decimals: true })}</b></p>
+            {quote.enhancementItems.filter((e) => e.key.startsWith("pos:")).map((e) => <p key={e.key}>+ {e.label} {formatINR(e.amount, { decimals: true })}</p>)}
+            <p>+ {Math.round(GST_RATE * 100)}% GST {formatINR(quote.totals.gst, { decimals: true })} → <b>{formatINR(quote.totals.total, { decimals: true })}</b></p>
           </div>
         );
       })()}

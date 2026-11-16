@@ -50,7 +50,7 @@ export function ActiveRateCard() {
               ) : (
                 <>
                   <button type="button" disabled className="mt-5 inline-flex h-11 cursor-not-allowed items-center justify-center gap-2 rounded-md bg-zinc-200 px-5 text-sm font-semibold text-zinc-500">{t("Book in {name}", { name: pn(paper) })}</button>
-                  <p className="mt-2 text-xs font-semibold text-amber-800">{t(loaded ? "Rates not yet published by admin" : "Checking rates…")}</p>
+                  <p className="mt-2 text-xs font-semibold text-amber-800">{t(loaded ? "Rate not available — upload rate card" : "Checking rates…")}</p>
                 </>
               )}
             </div>

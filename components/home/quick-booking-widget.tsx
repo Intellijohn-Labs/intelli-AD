@@ -11,7 +11,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { bookHref } from "@/lib/booking-params";
 import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
-import { comboSuggestions, estimateQuote, flagshipEdition } from "@/lib/pricing";
+import { comboSuggestions, estimateQuote, flagshipEdition, GST_RATE } from "@/lib/pricing";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
 import { paperConfig, visibleEditions } from "@/lib/rates";
 import type { AdType } from "@/lib/types";
@@ -102,14 +102,14 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#1F2F57] dark:bg-[#17284F]" aria-live="polite">
         {!available ? (
-          <p className="text-sm font-semibold text-amber-800">{t(loaded ? "Rates not yet published by admin" : "Checking rates…")}</p>
+          <p className="text-sm font-semibold text-amber-800">{t(loaded ? "Rate not available — upload rate card" : "Checking rates…")}</p>
         ) : eds.length === 0 ? (
           <p className="text-sm text-zinc-600">{t("Select at least one edition to see an estimate.")}</p>
         ) : (
           <>
             <p className="font-mono text-xs font-bold uppercase tracking-wider text-slate-500">{t("Estimated total")}</p>
             <p className="font-[family-name:var(--font-jakarta)] text-3xl font-black tracking-tight text-emerald-600 tabular-nums md:text-4xl dark:text-emerald-400">
-              <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> <span className="font-mono text-xs font-semibold text-slate-500">{t("incl. 18% GST")}</span>
+              <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> <span className="font-mono text-xs font-semibold text-slate-500">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</span>
             </p>
             <p className="mt-1 font-mono text-xs text-slate-500">
               {t("Minimum {min} · {n} edition(s)", { min: minLabel, n: eds.length })}

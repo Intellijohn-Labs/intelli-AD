@@ -13,7 +13,7 @@ import { earliestRelease, isBookable } from "@/lib/cutoff";
 import { SIZE_PRESETS } from "@/lib/display";
 import { applySpacing, type ParagraphSpacing } from "@/lib/paragraphs";
 import { ParagraphField } from "@/components/booking/paragraph-field";
-import { calculateQuote } from "@/lib/pricing";
+import { calculateQuote, GST_RATE } from "@/lib/pricing";
 import { useRatesVersion } from "@/lib/use-rates";
 import type { AdType, CategoryId, ColorMode } from "@/lib/types";
 import { cn, formatDate, formatINR } from "@/lib/utils";
@@ -282,7 +282,7 @@ function ExpressForm({ user, rate, balance, onBook }: { user: AuthUser; rate: nu
 
       <dl className="mt-4 space-y-1 rounded-lg border border-dashed border-slate-400 p-3 font-mono text-xs">
         <div className="flex justify-between"><dt>Ad charges</dt><dd>{formatINR(t.taxable, { decimals: true })}</dd></div>
-        <div className="flex justify-between"><dt>GST 18%</dt><dd>{formatINR(t.gst, { decimals: true })}</dd></div>
+        <div className="flex justify-between"><dt>GST {Math.round(GST_RATE * 100)}%</dt><dd>{formatINR(t.gst, { decimals: true })}</dd></div>
         <div className="flex justify-between text-sm font-bold"><dt>Wallet debit</dt><dd>{formatINR(t.total, { decimals: true })}</dd></div>
         <div className="flex justify-between text-emerald-700 dark:text-emerald-300"><dt>Your commission ({rate}%, credited instantly)</dt><dd>+{formatINR(commission, { decimals: true })}</dd></div>
       </dl>

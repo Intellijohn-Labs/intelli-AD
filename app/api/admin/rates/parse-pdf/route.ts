@@ -3,7 +3,7 @@ import { DEFAULT_AI_CONFIG, normalizeAiConfig, type AiConfig } from "@/lib/ai-co
 import { resolveAiKeys } from "@/lib/ai-keys";
 import { newspapers } from "@/data/newspapers";
 import { parseJsonLoose } from "@/lib/json-repair";
-import { buildExtractionPrompt, expandCompact } from "@/lib/rate-import";
+import { buildExtractionPrompt, EXTRACTION_SYSTEM, expandCompact } from "@/lib/rate-import";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
@@ -33,6 +33,7 @@ async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: stri
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({
+      systemInstruction: { parts: [{ text: EXTRACTION_SYSTEM }] },
       contents: [{ role: "user", parts: [{ inline_data: { mime_type: "application/pdf", data: pdfB64 } }, { text }] }],
       generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }, // JSON mode; no hidden "thinking" tokens eating the output budget
     }),
@@ -45,16 +46,24 @@ async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: stri
 }
 
 async function callClaude(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<Reply> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const send = (withTemperature: boolean) => fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: cfg.model,
       max_tokens: 8192,
+      ...(withTemperature ? { temperature: 0 } : {}), // deterministic transcription
+      system: EXTRACTION_SYSTEM,
       messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfB64 } }, { type: "text", text }] }],
     }),
     signal: AbortSignal.timeout(55_000),
   });
+  let res = await send(true);
+  if (res.status === 400) {
+    // Some newer Claude models reject `temperature`; retry once without it.
+    const body = await res.clone().text().catch(() => "");
+    if (/temperature/i.test(body)) res = await send(false);
+  }
   if (!res.ok) throw await providerError("Claude", res);
   const j = await res.json();
   return { text: (j?.content ?? []).map((b: { text?: string }) => b.text ?? "").join(""), truncated: j?.stop_reason === "max_tokens" };

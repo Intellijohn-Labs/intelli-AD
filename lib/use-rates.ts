@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getActiveRates, getRatesVersion, headlineRate, matchRate, paperHasRates, setActiveRates, setActiveSettings, subscribeRates, type PaperSettings, type RateRow } from "./rates";
+import { getActiveRates, getRatesVersion, headlineRate, matchRate, paperHasRates, setActiveExtras, setActiveRates, setActiveSettings, subscribeRates, type PaperSettings, type RateExtra, type RateRow } from "./rates";
 import { createClient } from "./supabase/client";
 
 /** Re-renders the caller whenever the active rate book changes; include the value in useMemo deps of quote calculations. */
@@ -14,6 +14,13 @@ async function loadSettings(sb: NonNullable<ReturnType<typeof createClient>>) {
   const { data, error } = await sb.from("newspaper_settings").select("*");
   if (error) { console.warn("[rates] newspaper_settings unavailable: all print days and editions stay enabled.", error.message); setActiveSettings([]); return; }
   setActiveSettings((data ?? []) as PaperSettings[]);
+}
+
+/** Imported page premiums / combos / add-on percentages. Optional: if the table is missing, only the base rates apply. */
+async function loadExtras(sb: NonNullable<ReturnType<typeof createClient>>) {
+  const { data, error } = await sb.from("publication_extras").select("newspaper_name,kind,name,data");
+  if (error) { console.warn("[rates] publication_extras unavailable: page premiums, combos and add-on percentages are off.", error.message); setActiveExtras([]); return; }
+  setActiveExtras((data ?? []) as RateExtra[]);
 }
 
 /** Fetches `publication_rates`. On any failure the calculator keeps its built-in rates (logged to the console). */
@@ -44,6 +51,7 @@ export async function loadRates(): Promise<RateRow[] | null> {
       bold_heading_rate: Number(r.bold_heading_rate ?? 0), tick_rate: Number(r.tick_rate ?? 0), border_rate: Number(r.border_rate ?? 0),
     })) as RateRow[];
     await loadSettings(sb);
+    await loadExtras(sb);
     setActiveRates(rows);
     return rows;
   } catch (e) {

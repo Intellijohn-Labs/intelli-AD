@@ -171,3 +171,30 @@ create table if not exists public.app_secrets (
   updated_at timestamptz not null default now()
 );
 alter table public.app_secrets enable row level security;
+
+
+-- ── Imported tariff extras (page premiums, combo packages, add-on %, import records) ───────────────────────────────
+-- Written by the admin "Upload Rate Card PDF" importer. The calculator reads it (public read); only admins write.
+-- Without this table the calculator uses the base publication_rates only, and "Purge legacy rates" refuses to run.
+create table if not exists public.publication_extras (
+  id uuid primary key default gen_random_uuid(),
+  newspaper_name text not null,
+  kind text not null check (kind in ('page_premium', 'combo', 'addon', 'import_meta')),
+  name text not null,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  unique (newspaper_name, kind, name)
+);
+alter table public.publication_extras enable row level security;
+drop policy if exists "extras are public" on public.publication_extras;
+create policy "extras are public" on public.publication_extras for select to anon, authenticated using (true);
+drop policy if exists "admins insert extras" on public.publication_extras;
+create policy "admins insert extras" on public.publication_extras for insert to authenticated
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+drop policy if exists "admins update extras" on public.publication_extras;
+create policy "admins update extras" on public.publication_extras for update to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  with check ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+drop policy if exists "admins delete extras" on public.publication_extras;
+create policy "admins delete extras" on public.publication_extras for delete to authenticated
+  using ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');

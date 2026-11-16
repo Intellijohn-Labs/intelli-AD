@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { BRAND, DEFAULT_BRAND } from "@/data/brand-colors";
 import { newspapers } from "@/data/newspapers";
 import { downloadProtectedTemplate } from "@/lib/rate-template";
-import { getActiveRates, paperHasRates } from "@/lib/rates";
+import { purgeLegacyRates } from "@/app/admin/actions";
+import { useToast } from "@/components/ui/toast";
+import { getActiveExtras, getActiveRates, hasVerifiedImport, paperHasRates } from "@/lib/rates";
 import { loadRates, useRatesVersion } from "@/lib/use-rates";
 import { RateManager } from "./rate-manager";
 import { RatePdfImporter } from "./rate-pdf-importer";
@@ -16,6 +18,9 @@ const FORMATS = ["Classified Text", "Classified Display", "Commercial Display"];
 
 export function NewspaperDirectory() {
   const version = useRatesVersion();
+  const toast = useToast();
+  const [purge, setPurge] = useState<"idle" | "confirm" | "busy">("idle");
+  const [purgeMsg, setPurgeMsg] = useState("");
   const [open, setOpen] = useState<{ id: string; mode: "upload" | "pdf" | "table" | "settings" } | null>(null);
   useEffect(() => { void loadRates(); }, []);
 
@@ -28,6 +33,15 @@ export function NewspaperDirectory() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const tableRows = useMemo(() => getActiveRates() ?? [], [version]);
+  // Publications that have rates but no recorded PDF import: these are what "purge" removes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const legacy = useMemo(() => newspapers.filter((n) => (counts.get(n.name) ?? 0) > 0 && !hasVerifiedImport(getActiveExtras(), n.name)).map((n) => n.name), [counts, version]);
+  async function runPurge() {
+    setPurge("busy"); setPurgeMsg("");
+    const res = await purgeLegacyRates();
+    setPurge("idle"); setPurgeMsg(res.message);
+    if (res.ok) { toast(res.message); await loadRates(); }
+  }
   const ordered = newspapers; // same list, same order as the booking wizard (lib/publications.ts)
   const paper = open ? newspapers.find((n) => n.id === open.id)! : null;
 
@@ -43,6 +57,21 @@ export function NewspaperDirectory() {
     <div>
       <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Newspapers &amp; Rates</h1>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage rates one publication at a time. Saved rates go live in the booking calculator immediately.</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {purge !== "confirm" ? (
+          <button type="button" disabled={purge === "busy" || legacy.length === 0} onClick={() => setPurge("confirm")} className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-950/30 dark:text-red-200">
+            🗑 Purge All Legacy/Seed Rates{legacy.length ? ` (${legacy.length})` : ""}
+          </button>
+        ) : (
+          <div role="alertdialog" aria-label="Confirm purge" className="flex flex-wrap items-center gap-2 rounded-md border border-red-400 bg-red-50 px-3 py-2 text-sm text-red-950 dark:border-red-500/40 dark:bg-red-950/30 dark:text-red-100">
+            <span className="font-semibold">Delete ALL rates for publications without a PDF-imported rate card: {legacy.join(", ")}? This can&rsquo;t be undone.</span>
+            <button type="button" onClick={() => void runPurge()} className="rounded-md bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700">Yes, purge</button>
+            <button type="button" onClick={() => setPurge("idle")} className="rounded-md border border-red-500 px-3 py-1 text-xs font-bold">Cancel</button>
+          </div>
+        )}
+        <span className="text-xs text-slate-500">{legacy.length ? "Keeps only publications whose rates came from a PDF import." : "No legacy rates: every publication with rates has a PDF import."}</span>
+        {purgeMsg && <span role="status" className="text-xs font-semibold text-slate-700 dark:text-slate-200">{purgeMsg}</span>}
+      </div>
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ordered.map((n) => {

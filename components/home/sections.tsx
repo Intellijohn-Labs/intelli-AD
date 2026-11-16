@@ -58,7 +58,7 @@ export function Publications() {
                   </>) : (<>
                     <p className="text-[11px] font-semibold text-amber-800">{t(loaded ? "Rates Updating / Unavailable" : "Checking rates…")}</p>
                     <span aria-disabled="true" className="mt-2 inline-flex cursor-not-allowed items-center gap-1 text-xs font-semibold text-zinc-400">{t("Book in {name}", { name: pn(n) })}</span>
-                    {loaded && <p className="mt-1 text-[11px] text-zinc-500">{t("Rates not yet published by admin")}</p>}
+                    {loaded && <p className="mt-1 text-[11px] text-zinc-500">{t("Rate not available — upload rate card")}</p>}
                   </>)}
                 </div>
               </Card>

@@ -13,7 +13,7 @@ import { useBooking } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
 import { useBookingQuote } from "@/lib/use-quote";
 import { formatINR } from "@/lib/utils";
-import { ENHANCEMENT_PCT, measureText } from "@/lib/pricing";
+import { measureText } from "@/lib/pricing";
 import { composeSchema, MAX_TEXT_CHARS, PLACEHOLDER_RE, requiredDocIds, type ComposeValues } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import { FileDropzone } from "./file-dropzone";
@@ -32,6 +32,7 @@ import { TemplateComposer } from "./template-composer";
 import { applySpacing } from "@/lib/paragraphs";
 import { getActiveRates, matchRate, paperConfig } from "@/lib/rates";
 import { useRatesVersion } from "@/lib/use-rates";
+import { addonsFor, commonPositions, getActiveExtras } from "@/lib/rates";
 
 const FIELD_LABEL: Record<string, string> = { text: "Ad text", artwork: "Artwork", heightCm: "Height", widthCm: "Width", columns: "Size", documents: "Supporting documents", colorMode: "Colour mode", enhancements: "Enhancements" };
 
@@ -55,6 +56,12 @@ export function Step2Compose() {
   const firstEdition = paper?.editions.find((e) => state.selection[paper.id]?.includes(e.id));
   const rule = paper && firstEdition ? matchRate(getActiveRates(), paper.name, firstEdition.name, state.categoryId, state.adType) : null;
   const colourPct = rule?.color_surcharge_percent ?? 0;
+  // Page positions and add-on percentages exist only when the selected publications' rate cards print them.
+  const extras = getActiveExtras();
+  const selectedPaperNames = paperIds.map((id) => getNewspaper(id)?.name).filter((n): n is string => !!n);
+  const positions = commonPositions(extras, selectedPaperNames);
+  const pctOf = (k: "tint_percent" | "underline_percent" | "box_percent") => [...new Set(selectedPaperNames.map((n) => addonsFor(extras, n)[k]).filter((x): x is number => !!x))];
+  const tintPcts = pctOf("tint_percent"), underlinePcts = pctOf("underline_percent"), boxPcts = pctOf("box_percent");
   const cfg = paper ? paperConfig(paper, state.adType) : null;
   const cpl = rates?.charsPerLine ?? 28;
   const colW = rates?.colWidthCm ?? 4;
@@ -69,7 +76,8 @@ export function Step2Compose() {
       widthCm: displayWidth(state.display, colW),
       heightCm: state.display.heightCm,
       colorMode: state.display.colorMode,
-      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick },
+      position: state.display.position ?? "",
+      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline },
       artwork: state.artwork,
       documents: state.documents ?? {},
     },
@@ -85,7 +93,7 @@ export function Step2Compose() {
     if (state.text !== cur.text) setValue("text", state.text, { shouldValidate: true });
     if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null) || (state.artwork?.url ?? null) !== (cur.artwork?.url ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
     const e = state.enhancements, c = cur.enhancements;
-    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint) setValue("enhancements", e);
+    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline) setValue("enhancements", e);
   }, [state.text, state.artwork, state.enhancements, getValues, setValue]);
 
   // Keep the shared booking state (and therefore the live quote) in sync with the form.
@@ -93,12 +101,13 @@ export function Step2Compose() {
     const sub = watch((val) => {
       update({
         text: val.text ?? "",
-        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint },
+        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline },
         display: {
           columns: val.columns ?? 2,
           widthCm: Number.isFinite(val.widthCm) ? (val.widthCm as number) : undefined,
           heightCm: Number.isFinite(val.heightCm) ? (val.heightCm as number) : 10,
           colorMode: val.colorMode ?? "bw",
+          position: val.position || undefined,
         },
         artwork: (val.artwork as ComposeValues["artwork"]) ?? null,
         documents: (val.documents ?? {}) as ComposeValues["documents"],
@@ -176,6 +185,9 @@ export function Step2Compose() {
               errors={{ widthCm: errors.widthCm?.message, heightCm: errors.heightCm?.message }}
               onSize={setSize}
               onColor={(c) => setValue("colorMode", c)}
+              positions={positions}
+              position={v.position ?? ""}
+              onPosition={(id) => setValue("position", id, { shouldDirty: true })}
             />
           )}
           {displayOnly && mode === "upload" && (
@@ -251,11 +263,12 @@ export function Step2Compose() {
                     <label htmlFor={id} className="flex cursor-pointer items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-white/10 dark:hover:bg-white/5">
                       <input id={id} type="checkbox" className="h-4 w-4 accent-navy-700" checked={!!field.value} onChange={(e) => field.onChange(e.target.checked)} />
                       <span className="flex-1 text-sm font-medium">{t(label)}</span>
-                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", price > 0 ? "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200")}>{price > 0 ? `+ ${formatINR(price)}` : t("Free")}</span>
+                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", price > 0 ? "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200")}>{price > 0 ? `+ ${formatINR(price)}` : name === "border" && boxPcts.length ? `+ ${boxPcts.join(" / ")}%` : t("Free")}</span>
                     </label>
                   )} />
                 ))}
-                <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: ENHANCEMENT_PCT.tint * 100 })} checked={field.value} onChange={field.onChange} />} />
+                {tintPcts.length > 0 && <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: tintPcts.join(" / ") })} checked={field.value} onChange={field.onChange} />} />}
+                {underlinePcts.length > 0 && <Controller control={control} name="enhancements.underline" render={({ field }) => <Switch id="enh-underline" label={t("Underline")} description={t("+{pct}% of text charge", { pct: underlinePcts.join(" / ") })} checked={!!field.value} onChange={field.onChange} />} />}
               </fieldset>
             </>
           ) : displayOnly ? null : (
@@ -270,6 +283,9 @@ export function Step2Compose() {
                 errors={{ widthCm: errors.widthCm?.message, heightCm: errors.heightCm?.message }}
                 onSize={setSize}
                 onColor={(c) => setValue("colorMode", c)}
+                positions={positions}
+                position={v.position ?? ""}
+                onPosition={(id) => setValue("position", id, { shouldDirty: true })}
               />
 
               <TemplateComposer
