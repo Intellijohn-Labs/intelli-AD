@@ -77,12 +77,7 @@ export function LoginView() {
         className="relative z-10 w-full max-w-md shrink-0"
       >
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="flex items-center gap-3">
-            <Image src="/images/intelliad-icon.png" alt="" width={600} height={540} priority className="h-14 w-auto" />
-            <h1 className="font-serif text-4xl leading-none font-black tracking-tight">
-              <span className="mr-2 rounded-lg bg-emerald-400 px-2 py-0.5 text-[#0B1215]">AI</span><span className="text-[#0B1215] dark:text-[#FFFFFF]">admanager</span>
-            </h1>
-          </div>
+          <h1><Image src="/logo.png" alt="AI admanager" width={96} height={96} priority className="h-24 w-24 rounded-2xl shadow-[0_10px_30px_-12px_rgba(11,18,21,0.6)]" /></h1>
           <p className="mt-3 border-t-2 border-[#0B1215] pt-2 font-mono text-xs font-medium tracking-wide text-zinc-700 uppercase dark:border-[#34464B] dark:text-slate-200">Kerala&apos;s Premier Newspaper Ad Booking Platform</p>
         </div>
 

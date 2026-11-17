@@ -18,7 +18,8 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["500", "600", "
 export const metadata: Metadata = {
   title: { default: "AI admanager | Smart Newspaper Ad Booking Across Kerala", template: "%s | AI admanager" },
   applicationName: "AI admanager",
-  openGraph: { siteName: "AI admanager", title: "AI admanager | Smart Newspaper Ad Booking Across Kerala", type: "website", locale: "en_IN" },
+  icons: { icon: [{ url: "/logo.png", type: "image/png" }], apple: [{ url: "/logo.png" }] },
+  openGraph: { siteName: "AI admanager", title: "AI admanager | Smart Newspaper Ad Booking Across Kerala", type: "website", locale: "en_IN", images: [{ url: "/logo.png", width: 768, height: 768, alt: "AI admanager" }] },
   publisher: COMPANY.tradeName,
   creator: COMPANY.tradeName,
   authors: [{ name: COMPANY.tradeName }],

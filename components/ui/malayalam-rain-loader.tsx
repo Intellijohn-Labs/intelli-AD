@@ -103,17 +103,16 @@ export function MalayalamRainLoader({ onComplete }: { onComplete: () => void }) 
           transition={{ type: "spring", stiffness: 200, damping: 15 }}
         >
           <motion.div
-            animate={assembled ? { filter: ["drop-shadow(0 0 4px rgba(99,102,241,0.3))", "drop-shadow(0 0 26px rgba(99,102,241,0.95))", "drop-shadow(0 0 14px rgba(99,102,241,0.6))"] } : undefined}
+            animate={assembled ? { filter: ["drop-shadow(0 0 4px rgba(52,211,153,0.3))", "drop-shadow(0 0 26px rgba(52,211,153,0.95))", "drop-shadow(0 0 14px rgba(52,211,153,0.6))"] } : undefined}
             transition={{ duration: 0.7, times: [0, 0.4, 1], ease: "easeOut" }} // single flash, then static
-            style={{ filter: "drop-shadow(0 0 4px rgba(99,102,241,0.3))" }}
+            style={{ filter: "drop-shadow(0 0 4px rgba(52,211,153,0.3))" }}
           >
-            <Image src="/images/intelliad-icon.png" alt="" width={600} height={540} priority className="h-16 w-auto sm:h-20" />
+            <Image src="/logo.png" alt="" width={160} height={160} priority className="h-20 w-20 rounded-2xl sm:h-24 sm:w-24" />
           </motion.div>
           {/* One light streak sweeping across the mark, clipped to the icon's shape */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-hidden"
-            style={{ WebkitMaskImage: "url(/images/intelliad-icon.png)", maskImage: "url(/images/intelliad-icon.png)", WebkitMaskSize: "100% 100%", maskSize: "100% 100%" }}
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
           >
             <motion.div
               className="absolute inset-y-0 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/80 to-transparent"

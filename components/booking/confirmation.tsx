@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { CheckCircle2, Circle, Download, Loader2, Printer, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -69,7 +70,7 @@ export function Confirmation({ receipt, onNew }: { receipt: ReceiptData; onNew: 
           <Card id="release-order" className="p-5 text-sm">
             <div className="flex items-start justify-between border-b-2 border-double border-navy-800 pb-3">
               <div>
-                <p className="font-headline text-xl font-black tracking-tight"><span className="mr-1.5 rounded-md bg-emerald-400 px-1.5 py-0.5 text-[#0B1215]">AI</span>admanager</p>
+                <div className="flex items-center gap-2.5"><Image src="/logo.png" alt="AI admanager" width={44} height={44} className="h-11 w-11 rounded-lg" /></div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">{t("Release Order")}</p>
               </div>
               <span className="rotate-[-4deg] rounded border-2 border-zinc-900 px-2 py-0.5 text-xs font-black text-zinc-900">{t("PAID")}</span>

@@ -86,6 +86,8 @@ const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 /** Standalone, printable Release Order document. */
 export function receiptToHtml(r: ReceiptData): string {
   const t = r.quote.totals;
+  // Absolute URL so the logo still loads when the receipt opens as a blob / new window.
+  const logoUrl = typeof location !== "undefined" ? `${location.origin}/logo.png` : "/logo.png";
   const rows = r.quote.lines
     .map(
       (l) =>
@@ -106,7 +108,7 @@ th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}.n{text-align
 .seller{font-family:Arial,sans-serif;font-size:12px;color:#333;line-height:1.5;margin:-4px 0 14px}
 .stamp{border:2px solid #1b7a3e;color:#1b7a3e;padding:4px 10px;font-family:Arial,sans-serif;font-weight:bold;transform:rotate(-4deg);display:inline-block}
 </style></head><body>
-<header><div><h1><span style="background:#34d399;color:#0b1215;padding:0 6px;border-radius:5px;margin-right:6px">AI</span>admanager</h1><div class="sub">Release Order · Newspaper advertising</div></div><div class="stamp">PAID</div></header>
+<header><div><h1><img src="${esc(logoUrl)}" alt="AI admanager" width="64" height="64" style="vertical-align:middle;border-radius:10px"></h1><div class="sub">Release Order · Newspaper advertising</div></div><div class="stamp">PAID</div></header>
 <div class="seller"><b>${esc(COMPANY.tradeName)}</b> · ${esc(COMPANY.constitution)} (Proprietor: ${esc(COMPANY.legalName)})<br>GSTIN: ${esc(COMPANY.gstin)}<br>${esc(COMPANY.addressLines.join(" "))}</div>
 <div class="meta">
 <div><b>RO number</b>${esc(r.roNumber)}</div><div><b>Booking ID</b>${esc(r.bookingId)}</div>
