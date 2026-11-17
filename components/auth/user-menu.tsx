@@ -34,7 +34,7 @@ export function AuthControl({ className }: { className?: string }) {
     <div ref={wrap} className={`relative ${className ?? ""}`}>
       <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={user.name} onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#35363B] dark:text-[#FFFFFF] dark:hover:border-[#FFFFFF] dark:hover:text-white">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E11D48]/10 text-[10px] font-bold text-[#E11D48]">{initials}</span>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#D12014] text-[10px] font-bold text-white">{initials}</span>
         <span className="hidden max-w-[9rem] truncate lg:inline">{user.name}</span>
         {user.partner_status && <span className={`hidden rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase lg:inline ${user.partner_status === "approved" ? "bg-blue-600 text-white" : "bg-amber-100 text-amber-800"}`}>{user.partner_status === "approved" ? "Partner" : "Pending"}</span>}
       </button>

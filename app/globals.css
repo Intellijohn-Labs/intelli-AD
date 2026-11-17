@@ -272,3 +272,68 @@ input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; bor
 .kicker { font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #D12014; }
 /* Newsprint column cut-out for ad proofs (the only warm paper left in the UI). */
 .newsprint { background-color: #F6F3EC; }
+
+/* ───────────── Dark-mode contrast layer ─────────────
+   Components use fixed ink colours and light "50/100" tint fills (slate, amber, red, emerald and the red accent family) that don't
+   flip on their own. In dark mode they become dark surfaces / translucent tints with light, AA-contrast text. Colours only. */
+.dark { --hairline: #35363B; }
+/* ink text */
+.dark .text-\[\#0A0B0D\], .dark .text-\[\#0F172A\], .dark .text-slate-950, .dark .text-slate-900, .dark .text-slate-800, .dark .text-slate-700 { color: #F4F4F5; }
+.dark .text-slate-600 { color: #D4D4D8; }
+.dark .text-slate-500, .dark .text-slate-400 { color: #A1A1AA; }
+/* surfaces */
+.dark .bg-slate-50, .dark .bg-slate-100, .dark .bg-\[\#F3F3F4\], .dark .bg-\[\#F1F5F9\], .dark .bg-\[\#FAFAF9\] { background-color: #1A1B1E; }
+.dark .bg-slate-200 { background-color: #26272B; }
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-300, .dark .border-\[\#E2E8F0\] { border-color: #35363B; }
+.dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #1F2024; }
+/* warm warning / info tints */
+.dark .bg-amber-50, .dark .bg-amber-100 { background-color: rgb(120 53 15 / 0.35); }
+.dark .border-amber-200, .dark .border-amber-300, .dark .border-amber-400 { border-color: rgb(180 83 9 / 0.55); }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { color: #FDE68A; }
+.dark .bg-emerald-50, .dark .bg-emerald-100 { background-color: rgb(6 78 59 / 0.4); }
+.dark .border-emerald-100, .dark .border-emerald-200, .dark .border-emerald-300 { border-color: rgb(16 185 129 / 0.4); }
+.dark .text-emerald-600, .dark .text-emerald-700, .dark .text-emerald-800, .dark .text-emerald-900 { color: #6EE7B7; }
+.dark .bg-red-50, .dark .bg-red-100, .dark .bg-rose-50 { background-color: rgb(127 29 29 / 0.4); }
+.dark .border-red-200, .dark .border-red-300, .dark .border-rose-100, .dark .border-rose-200 { border-color: rgb(239 68 68 / 0.45); }
+.dark .text-red-600, .dark .text-red-700, .dark .text-red-800, .dark .text-red-900, .dark .text-rose-700 { color: #FCA5A5; }
+/* red accent family (teal / blue / navy classes resolve to the logo reds) */
+.dark .bg-teal-50, .dark .bg-teal-100, .dark .bg-blue-50, .dark .bg-blue-100, .dark .bg-navy-50, .dark .bg-navy-100 { background-color: rgb(209 32 20 / 0.16); }
+.dark .border-teal-200, .dark .border-teal-300, .dark .border-blue-100, .dark .border-blue-200, .dark .border-blue-300 { border-color: rgb(232 62 50 / 0.5); }
+.dark .text-teal-600, .dark .text-teal-700, .dark .text-teal-800, .dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800 { color: #F5928B; }
+/* buttons that are ink on light must lift off a dark page */
+.dark .btn-ink { background: #D12014; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 14px -6px rgba(209,32,20,.55); }
+.dark .btn-ink:hover { background: #E83E32; }
+.dark .btn-paper { background: #131416; border-color: #35363B; color: #F4F4F5; box-shadow: none; }
+.dark .btn-paper:hover { background: #1A1B1E; }
+/* newsprint clippings stay light paper with dark ink in both themes */
+.clipping, .clipping *, .dark .clipping * { color: #292524; }
+.clipping .text-stone-500, .dark .clipping .text-stone-500 { color: #57534E; }
+
+/* ───────────── Site-open splash (CSS-only so it paints immediately; ~1.0s) ───────────── */
+#aiadm-splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0A0B0D; pointer-events: none; animation: splash-out .2s ease-in .8s forwards; }
+#aiadm-splash .splash-glow { position: absolute; inset: 0; background: radial-gradient(ellipse 55% 45% at 50% 48%, rgba(232,62,50,.24), rgba(209,32,20,.10) 45%, transparent 72%); }
+#aiadm-splash .splash-logo { position: relative; overflow: hidden; border-radius: 28px; box-shadow: 0 0 60px -8px rgba(232,62,50,.55); outline: 1px solid rgba(255,255,255,.15); animation: splash-in .45s cubic-bezier(.2,.8,.2,1) both; }
+#aiadm-splash .splash-shimmer { position: absolute; top: 0; bottom: 0; left: 0; width: 50%; transform: translateX(-130%) skewX(-12deg); background: linear-gradient(to right, transparent, rgba(255,255,255,.4), transparent); animation: splash-shimmer .45s ease-in-out .25s forwards; }
+#aiadm-splash .splash-bar { position: relative; margin-top: 28px; height: 3px; width: 11rem; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
+#aiadm-splash .splash-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: #E83E32; box-shadow: 0 0 12px rgba(232,62,50,.8); animation: splash-bar .8s ease-in-out forwards; }
+@keyframes splash-in { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes splash-shimmer { to { transform: translateX(260%) skewX(-12deg); } }
+@keyframes splash-bar { to { width: 100%; } }
+@keyframes splash-out { to { opacity: 0; transform: translateY(-14px); visibility: hidden; } }
+html.no-splash #aiadm-splash { display: none; }
+@media (prefers-reduced-motion: reduce) { #aiadm-splash { display: none; } }
+
+/* Classes written for the inverted zinc scale: zinc-50…300 are DARK surfaces in dark mode, so explicit "light text / dark panel" classes need real values. */
+.dark .dark\:text-zinc-50, .dark .dark\:text-zinc-100, .dark .dark\:text-zinc-200, .dark .dark\:text-zinc-300 { color: #F4F4F5; }
+.dark .text-zinc-100, .dark .text-zinc-200, .dark .text-zinc-300 { color: #A1A1AA; }
+.dark .dark\:bg-zinc-700, .dark .dark\:bg-zinc-800 { background-color: #1A1B1E; }
+.dark .dark\:bg-zinc-900, .dark .dark\:bg-zinc-950 { background-color: #131416; }
+.dark .dark\:border-zinc-600, .dark .dark\:border-zinc-700, .dark .dark\:border-zinc-800 { border-color: #35363B; }
+/* navy (red accent family) in dark: readable headings, dark red tints for fills */
+.dark { --color-navy-50: #1F0E0D; --color-navy-100: #2A1210; --color-navy-200: #3D1714; --color-navy-300: #5C1F1A; --color-navy-400: #E83E32; --color-navy-700: #D12014; --color-navy-800: #A91400; --color-navy-900: #8A1000; --color-navy-950: #5C0B00; }
+.dark .text-navy-700, .dark .text-navy-800, .dark .text-navy-900, .dark .text-navy-950 { color: #F4F4F5; }
+.dark .text-amber-950, .dark [class*="text-amber-900/"] { color: #FDE68A; }
+.dark .text-emerald-950 { color: #6EE7B7; }
+
+/* Publication titles are tinted with each paper's brand colour; lift them toward white on dark surfaces so dark blues / greens stay legible. */
+.dark .pub-title { color: color-mix(in srgb, var(--c) 38%, #ffffff) !important; }

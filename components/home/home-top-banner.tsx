@@ -9,13 +9,14 @@ interface Slide { id: string; title: string; image_url: string; link_url: string
 export function HomeTopBanner() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [paused, setPaused] = useState(false);
+  const [loading, setLoading] = useState(true); // reserve the strip's height until we know whether there are banners (no layout shift)
 
   useEffect(() => {
     let live = true;
     (async () => {
       try {
         const sb = createClient();
-        if (!sb) return;
+        if (!sb) { if (live) setLoading(false); return; }
         const { data, error } = await sb
           .from("promotional_banners")
           .select("id,title,image_url,link_url")
@@ -25,12 +26,18 @@ export function HomeTopBanner() {
           .order("created_at", { ascending: false })
           .limit(12);
         if (live && !error && data?.length) setSlides(data as Slide[]);
-      } catch { /* no banner strip */ }
+      } catch { /* no banner strip */ } finally { if (live) setLoading(false); }
     })();
     return () => { live = false; };
   }, []);
 
-  if (!slides.length) return null;
+  if (!slides.length) {
+    return loading ? (
+      <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8" aria-hidden="true">
+        <div className="h-[120px] w-full animate-pulse rounded-xl bg-slate-200/70 sm:h-[160px] lg:h-[220px] lg:rounded-2xl dark:bg-white/5" />
+      </div>
+    ) : null;
+  }
 
   // Each group repeats the set so it is wider than any screen; two identical groups make the -50% loop seamless.
   const group = [...slides, ...slides, ...slides];

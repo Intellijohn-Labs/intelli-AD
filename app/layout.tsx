@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header";
 import { NewspaperMastheadBar } from "@/components/layout/newspaper-masthead-bar";
 import { Providers } from "@/components/providers";
 import { THEME_INIT_SCRIPT } from "@/components/theme-provider";
+import { SPLASH_INIT_SCRIPT } from "@/components/brand/splash-script";
 import { SplashLoader } from "@/components/brand/splash-loader";
 import { WhatsAppWidget } from "@/components/whatsapp-widget";
 import { T } from "@/context/language-context";
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning className={jakarta.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: SPLASH_INIT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Inter for Latin + Noto Sans Malayalam for crisp Malayalam; system fonts are the fallback. */}

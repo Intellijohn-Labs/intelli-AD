@@ -38,9 +38,9 @@ export function Publications() {
           const active = n.id === activeId;
           return (
             <motion.div key={n.id} className="h-full">
-              <Card accent={brand.primary} aria-disabled={!available || undefined} className={cn("flex h-full flex-col justify-between p-4 hover:ring-2 hover:ring-[var(--c)]", active && "ring-2 ring-[var(--c)]", !available && "pointer-events-none cursor-not-allowed opacity-50")} style={{ backgroundColor: `color-mix(in srgb, ${brand.primary} 7%, var(--surface))`, borderLeftColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, borderRightColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, borderBottomColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, boxShadow: active ? `0 0 22px color-mix(in srgb, ${brand.primary} 25%, transparent)` : undefined }}>
+              <Card accent={brand.primary} aria-disabled={!available || undefined} className={cn("flex h-full flex-col justify-between p-4 hover:ring-2 hover:ring-[var(--c)]", active && "ring-2 ring-[var(--c)]", !available && "pointer-events-none cursor-not-allowed opacity-80")} style={{ backgroundColor: `color-mix(in srgb, ${brand.primary} 7%, var(--surface))`, borderLeftColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, borderRightColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, borderBottomColor: `color-mix(in srgb, ${brand.primary} 25%, var(--surface))`, boxShadow: active ? `0 0 22px color-mix(in srgb, ${brand.primary} 25%, transparent)` : undefined }}>
                 <button type="button" onClick={() => setActive(n.id)} aria-pressed={active} className="text-left">
-                  <span className={cn("flex h-11 items-center leading-tight font-bold", isMl ? "font-clipping text-xl" : "text-lg")} style={{ color: brand.primary }}>
+                  <span className={cn("pub-title flex h-11 items-center leading-tight font-bold", isMl ? "font-clipping text-xl" : "text-lg")} style={{ color: brand.primary }}>
                     {isMl ? n.nameMl : n.name}
                   </span>
                   {(!isMl || pn(n) !== n.nameMl) && isMl && <span className="mt-0.5 block text-xs text-zinc-500">{n.name}</span>}

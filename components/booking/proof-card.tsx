@@ -43,8 +43,8 @@ export function ProofCard({ state, onEdit }: { state: BookingState; onEdit: () =
         </button>
       </div>
 
-      <div className="newsprint-texture relative mt-4 rounded-lg border border-zinc-300/70 p-4 dark:border-zinc-600">
-        <span className="absolute top-2 left-2 z-10 rounded bg-white/90 px-2 py-0.5 font-mono text-[10px] font-bold text-zinc-700 shadow-sm">{tag}</span>
+      <div className="newsprint-texture paper-grain relative mt-4 rounded-lg border border-zinc-300/70 p-4 dark:border-zinc-600">
+        <span className="absolute top-2 left-2 z-10 rounded bg-[rgba(255,255,255,0.92)] px-2 py-0.5 font-mono text-[10px] font-bold text-zinc-700 shadow-sm">{tag}</span>
         <button type="button" onClick={() => setZoom(true)} aria-label="Enlarge proof" className="block w-full cursor-zoom-in rounded text-left focus-visible:outline-2 focus-visible:outline-blue-600">
           <div className="pointer-events-none"><AdRender state={state} /></div>
         </button>
@@ -68,7 +68,7 @@ export function ProofCard({ state, onEdit }: { state: BookingState; onEdit: () =
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={bigImage} alt="Uploaded creative, full size" className="mx-auto max-h-[78vh] w-auto max-w-full rounded border border-zinc-300 object-contain" />
               ) : (
-                <div className="newsprint-texture rounded-lg border border-zinc-300/70 p-4"><div style={{ zoom: 1.7 }}><AdRender state={state} /></div></div>
+                <div className="newsprint-texture paper-grain rounded-lg border border-zinc-300/70 p-4"><div style={{ zoom: 1.7 }}><AdRender state={state} /></div></div>
               )}
               <p className="mt-3 text-xs text-slate-500">Check spelling, names, dates and photo quality before you pay.</p>
             </motion.div>

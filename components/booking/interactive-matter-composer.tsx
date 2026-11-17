@@ -64,7 +64,7 @@ export function InteractiveMatterComposer({ value, onChange, chars, words, lines
         </div>
       )}
 
-      <div className="mt-4 rounded-lg border-2 border-stone-300 bg-[#fdfdfb] p-5 shadow-inner">
+      <div className="paper-grain mt-4 rounded-lg border-2 border-stone-300 bg-[#fdfdfb] p-5 shadow-inner">
         <div className={cn("gap-4", showPhoto ? "flex flex-col items-center sm:flex-row sm:items-start" : "block")}>
           {showPhoto && (
             <div className={cn("flex shrink-0 items-center justify-center overflow-hidden border-stone-800 bg-stone-100", frame, round ? "h-24 w-24 rounded-full" : "h-[120px] w-24")}>

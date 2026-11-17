@@ -10,7 +10,7 @@ export function buttonStyles({ variant = "primary", size = "md", className }: { 
   return cn(
     "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:pointer-events-none disabled:opacity-50",
     {
-      primary: "bg-[#0A0B0D] text-white shadow-[0_1px_2px_rgba(15,23,42,0.2),0_8px_16px_-8px_rgba(15,23,42,0.5)] hover:-translate-y-px hover:bg-[#17181C] dark:bg-sky-400 dark:text-[#0A0B0D] dark:shadow-sky-400/20 dark:hover:bg-sky-300 dark:hover:shadow-[0_0_22px_rgba(56,189,248,0.4)]",
+      primary: "bg-[#0A0B0D] text-white shadow-[0_1px_2px_rgba(15,23,42,0.2),0_8px_16px_-8px_rgba(15,23,42,0.5)] hover:-translate-y-px hover:bg-[#17181C] dark:bg-[#D12014] dark:text-white dark:shadow-none dark:hover:bg-[#E83E32]",
       accent: "bg-navy-700 text-white hover:bg-navy-800 dark:hover:shadow-[0_0_20px_rgba(56,189,248,0.3)]",
       secondary: "border border-slate-200 bg-white text-slate-800 shadow-[0_1px_2px_rgba(15,23,42,0.05)] hover:border-slate-300 hover:bg-slate-50 dark:border-[#35363B] dark:text-[#FFFFFF] dark:hover:border-[#E83E32] dark:hover:bg-[#E83E32]/10 dark:hover:shadow-[0_0_18px_rgba(56,189,248,0.25)]",
       ghost: "text-[#0A0B0D] hover:bg-black/5 dark:text-[#FFFFFF] dark:hover:bg-white/10",

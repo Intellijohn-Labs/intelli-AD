@@ -87,7 +87,7 @@ export function Step4Checkout() {
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Release date")}</dt><dd className="font-semibold">{(state.insertionDates?.length ? state.insertionDates : state.releaseDate ? [state.releaseDate] : []).map((d) => formatDate(d)).join(", ")}</dd></div>
             <div><dt className="text-xs uppercase tracking-wider text-zinc-500">{t("Editions")}</dt><dd className="font-semibold">{papers.map((p) => `${pn(getNewspaper(p)!)} (${state.selection[p].length})`).join(", ")}</dd></div>
           </dl>
-          {(state.adType === "classified-text" || (!state.artwork && !!state.text.trim())) && <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-zinc-300 bg-paper p-3 font-clipping text-sm text-zinc-900">{applySpacing(state.text, state.paragraphSpacing).trim()}</pre>}
+          {(state.adType === "classified-text" || (!state.artwork && !!state.text.trim())) && <pre className="paper-grain mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-zinc-300 bg-paper p-3 font-clipping text-sm text-zinc-900">{applySpacing(state.text, state.paragraphSpacing).trim()}</pre>}
         </section>
 
         <section aria-labelledby="contact-h" className="space-y-4">

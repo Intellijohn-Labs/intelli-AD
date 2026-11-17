@@ -22,7 +22,7 @@ function Clipping() {
   return (
     <div className="relative mx-auto w-full max-w-[420px] px-3 py-2" aria-hidden="true">
       <div className="absolute -inset-3 rotate-[2.5deg] rounded-md border border-[#E2E8F0] bg-white shadow-[0_18px_40px_-22px_rgba(24,24,27,.45)]" />
-      <div className="relative -rotate-[1.5deg] rounded-sm border border-[#D6D3D1] bg-[#F6F3EC] p-4 shadow-[0_14px_30px_-18px_rgba(24,24,27,.5)]">
+      <div className="clipping relative -rotate-[1.5deg] rounded-sm border border-[#D6D3D1] bg-[#F6F3EC] p-4 shadow-[0_14px_30px_-18px_rgba(24,24,27,.5)]">
         <div className="flex items-baseline justify-between border-b-[3px] border-double border-[#0A0B0D] pb-1.5">
           <span className="text-lg font-black tracking-tight">Malayala Manorama</span>
           <span className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">Kochi · Classifieds</span>
@@ -54,7 +54,7 @@ export function EditorialLanding() {
         <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)]"><span className="h-1.5 w-1.5 rounded-full bg-[#D12014]" aria-hidden="true" />{t("Kerala's newspaper advertising desk")}</p>
           <h1 className="mt-4 text-[2.5rem] leading-[1.05] font-extrabold tracking-[-0.03em] text-[#0A0B0D] sm:text-6xl">
-            {t("Put your notice in print,")} <span className="bg-gradient-to-r from-[#D12014] to-[#0A0B0D] bg-clip-text text-transparent">{t("across Kerala")}</span>.
+            {t("Put your notice in print,")} <span className="bg-gradient-to-r from-[#D12014] to-[#E83E32] bg-clip-text text-transparent">{t("across Kerala")}</span>.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
             {t("Classifieds, display, obituary and tender ads in the state's leading dailies, priced from each paper's official tariff sheet and released the same day.")}
@@ -78,11 +78,11 @@ export function EditorialLanding() {
             return (
               <li key={p.id}>
                 <Link href="/newspaper" className="group flex h-full flex-col justify-between rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-12px_rgba(15,23,42,0.18)] sm:p-5">
-                  <div>
-                    <p className="text-lg leading-tight font-bold tracking-[-0.03em] text-[#0A0B0D] sm:text-xl">{p.name}</p>
+                  <div className="min-w-0">
+                    <p className="text-lg leading-tight font-bold tracking-[-0.03em] break-words text-[#0A0B0D] sm:text-xl">{p.name}</p>
                     <p className="mt-0.5 text-sm text-slate-500" style={{ fontFamily: '"Noto Sans Malayalam", Manjari, sans-serif' }}>{p.nameMl}</p>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-2 text-xs">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 text-xs">
                     <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">{p.language} · {p.scope}</span>
                     {rate
                       ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 tabular-nums">{t("Live tariff")} · {formatINR(rate.amount)}/{rate.unit}</span>
@@ -102,7 +102,7 @@ export function EditorialLanding() {
           <ol className="mt-8 grid gap-6 md:grid-cols-3">
             {STEPS.map((s) => (
               <li key={s.n} className="relative rounded-2xl border border-slate-200/70 bg-[#F3F3F4] p-5">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#0A0B0D] text-sm font-bold text-white tabular-nums">{s.n}</span>
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#0A0B0D] text-sm font-bold text-white tabular-nums dark:bg-[#D12014]">{s.n}</span>
                 <s.icon className="absolute top-5 right-5 h-5 w-5 text-slate-400" aria-hidden="true" />
                 <h3 className="mt-4 text-base font-bold tracking-[-0.02em]">{t(s.title)}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{t(s.body)}</p>

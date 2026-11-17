@@ -1,0 +1,2 @@
+/** Runs in <head> before first paint: marks the page `no-splash` when the open animation has already played this session (or isn't wanted). */
+export const SPLASH_INIT_SCRIPT = `try{var k="aiadmanager.splash.v2",s=sessionStorage;if(s.getItem(k)||matchMedia("(prefers-reduced-motion: reduce)").matches||location.pathname.indexOf("/admin")===0){document.documentElement.classList.add("no-splash")}else{s.setItem(k,"1")}}catch(e){}`;
