@@ -189,7 +189,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       </div>
       {(() => {
         const posId = state.display.position;
-        const posLabel = posId ? (getActiveExtras().find((x) => x.kind === "page_premium" && x.name.split("|")[0] === posId)?.data as { label?: string } | undefined)?.label : "";
+        const posLabel = posId ? (getActiveExtras().find((x) => x.kind === "page_premium" && x.newspaper_name === paper.name && x.name.split("|")[0] === posId)?.data as { label?: string } | undefined)?.label : "";
         const chips = [
           pkg && { k: "pkg", text: pkg.packageName!, tone: "ink" },
           posLabel && { k: "pos", text: posLabel, tone: "gold" },

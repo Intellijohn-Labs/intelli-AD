@@ -288,7 +288,8 @@ export function calculateQuote(input: QuoteInput): Quote {
       best.members.forEach((e) => consumed.add(e.id));
       remaining = remaining.filter((e) => !consumed.has(e.id));
       lines.push({
-        newspaperId: paper.id, newspaperName: paper.name, editionId: `combo:${best.name}`, editionName: best.label,
+        newspaperId: paper.id, newspaperName: paper.name, editionId: `combo:${paper.id}:${best.name}`, // scoped by publication so two papers' same-named packages never share an id
+        editionName: best.label,
         unitLabel: best.ch.unitLabel, baseUnits: best.ch.baseUnits, extraUnits: best.ch.extraUnits, extraUnitLabel: best.ch.extraUnitLabel, rate: best.ch.rate,
         base: round2(best.ch.base * count), extra: round2(best.ch.extra * count), enhancements: round2(best.ch.enh * count), gross: round2(best.total * count),
         discountPct: 0, discountLabel: "", discount: 0, net: round2(best.total * count),
