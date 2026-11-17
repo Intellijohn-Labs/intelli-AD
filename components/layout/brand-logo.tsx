@@ -1,15 +1,15 @@
-import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-/** IntelliAd logo: black newspaper with a red quill, plus a live black wordmark. */
+/** Masthead-style wordmark: a serif nameplate between double rules, with a tiny "Est. for Kerala" dateline. */
 export function BrandLogo({ className, onDark = false }: { className?: string; onDark?: boolean }) {
+  const ink = onDark ? "text-white" : "text-[#18181B]";
   return (
-    <Link href="/" aria-label="IntelliAd home" className={cn("flex items-center gap-2.5", className)}>
-      <Image src="/images/intelliad-icon.png" alt="" width={600} height={540} priority className={cn("h-9 w-auto", onDark && "h-10 rounded-lg bg-white p-1")} />
-      <span className="font-[family-name:var(--font-syne)] text-xl leading-none font-black tracking-tight">
-        <span className={onDark ? "text-white" : "text-slate-950 dark:text-white"}>IntelliAd</span>
+    <Link href="/" aria-label="IntelliAd home" className={cn("group flex flex-col leading-none", className)}>
+      <span className={cn("border-y-[3px] border-double py-1 font-serif text-[1.65rem] leading-none font-black tracking-tight", onDark ? "border-white/70" : "border-[#18181B]", ink)}>
+        Intelli<span className="text-[#C2410C]">Ad</span>
       </span>
+      <span className={cn("mt-1 text-[9px] font-bold tracking-[0.28em] uppercase", onDark ? "text-white/70" : "text-stone-500")}>Newspaper ad desk · Kerala</span>
     </Link>
   );
 }

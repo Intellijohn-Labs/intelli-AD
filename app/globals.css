@@ -9,24 +9,33 @@
 :root { transition: --brand 0.6s ease, --brand-accent 0.6s ease; }
 
 @theme {
-  --color-navy-50: color-mix(in oklab, var(--brand) 6%, white);
-  --color-navy-100: color-mix(in oklab, var(--brand) 12%, white);
-  --color-navy-200: color-mix(in oklab, var(--brand) 26%, white);
-  --color-navy-300: color-mix(in oklab, var(--brand) 46%, white);
-  --color-navy-400: color-mix(in oklab, var(--brand) 72%, white);
-  --color-navy-500: var(--brand);
-  --color-navy-600: color-mix(in oklab, var(--brand) 86%, black);
-  --color-navy-700: color-mix(in oklab, var(--brand) 72%, black);
-  --color-navy-800: color-mix(in oklab, var(--brand) 55%, black);
-  --color-navy-900: color-mix(in oklab, var(--brand) 38%, black);
-  --color-navy-950: color-mix(in oklab, var(--brand) 24%, black);
-  --color-paper: #fafafa;
-  --color-paper-dark: #f4f4f5;
-  --color-ink: #0F172A;
+  /* Editorial print-house palette. "navy" is the ink scale: 50-300 warm paper tints, 400-500 terracotta, 600-950 deep ink. */
+  --color-navy-50: #FAF8F5;  --color-navy-100: #F5F5F4; --color-navy-200: #E7E5E4; --color-navy-300: #D6D3D1;
+  --color-navy-400: #EA580C; --color-navy-500: #C2410C; --color-navy-600: #27272A; --color-navy-700: #18181B;
+  --color-navy-800: #18181B; --color-navy-900: #0C0A09; --color-navy-950: #0C0A09;
+  /* Neutral scales are warm stone, so every existing zinc / slate class turns paper-and-ink. */
+  --color-zinc-50: #FAFAF9;  --color-zinc-100: #F5F5F4; --color-zinc-200: #E7E5E4; --color-zinc-300: #D6D3D1; --color-zinc-400: #A8A29E;
+  --color-zinc-500: #78716C; --color-zinc-600: #57534E; --color-zinc-700: #44403C; --color-zinc-800: #292524; --color-zinc-900: #1C1917; --color-zinc-950: #0C0A09;
+  --color-slate-50: #FAFAF9; --color-slate-100: #F5F5F4; --color-slate-200: #E7E5E4; --color-slate-300: #D6D3D1; --color-slate-400: #A8A29E;
+  --color-slate-500: #78716C; --color-slate-600: #57534E; --color-slate-700: #44403C; --color-slate-800: #292524; --color-slate-900: #1C1917; --color-slate-950: #0C0A09;
+  /* Accent families the app already uses become terracotta (blue / sky / cyan / rose) or deep ink (violet / indigo / purple). Green is forest. */
+  --color-blue-50: #FFF7ED; --color-blue-100: #FFEDD5; --color-blue-200: #FED7AA; --color-blue-300: #FDBA74; --color-blue-400: #FB923C; --color-blue-500: #EA580C; --color-blue-600: #C2410C; --color-blue-700: #9A3412; --color-blue-800: #7C2D12; --color-blue-900: #431407; --color-blue-950: #2A0D04;
+  --color-sky-50: #FFF7ED; --color-sky-100: #FFEDD5; --color-sky-200: #FED7AA; --color-sky-300: #FDBA74; --color-sky-400: #FB923C; --color-sky-500: #EA580C; --color-sky-600: #C2410C; --color-sky-700: #9A3412;
+  --color-cyan-400: #FB923C; --color-cyan-500: #EA580C; --color-cyan-600: #C2410C;
+  --color-rose-50: #FFF7ED; --color-rose-100: #FFEDD5; --color-rose-200: #FED7AA; --color-rose-300: #FDBA74; --color-rose-400: #FB923C; --color-rose-500: #EA580C; --color-rose-600: #C2410C; --color-rose-700: #9A3412; --color-rose-800: #7C2D12;
+  --color-violet-50: #F5F5F4; --color-violet-200: #D6D3D1; --color-violet-500: #3F3F46; --color-violet-600: #27272A; --color-violet-700: #18181B; --color-violet-800: #18181B;
+  --color-indigo-50: #F5F5F4; --color-indigo-200: #D6D3D1; --color-indigo-300: #A8A29E; --color-indigo-500: #3F3F46; --color-indigo-600: #27272A; --color-indigo-700: #18181B;
+  --color-purple-50: #F5F5F4; --color-purple-200: #D6D3D1; --color-purple-500: #3F3F46; --color-purple-600: #27272A; --color-purple-700: #18181B;
+  --color-emerald-400: #4ADE80; --color-emerald-500: #16A34A; --color-emerald-600: #15803D; --color-emerald-700: #166534; --color-emerald-800: #14532D;
+  --color-paper: #FAF8F5;
+  --color-paper-dark: #F5F5F4;
+  --color-ink: #18181B;
+  --color-terracotta: #C2410C;
+  --color-gold: #B45309;
   --color-edition: var(--brand);
   --color-brand: var(--brand);
   --color-brand-accent: var(--brand-accent);
-  --font-serif: "Playfair Display", "Newsreader", Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-syne), "Playfair Display", "Newsreader", Georgia, "Times New Roman", serif;
   --font-sans: Inter, "Noto Sans Malayalam", Manjari, Gayathri, "Malayalam Sangam MN", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
 }
@@ -34,13 +43,14 @@
 html { scroll-behavior: smooth; }
 html { color-scheme: light; }
 body {
-  /* Bright slate canvas with deep charcoal ink; black and red (#E11D48) carry the actions. */
-  background-color: #F6F8FA;
-  color: #0F172A;
+  /* Warm newsprint ivory canvas with deep editorial ink; ink buttons, terracotta accents. */
+  background-color: #FAF8F5;
+  color: #18181B;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, .font-headline { font-family: var(--font-serif); letter-spacing: -0.02em; font-weight: 700; }
+.tabular, .font-mono { font-variant-numeric: tabular-nums; }
 
 :focus-visible { outline: 2px solid var(--color-navy-500); outline-offset: 2px; }
 
@@ -71,7 +81,7 @@ h3, h4 { font-family: var(--font-sans); letter-spacing: -0.01em; }
 
 /* Paper grain for clippings. */
 .paper-grain {
-  background-color: #F9F8F5;
+  background-color: #F6F3EC;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -118,17 +128,17 @@ html.dark { color-scheme: dark; }
 .sketch-underline { position: relative; display: inline-block; }
 .sketch-underline::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: -0.12em; height: 0.14em; border-radius: 999px;
-  background: linear-gradient(90deg, var(--brand), #6366f1); transform-origin: left; transform: scaleX(0) rotate(-0.6deg);
+  background: #C2410C; transform-origin: left; transform: scaleX(0) rotate(-0.6deg);
   animation: sketch-in 0.9s 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 @keyframes sketch-in { to { transform: scaleX(1) rotate(-0.6deg); } }
 
 /* Surface colour used to mix pastel tints; adapts to the theme. */
-:root { --surface: #ffffff; }
+:root { --surface: #ffffff; --hairline: #E7E5E4; }
 .dark { --surface: #132247; }
 
 /* Live ad preview: always newsprint, in both themes. */
-.preview-paper { background-color: #F9F8F5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.preview-paper { background-color: #F6F3EC; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.27 0 0 0 0 0.2 0 0 0 0.16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .dark .preview-paper { background-image: none; }
 
 /* Hide scrollbars on horizontally scrolling tab strips (still scrollable by touch / wheel / drag). */
@@ -262,3 +272,16 @@ input[type="range"].range-ink::-moz-range-thumb { width: 18px; height: 18px; bor
 
 /* Admin route-change progress bar (app/admin/loading.tsx) */
 @keyframes admin-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+
+
+/* ───────────── Editorial print-house kit ───────────── */
+.sheet { background: #fff; border: 1px solid #E7E5E4; border-radius: 10px; box-shadow: 0 1px 0 rgba(24,24,27,.04), 0 6px 18px -10px rgba(24,24,27,.18); }
+.btn-ink { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: 8px; border: 1px solid #18181B; background: #18181B; color: #fff; font-weight: 700; padding: .65rem 1.2rem; box-shadow: 0 2px 0 #000; transition: background .15s, transform .05s, box-shadow .05s; }
+.btn-ink:hover { background: #27272A; }
+.btn-ink:active { transform: translateY(1px); box-shadow: none; }
+.btn-paper { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; color: #18181B; font-weight: 700; padding: .65rem 1.2rem; box-shadow: 0 2px 0 #E7E5E4; transition: background .15s; }
+.btn-paper:hover { background: #FAFAF9; }
+.kicker { font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #C2410C; }
+.rule-ink { border-top: 3px double #18181B; }
+/* Newsprint column cut-out: warm grain, thin column rules. */
+.newsprint { background-color: #F6F3EC; background-image: linear-gradient(to right, transparent calc(50% - .5px), rgba(24,24,27,.14) calc(50% - .5px), rgba(24,24,27,.14) calc(50% + .5px), transparent calc(50% + .5px)); background-size: 50% 100%; }

@@ -13,21 +13,22 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 
 const links = [
-  { href: "/", label: "Home" },
-  { href: "/newspaper", label: "Newspaper" },
-  { href: "/categories", label: "Categories & Templates" },
+  { href: "/book", label: "Book Ad" },
+  { href: "/newspaper", label: "Rate Cards" },
+  { href: "/account/bookings", label: "Track Booking" },
 ];
 
-const CTA = "inline-flex items-center justify-center rounded-lg bg-[#E11D48] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#BE123C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E11D48] active:scale-[0.98]";
+const CTA = "inline-flex items-center justify-center rounded-lg border border-[#18181B] bg-[#18181B] px-4 py-2 text-sm font-bold text-white shadow-[0_2px_0_#000] transition-colors hover:bg-[#27272A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C] active:translate-y-px active:shadow-none";
 
-const AGENCY_BADGE = "flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/50 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/60";
+const AGENCY_BADGE = "flex items-center gap-2 rounded-lg border border-[#E7E5E4] bg-white px-3 py-1.5 text-xs font-bold text-[#9A3412] transition-colors hover:border-[#C2410C] dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/60";
 
-/** Clean white header: logo, quiet nav with a soft active pill, segmented language control, one red CTA. */
+/** Masthead-style header: wordmark, quiet nav with a terracotta rule under the active page, language switch, one ink CTA. */
 export function Header() {
   const [open, setOpen] = useState(false);
   const { t } = useI18n();
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const navLinks = user?.is_admin ? [...links, { href: "/admin", label: "Admin" }] : links;
   // Partners (or anyone already inside the partner area) never see a link to the page they are on.
   const inPartnerArea = !!user?.is_agency || pathname.startsWith("/agency") || pathname.startsWith("/partner");
   const logout = (
@@ -38,17 +39,17 @@ export function Header() {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
   const linkCls = (href: string) =>
     cn(
-      "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-      isActive(href) ? "bg-slate-100 text-black dark:bg-white/10 dark:text-white" : "text-slate-700 hover:text-black dark:text-[#FAFAFA] dark:hover:text-white",
+      "border-b-2 px-1 py-1.5 text-sm font-semibold transition-colors",
+      isActive(href) ? "border-[#C2410C] text-[#18181B] dark:text-white" : "border-transparent text-stone-600 hover:text-[#18181B] dark:text-[#FAFAFA] dark:hover:text-white",
     );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
+    <header className="sticky top-0 z-40 border-b border-[#E7E5E4] bg-[#FAF8F5]/95 backdrop-blur-sm dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
       <div className="mx-auto flex min-h-10 max-w-[1500px] items-center justify-between gap-4 px-6 py-3.5 md:px-12">
         <div className="flex shrink-0 items-center"><BrandLogo /></div>
 
-        <nav aria-label="Main" className="ml-8 hidden min-w-0 flex-1 items-center gap-2 min-[1120px]:flex min-[1120px]:ml-12 min-[1120px]:gap-4">
-          {links.map((l) => (
+        <nav aria-label="Main" className="ml-8 hidden min-w-0 flex-1 items-center gap-2 min-[1120px]:flex min-[1120px]:ml-12 min-[1120px]:gap-6">
+          {navLinks.map((l) => (
             <Link key={l.href} href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={linkCls(l.href)}>
               {t(l.label)}
             </Link>
@@ -82,7 +83,7 @@ export function Header() {
 
       {open && (
         <nav id="mobile-nav" aria-label="Mobile" className="flex flex-col gap-1 border-t border-slate-200 px-6 py-4 min-[1120px]:hidden dark:border-[#1F2F57]">
-          {links.map((l) => (
+          {navLinks.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} aria-current={isActive(l.href) ? "page" : undefined} className={cn(linkCls(l.href), "py-2.5")}>
               {t(l.label)}
             </Link>

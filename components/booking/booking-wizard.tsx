@@ -15,7 +15,7 @@ import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition, flagshipRate, GST_RATE } from "@/lib/pricing";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
-import { getActiveRates, matchRate } from "@/lib/rates";
+import { getActiveExtras, getActiveRates, matchRate } from "@/lib/rates";
 import { cutoffRuleFor, formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
@@ -52,10 +52,10 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
         return (
           <li key={s.n} className="flex flex-1 items-center gap-2" aria-current={active ? "step" : undefined}>
             <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left disabled:cursor-default", done && "hover:bg-navy-50")}>
-              <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded border-2 font-mono text-sm font-bold", done ? "border-navy-600 bg-navy-600 text-white" : active ? "border-navy-800 text-navy-800 dark:text-white" : "border-zinc-300 text-zinc-400")}>
+              <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded border-2 font-mono text-sm font-bold", done ? "border-[#18181B] bg-[#18181B] text-white" : active ? "border-[#C2410C] bg-[#C2410C] text-white" : "border-stone-300 bg-white text-stone-400")}>
                 {done ? <Check className="h-4 w-4" aria-hidden="true" /> : s.n}
               </span>
-              <span className={cn("hidden text-sm font-semibold sm:block", active ? "text-navy-900 dark:text-white" : "text-zinc-500")}>{t(s.label)}</span>
+              <span className={cn("hidden text-sm font-semibold sm:block", active ? "text-[#18181B] underline decoration-[#C2410C] decoration-2 underline-offset-[6px] dark:text-white" : "text-stone-500")}>{t(s.label)}</span>
               <span className="sr-only">{done ? "completed" : active ? "current step" : "upcoming"}</span>
             </button>
           </li>
@@ -123,13 +123,13 @@ function MobileProofBar({ state }: { state: BookingState }) {
 
   return (
     <div className="lg:hidden">
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E7E5E4] bg-[#FAF8F5]/95 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(24,24,27,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
         <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
           <motion.p animate={controls} className="min-w-0 truncate font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-white" aria-live="polite">
-            {size} · <span className="text-emerald-600 dark:text-emerald-400"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
+            {size} · <span className="text-[#15803D] dark:text-emerald-400"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
           </motion.p>
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/25 transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-            <Eye className="h-4 w-4" aria-hidden="true" /> Preview Ad / പ്രിവ്യൂ കാണുക
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#18181B] bg-[#18181B] px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-[#27272A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">
+            <Eye className="h-4 w-4" aria-hidden="true" /> Preview Ad
           </button>
         </div>
       </div>
@@ -182,8 +182,23 @@ function MiniSummary({ state }: { state: BookingState }) {
   const unitWord = (u: string) => (u === "words" ? t("word") : u === "lines" ? t("line") : t("cm²"));
   return (
     <Card className="p-5 sm:p-6">
-      <p className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-500">{t("Live estimate")}</p>
-      <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#0F172A] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
+      <div className="-mx-5 -mt-5 mb-4 flex items-baseline justify-between border-b-[3px] border-double border-[#18181B] px-5 pt-4 pb-2 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-5">
+        <p className="font-serif text-lg font-black tracking-tight">{t("Release Order")}</p>
+        <p className="font-mono text-[10px] font-bold tracking-widest text-stone-500 uppercase">{t("Live estimate")}</p>
+      </div>
+      {(() => {
+        const posId = state.display.position;
+        const posLabel = posId ? (getActiveExtras().find((x) => x.kind === "page_premium" && x.name.split("|")[0] === posId)?.data as { label?: string } | undefined)?.label : "";
+        const chips = [
+          pkg && { k: "pkg", text: pkg.packageName!, tone: "ink" },
+          posLabel && { k: "pos", text: posLabel, tone: "gold" },
+          (capsLine || pkg?.capsApplied) && { k: "caps", text: t("All Caps"), tone: "terra" },
+          paperLines.some((l) => l.bwOnly) && { k: "bw", text: t("B/W only"), tone: "gold" },
+          state.adType !== "classified-text" && state.display.colorMode === "color" && { k: "clr", text: t("Colour"), tone: "terra" },
+        ].filter(Boolean) as { k: string; text: string; tone: string }[];
+        return chips.length ? <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Active rate options">{chips.map((c) => <li key={c.k} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", c.tone === "ink" ? "border-[#18181B] bg-[#18181B] text-white" : c.tone === "gold" ? "border-[#B45309]/40 bg-[#B45309]/10 text-[#B45309]" : "border-[#C2410C]/40 bg-[#C2410C]/10 text-[#C2410C]")}>{c.text}</li>)}</ul> : null;
+      })()}
+      <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#18181B] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
       <p className="text-xs text-zinc-500">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</p>
       <dl className="mt-4 space-y-1.5 border-t border-dashed border-zinc-400 pt-4 text-sm">
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Type")}</dt><dd className="font-medium">{t(getAdType(state.adType).short)}</dd></div>

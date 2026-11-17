@@ -60,7 +60,7 @@ function InlineEditor({ value, onChange, onDone, className }: { value: string; o
       onInput={(e) => { const v = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " "); last.current = v; onChange(v); }}
       onBlur={onDone}
       onKeyDown={(e) => { if (e.key === "Escape") e.currentTarget.blur(); }}
-      className={cn("min-h-[3em] cursor-text whitespace-pre-wrap outline-2 outline-offset-2 outline-blue-500", className)}
+      className={cn("min-h-[3em] cursor-text whitespace-pre-wrap outline-2 outline-offset-2 outline-[#C2410C]", className)}
     />
   );
 }
@@ -103,14 +103,14 @@ export function NewspaperPreview({
   const bs = textStyle.borderStyle === "floral" && !floralAllowed ? "single" : textStyle.borderStyle;
   const ml = /[\u0D00-\u0D7F]/.test(text);
 
-  const tool = "flex h-7 w-7 items-center justify-center rounded text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-100 dark:hover:bg-white/15";
+  const tool = "flex h-7 w-7 items-center justify-center rounded text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-[#C2410C] dark:text-slate-100 dark:hover:bg-white/15";
   const on = "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white";
 
   return (
     <figure aria-label="Newspaper column preview" className="group/proof relative mx-auto w-fit max-w-full">
       {editor && (
         <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#C2410C]/30 bg-[#C2410C]/10 px-2.5 py-1 text-[11px] font-semibold text-[#9A3412] dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200">
             <Pencil className="h-3 w-3" aria-hidden="true" /> Click anywhere inside to edit / നേരിട്ട് തിരുത്താം
           </span>
         </div>
@@ -135,20 +135,20 @@ export function NewspaperPreview({
 
       {/* Newsprint box: publication rules, column margins, dimension tags on the border */}
       <div className="relative">
-        <span className="absolute -top-2.5 left-3 z-10 bg-[#FBF8F1] px-1.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-[#1E2430] dark:text-slate-200">Width: {colWidthCm} cm</span>
-        <span className="absolute -top-2.5 right-3 z-10 whitespace-nowrap bg-[#FBF8F1] px-1.5 font-mono text-[10px] font-bold text-slate-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
-        <div className="font-serif relative rounded-sm border-2 border-slate-900/80 bg-[#FBF8F1] p-4 tracking-tight text-slate-900 shadow-[3px_3px_0px_rgba(0,0,0,0.8)] dark:border-slate-300 dark:bg-[#1E2430] dark:text-slate-100 dark:shadow-[3px_3px_0px_rgba(255,255,255,0.18)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
-          <div className="mb-2 border-y-[3px] border-double border-slate-800 py-1 text-center dark:border-slate-300">
-            <p className="text-base font-bold tracking-tight">{paperName}</p>
-            <p className="text-[10px] font-semibold uppercase">{t("Classifieds")} · {categoryName}</p>
+        <span className="absolute -top-2.5 left-3 z-10 bg-[#FAF8F5] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Width: {colWidthCm} cm</span>
+        <span className="absolute -top-2.5 right-3 z-10 whitespace-nowrap bg-[#FAF8F5] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
+        <div className="font-serif newsprint relative rounded-[2px] border border-stone-500/70 p-4 tracking-tight text-stone-900 shadow-[0_0_0_3px_#FAF8F5,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)] dark:border-slate-300 dark:bg-[#1E2430] dark:text-slate-100 dark:shadow-[3px_3px_0px_rgba(255,255,255,0.18)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
+          <div className="mb-2 border-y-[3px] border-double border-stone-800 py-1 text-center dark:border-slate-300">
+            <p className="font-serif text-lg leading-tight font-black tracking-tight">{paperName}</p>
+            <p className="font-sans text-[9px] font-bold tracking-[0.2em] uppercase text-stone-600">{t("Classifieds")} · {categoryName}</p>
           </div>
           <div className="relative mx-auto px-3 py-2 leading-tight" style={{ fontSize: TEXT_PX[textStyle.size ?? "md"], width: `min(100%, ${(charsPerLine * 0.68 + 1.5).toFixed(1)}em)` }}>
-            {enhancements.tint && <span aria-hidden="true" className="absolute inset-0 bg-amber-200/80 dark:bg-amber-400/25" />}
+            {enhancements.tint && <span aria-hidden="true" className="absolute inset-0 bg-stone-400/35 dark:bg-amber-400/25" />}
             {enhancements.border && (
               <span aria-hidden="true" className={cn("absolute inset-0 border-slate-900 dark:border-slate-200", bs === "double" ? "border-[5px] border-double" : "border-2")} />
             )}
             {enhancements.border && bs === "floral" && <><FloralBand className="absolute inset-x-0 -top-1.5" /><FloralBand className="absolute inset-x-0 -bottom-1.5" /></>}
-            <div lang={ml ? "ml" : "en"} className={cn("relative transition-[font-weight] duration-300", ALIGN[textStyle.align], "hyphens-auto [overflow-wrap:anywhere]", textStyle.italic && "italic")}>
+            <div lang={ml ? "ml" : "en"} className={cn("relative transition-[font-weight] duration-300", ALIGN[textStyle.align], "hyphens-auto [overflow-wrap:anywhere]", textStyle.italic && "italic", enhancements.caps && !ml && "uppercase", enhancements.underline && "underline decoration-1 underline-offset-2")}>
               {editor && editing ? (
                 <InlineEditor value={editor.rawText} onChange={editor.onText} onDone={() => setEditing(false)} />
               ) : lines.length === 0 ? (
@@ -158,7 +158,7 @@ export function NewspaperPreview({
                 >{t("Your ad appears here as you type…")}</p>
               ) : (
                 <div
-                  className={cn(editor && "cursor-text rounded-sm hover:bg-blue-500/5 focus-visible:outline-2 focus-visible:outline-blue-500")}
+                  className={cn(editor && "cursor-text rounded-sm hover:bg-[#C2410C]/5 focus-visible:outline-2 focus-visible:outline-[#C2410C]")}
                   {...(editor ? { role: "button", tabIndex: 0, "aria-label": "Edit the ad text in place", onClick: () => setEditing(true), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") setEditing(true); } } : {})}
                 >
                   {(() => {
@@ -166,7 +166,7 @@ export function NewspaperPreview({
                     return splitParagraphs(text).map((para, i) =>
                       para.trim() ? (
                         <p key={i} className={cn("mb-1.5 whitespace-pre-wrap last:mb-0", enhancements.bold && i === firstIdx && "font-bold")}>
-                          {enhancements.tick && i === firstIdx && "✔ "}{para}
+                          {enhancements.highlighter && i === firstIdx && <span aria-label="Highlighter symbol" className="mr-1 inline-block rounded-[2px] bg-[#FDE047] px-1 text-[0.8em] leading-none font-black text-stone-900 no-underline">★</span>}{enhancements.tick && i === firstIdx && "✔ "}{para}
                         </p>
                       ) : <div key={i} aria-hidden="true" className="h-3" />,
                     );
@@ -193,7 +193,9 @@ export function DisplayPreview({
   colorMode,
   imageUrl,
   artworkName,
+  paperName,
 }: {
+  paperName?: string;
   columns: number;
   heightCm: number;
   colWidthCm: number;
@@ -208,16 +210,22 @@ export function DisplayPreview({
   const scale = Math.min(maxW / w, 360 / h);
   return (
     <figure aria-label="Display ad size preview" className="mx-auto w-fit max-w-full">
-      <div className="newsprint-texture rounded-sm border border-zinc-400/70 p-4 shadow-sm">
+      <div className="newsprint relative rounded-[2px] border border-stone-500/70 p-4 pt-3 shadow-[0_0_0_3px_#FAF8F5,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)]">
+        {paperName && (
+          <div className="mb-2 border-y-[3px] border-double border-stone-800 py-0.5 text-center">
+            <p className="font-serif text-base leading-tight font-black tracking-tight">{paperName}</p>
+          </div>
+        )}
+        <div className="flex justify-between font-mono text-[10px] font-bold text-stone-700"><span>W {Math.round(w * 10) / 10} cm</span><span>H {h} cm</span></div>
         <div
-          className="relative flex items-center justify-center overflow-hidden border-2 border-zinc-800 bg-white"
+          className="relative mx-auto mt-1 flex items-center justify-center overflow-hidden border-2 border-stone-900 bg-white shadow-[2px_2px_0_rgba(24,24,27,0.75)]"
           style={{ width: w * scale, height: h * scale }}
         >
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="Uploaded artwork" className={cn("h-full w-full object-cover", colorMode === "bw" && "grayscale")} />
           ) : (
-            <p className={cn("px-2 text-center text-xs text-zinc-500", colorMode === "color" && "text-navy-600")}>
+            <p className={cn("px-2 text-center text-xs text-stone-500", colorMode === "color" && "text-[#9A3412]")}>
               {artworkName ? `${artworkName} (no preview)` : t("Artwork placeholder")}
             </p>
           )}
