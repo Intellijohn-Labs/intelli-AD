@@ -5,7 +5,7 @@ import { newspapers } from "@/data/newspapers";
 import { createClient } from "@/lib/supabase/server";
 
 const CATEGORIES: { title: string; desc: string; icon: ReactNode; href?: string; badge: string; tone: string }[] = [
-  { title: "Newspaper Ads", desc: "Classified text, classified display and commercial display rates for every publication and edition.", icon: <Newspaper className="h-6 w-6" />, href: "/admin/rates", badge: "Live Rates", tone: "bg-[#0B1215]" },
+  { title: "Newspaper Ads", desc: "Classified text, classified display and commercial display rates for every publication and edition.", icon: <Newspaper className="h-6 w-6" />, href: "/admin/rates", badge: "Live Rates", tone: "bg-[#0A0B0D]" },
   { title: "Radio & Audio Ads", desc: "FM spots, sponsorships and podcast slots.", icon: <Radio className="h-6 w-6" />, badge: "Coming Soon", tone: "bg-slate-400" },
   { title: "TV & Screen Media", desc: "Television spots, digital screens and cinema.", icon: <Monitor className="h-6 w-6" />, badge: "Coming Soon", tone: "bg-slate-400" },
   { title: "Outdoor / Hoardings", desc: "Billboards, unipoles and transit media.", icon: <SignpostBig className="h-6 w-6" />, badge: "Coming Soon", tone: "bg-slate-400" },
@@ -45,13 +45,13 @@ export default async function AdminOverview() {
               </div>
               <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">{c.title}</h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.desc}</p>
-              {c.href && <p className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#0D9488] dark:text-sky-300">Manage rates <ArrowRight className="h-4 w-4" aria-hidden="true" /></p>}
+              {c.href && <p className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#D12014] dark:text-sky-300">Manage rates <ArrowRight className="h-4 w-4" aria-hidden="true" /></p>}
             </>
           );
           return (
             <li key={c.title}>
               {c.href ? (
-                <Link href={c.href} className="block h-full rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_0_rgba(24,24,27,.04)] transition hover:border-[#0B1215] dark:border-slate-700">{body}</Link>
+                <Link href={c.href} className="block h-full rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_0_rgba(24,24,27,.04)] transition hover:border-[#0A0B0D] dark:border-slate-700">{body}</Link>
               ) : (
                 <div aria-disabled="true" className="h-full rounded-xl border border-dashed border-slate-300 bg-white/60 p-5 opacity-75 dark:border-slate-700">{body}</div>
               )}

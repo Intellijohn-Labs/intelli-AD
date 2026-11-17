@@ -11,7 +11,7 @@ const STAGGER_S = 0.2;
 
 /** "നമസ്കാരം" (Namaskaram), one glyph cluster per entry, each with its own colour + glow. */
 const GLYPHS = [
-  { ch: "ന", color: "#34D399", glow: "56,189,248" }, // sky blue
+  { ch: "ന", color: "#E83E32", glow: "56,189,248" }, // sky blue
   { ch: "മ", color: "#fbbf24", glow: "251,191,36" }, // warm gold
   { ch: "സ്കാ", color: "#fb7185", glow: "251,113,133" }, // rose / coral
   { ch: "രം", color: "#a855f7", glow: "168,85,247" }, // electric violet
@@ -103,9 +103,9 @@ export function MalayalamRainLoader({ onComplete }: { onComplete: () => void }) 
           transition={{ type: "spring", stiffness: 200, damping: 15 }}
         >
           <motion.div
-            animate={assembled ? { filter: ["drop-shadow(0 0 4px rgba(52,211,153,0.3))", "drop-shadow(0 0 26px rgba(52,211,153,0.95))", "drop-shadow(0 0 14px rgba(52,211,153,0.6))"] } : undefined}
+            animate={assembled ? { filter: ["drop-shadow(0 0 4px rgba(232,62,50,0.3))", "drop-shadow(0 0 26px rgba(232,62,50,0.95))", "drop-shadow(0 0 14px rgba(232,62,50,0.6))"] } : undefined}
             transition={{ duration: 0.7, times: [0, 0.4, 1], ease: "easeOut" }} // single flash, then static
-            style={{ filter: "drop-shadow(0 0 4px rgba(52,211,153,0.3))" }}
+            style={{ filter: "drop-shadow(0 0 4px rgba(232,62,50,0.3))" }}
           >
             <Image src="/logo.png" alt="" width={160} height={160} priority className="h-20 w-20 rounded-2xl sm:h-24 sm:w-24" />
           </motion.div>

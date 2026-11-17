@@ -48,7 +48,7 @@ export function Hero() {
         </motion.p>
 
         {/* Format tabs: one segmented control */}
-        <motion.div variants={item} role="radiogroup" aria-label="Ad format" className="mt-6 inline-flex max-w-full flex-wrap gap-1 rounded-full border border-slate-200/60 bg-slate-100/80 p-1 dark:border-[#243236] dark:bg-[#141E21]">
+        <motion.div variants={item} role="radiogroup" aria-label="Ad format" className="mt-6 inline-flex max-w-full flex-wrap gap-1 rounded-full border border-slate-200/60 bg-slate-100/80 p-1 dark:border-[#26272B] dark:bg-[#131416]">
           {AD_TYPES.map((a) => (
             <button
               key={a.id}

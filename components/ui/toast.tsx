@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               role={i.variant === "error" ? "alert" : undefined}
               className={i.variant === "error"
                 ? "pointer-events-auto flex max-w-sm items-start gap-2 rounded bg-red-700 px-4 py-3 text-sm font-medium text-white shadow-md"
-                : "pointer-events-auto flex items-center gap-2 rounded bg-[#0B1215] px-4 py-3 text-sm font-medium text-white shadow-md dark:bg-[#FFFFFF] dark:text-[#0B1215]"}
+                : "pointer-events-auto flex items-center gap-2 rounded bg-[#0A0B0D] px-4 py-3 text-sm font-medium text-white shadow-md dark:bg-[#FFFFFF] dark:text-[#0A0B0D]"}
             >
               {i.variant === "error" ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />} {i.message}
             </motion.div>

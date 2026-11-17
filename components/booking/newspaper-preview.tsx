@@ -60,7 +60,7 @@ function InlineEditor({ value, onChange, onDone, className }: { value: string; o
       onInput={(e) => { const v = (e.currentTarget.textContent ?? "").replace(/\u00a0/g, " "); last.current = v; onChange(v); }}
       onBlur={onDone}
       onKeyDown={(e) => { if (e.key === "Escape") e.currentTarget.blur(); }}
-      className={cn("min-h-[3em] cursor-text whitespace-pre-wrap outline-2 outline-offset-2 outline-[#0D9488]", className)}
+      className={cn("min-h-[3em] cursor-text whitespace-pre-wrap outline-2 outline-offset-2 outline-[#D12014]", className)}
     />
   );
 }
@@ -103,14 +103,14 @@ export function NewspaperPreview({
   const bs = textStyle.borderStyle === "floral" && !floralAllowed ? "single" : textStyle.borderStyle;
   const ml = /[\u0D00-\u0D7F]/.test(text);
 
-  const tool = "flex h-7 w-7 items-center justify-center rounded text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-[#0D9488] dark:text-slate-100 dark:hover:bg-white/15";
+  const tool = "flex h-7 w-7 items-center justify-center rounded text-slate-700 transition-colors hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-[#D12014] dark:text-slate-100 dark:hover:bg-white/15";
   const on = "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white";
 
   return (
     <figure aria-label="Newspaper column preview" className="group/proof relative mx-auto w-fit max-w-full">
       {editor && (
         <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full border border-[#0D9488]/30 bg-[#0D9488]/10 px-2.5 py-1 text-[11px] font-semibold text-[#0F766E] dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#D12014]/30 bg-[#D12014]/10 px-2.5 py-1 text-[11px] font-semibold text-[#A91400] dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200">
             <Pencil className="h-3 w-3" aria-hidden="true" /> Click anywhere inside to edit / നേരിട്ട് തിരുത്താം
           </span>
         </div>
@@ -135,9 +135,9 @@ export function NewspaperPreview({
 
       {/* Newsprint box: publication rules, column margins, dimension tags on the border */}
       <div className="relative">
-        <span className="absolute -top-2.5 left-3 z-10 bg-[#F2F5F4] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Width: {colWidthCm} cm</span>
-        <span className="absolute -top-2.5 right-3 z-10 whitespace-nowrap bg-[#F2F5F4] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
-        <div className="font-serif newsprint relative rounded-[2px] border border-stone-500/70 p-4 tracking-tight text-stone-900 shadow-[0_0_0_3px_#F2F5F4,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)] dark:border-slate-300 dark:bg-[#1E2430] dark:text-slate-100 dark:shadow-[3px_3px_0px_rgba(255,255,255,0.18)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
+        <span className="absolute -top-2.5 left-3 z-10 bg-[#F3F3F4] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Width: {colWidthCm} cm</span>
+        <span className="absolute -top-2.5 right-3 z-10 whitespace-nowrap bg-[#F3F3F4] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
+        <div className="font-serif newsprint relative rounded-[2px] border border-stone-500/70 p-4 tracking-tight text-stone-900 shadow-[0_0_0_3px_#F3F3F4,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)] dark:border-slate-300 dark:bg-[#1E2430] dark:text-slate-100 dark:shadow-[3px_3px_0px_rgba(255,255,255,0.18)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
           <div className="mb-2 border-y-[3px] border-double border-stone-800 py-1 text-center dark:border-slate-300">
             <p className="font-serif text-lg leading-tight font-black tracking-tight">{paperName}</p>
             <p className="font-sans text-[9px] font-bold tracking-[0.2em] uppercase text-stone-600">{t("Classifieds")} · {categoryName}</p>
@@ -158,7 +158,7 @@ export function NewspaperPreview({
                 >{t("Your ad appears here as you type…")}</p>
               ) : (
                 <div
-                  className={cn(editor && "cursor-text rounded-sm hover:bg-[#0D9488]/5 focus-visible:outline-2 focus-visible:outline-[#0D9488]")}
+                  className={cn(editor && "cursor-text rounded-sm hover:bg-[#D12014]/5 focus-visible:outline-2 focus-visible:outline-[#D12014]")}
                   {...(editor ? { role: "button", tabIndex: 0, "aria-label": "Edit the ad text in place", onClick: () => setEditing(true), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") setEditing(true); } } : {})}
                 >
                   {(() => {
@@ -210,7 +210,7 @@ export function DisplayPreview({
   const scale = Math.min(maxW / w, 360 / h);
   return (
     <figure aria-label="Display ad size preview" className="mx-auto w-fit max-w-full">
-      <div className="newsprint relative rounded-[2px] border border-stone-500/70 p-4 pt-3 shadow-[0_0_0_3px_#F2F5F4,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)]">
+      <div className="newsprint relative rounded-[2px] border border-stone-500/70 p-4 pt-3 shadow-[0_0_0_3px_#F3F3F4,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)]">
         {paperName && (
           <div className="mb-2 border-y-[3px] border-double border-stone-800 py-0.5 text-center">
             <p className="font-serif text-base leading-tight font-black tracking-tight">{paperName}</p>
@@ -225,7 +225,7 @@ export function DisplayPreview({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="Uploaded artwork" className={cn("h-full w-full object-cover", colorMode === "bw" && "grayscale")} />
           ) : (
-            <p className={cn("px-2 text-center text-xs text-stone-500", colorMode === "color" && "text-[#0F766E]")}>
+            <p className={cn("px-2 text-center text-xs text-stone-500", colorMode === "color" && "text-[#A91400]")}>
               {artworkName ? `${artworkName} (no preview)` : t("Artwork placeholder")}
             </p>
           )}

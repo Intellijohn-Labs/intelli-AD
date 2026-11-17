@@ -258,7 +258,7 @@ export function Step2Compose() {
                 }
               />
 
-              <fieldset className="space-y-2 rounded-lg border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#121B1E]">
+              <fieldset className="space-y-2 rounded-lg border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#101113]">
                 <legend className="px-1 text-sm font-bold">{t("Ad Enhancements / Styling")}</legend>
                 {([
                   ["bold", "enh-bold", "Bold First Line / Heading", (rule?.word_rate ?? 0) > 0 ? rule?.heading_line_rate ?? 0 : rule?.bold_heading_rate ?? 0],
@@ -405,7 +405,7 @@ function PathPicker({ mode, onMode }: { mode: CreativeMode; onMode: (m: Creative
       <legend className="mb-2 text-sm font-bold">How will you provide the ad?</legend>
       <div className="grid gap-2 sm:grid-cols-2" role="radiogroup">
         {opts.map((o) => (
-          <label key={o.id} className={cn("cursor-pointer rounded border px-3 py-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", mode === o.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}>
+          <label key={o.id} className={cn("cursor-pointer rounded border px-3 py-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", mode === o.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#101113]")}>
             <input type="radio" name="creative-mode" className="sr-only" checked={mode === o.id} onChange={() => onMode(o.id)} />
             <span className="block font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500">{o.who}</span>
             <span className="block text-sm font-bold">{o.title}</span>

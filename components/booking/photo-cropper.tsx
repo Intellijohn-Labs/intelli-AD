@@ -45,7 +45,7 @@ export function PhotoCropper({
 
   return (
     <div className="flex flex-wrap items-start gap-4">
-      <div className={cn("relative h-[120px] w-24 shrink-0 overflow-hidden border-2 border-[#0B1215] bg-zinc-100", round && "h-24 rounded-full")} aria-label="Crop preview">
+      <div className={cn("relative h-[120px] w-24 shrink-0 overflow-hidden border-2 border-[#0A0B0D] bg-zinc-100", round && "h-24 rounded-full")} aria-label="Crop preview">
         {photo?.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo.previewUrl} alt="Portrait crop preview" className={cn("h-full w-full object-cover", bw && "grayscale contrast-110")} style={cropStyle(crop)} />

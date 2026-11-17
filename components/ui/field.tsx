@@ -6,7 +6,7 @@ import type { ComponentProps, InputHTMLAttributes, ReactNode, SelectHTMLAttribut
 import { cn } from "@/lib/utils";
 
 export const controlStyles =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15 aria-[invalid=true]:border-red-600 dark:border-slate-700 dark:bg-[#121B1E] dark:text-[#FFFFFF] dark:placeholder:text-slate-300 dark:focus:border-[#34D399] dark:focus:outline-[#34D399]/40";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15 aria-[invalid=true]:border-red-600 dark:border-slate-700 dark:bg-[#101113] dark:text-[#FFFFFF] dark:placeholder:text-slate-300 dark:focus:border-[#E83E32] dark:focus:outline-[#E83E32]/40";
 
 export function Field({
   id,
@@ -79,7 +79,7 @@ export function Switch({
   id: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/70 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#121B1E]">
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/70 bg-white px-3 py-2.5 dark:border-slate-800/80 dark:bg-[#101113]">
       <div>
         <label htmlFor={id} className="text-sm font-semibold text-zinc-800 dark:text-[#FFFFFF]">
           {label}
@@ -94,7 +94,7 @@ export function Switch({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-teal-600 dark:bg-emerald-400" : "bg-slate-300",
+          checked ? "bg-teal-600 dark:bg-[#E83E32]" : "bg-slate-300",
         )}
       >
         <motion.span className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm" animate={{ x: checked ? 20 : 0 }} transition={{ duration: 0.15, ease: "easeOut" }} />

@@ -12,7 +12,7 @@ function Row({ label, sub, value, negative, strong, muted }: { label: string; su
         <p>{label}</p>
         {sub && <p className="text-xs font-normal text-zinc-500 dark:text-slate-200">{sub}</p>}
       </div>
-      <p className={cn("font-semibold tracking-tight tabular-nums", strong && "dark:text-emerald-300 dark:[text-shadow:0_0_18px_rgba(52,211,153,0.35)]", negative && "font-semibold text-emerald-700 dark:text-emerald-300")}>
+      <p className={cn("font-semibold tracking-tight tabular-nums", strong && "dark:text-[#E83E32] dark:[text-shadow:0_0_18px_rgba(232,62,50,0.35)]", negative && "font-semibold text-emerald-700 dark:text-[#E83E32]")}>
         {negative && value > 0 ? "−" : ""}
         {formatINR(value, { decimals: true })}
       </p>
@@ -59,7 +59,7 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
       <Row label={tr("Total payable")} value={t.total} strong />
       {showEditions && quote.lines.length > 0 && (
         <details className="mt-3 rounded border border-dashed border-zinc-400 bg-white p-3 text-sm">
-          <summary className="cursor-pointer font-semibold text-[#0B1215] dark:text-zinc-100">{tr("Per-edition breakdown")}</summary>
+          <summary className="cursor-pointer font-semibold text-[#0A0B0D] dark:text-zinc-100">{tr("Per-edition breakdown")}</summary>
           <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
             {quote.lines.map((l) => (
               <li key={l.editionId} className="flex justify-between gap-3 py-1.5">

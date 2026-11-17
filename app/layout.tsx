@@ -29,8 +29,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Browser chrome follows the theme: soft paper in light mode, Deep Midnight Slate (not pure black) in dark.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F2F5F4" },
-    { media: "(prefers-color-scheme: dark)", color: "#0B1215" },
+    { media: "(prefers-color-scheme: light)", color: "#F3F3F4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0B0D" },
   ],
   width: "device-width",
   initialScale: 1,

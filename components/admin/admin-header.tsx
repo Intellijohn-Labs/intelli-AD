@@ -23,7 +23,7 @@ export function AdminHeader({ email }: { email: string }) {
   const { signOut } = useAuth();
   const [busy, setBusy] = useState(false);
   return (
-    <header className="sticky top-0 z-40 dark border-b border-white/10 bg-[#0B1215]/95 text-white backdrop-blur">
+    <header className="sticky top-0 z-40 dark border-b border-white/10 bg-[#0A0B0D]/95 text-white backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
         <Link href="/admin" aria-label="AI admanager admin home" className="flex items-center"><Image src="/logo.png" alt="AI admanager" width={40} height={40} className="h-10 w-10 rounded-lg ring-1 ring-white/15" /></Link>
         <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase dark:bg-slate-100 dark:text-slate-900"><ShieldCheck className="h-3 w-3" aria-hidden="true" />Admin Mode</span>
@@ -38,7 +38,7 @@ export function AdminHeader({ email }: { email: string }) {
             const on = l.exact ? path === l.href : path.startsWith(l.href);
             return (
               <Link key={l.href} href={l.href} prefetch aria-current={on ? "page" : undefined}
-                className={cn("shrink-0 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap", on ? "border-emerald-400 text-emerald-300" : "border-transparent text-slate-300 hover:text-white")}>
+                className={cn("shrink-0 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap", on ? "border-[#E83E32] text-[#E83E32]" : "border-transparent text-slate-300 hover:text-white")}>
                 {l.label}
               </Link>
             );

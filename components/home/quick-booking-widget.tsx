@@ -46,7 +46,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
   const minLabel = adType === "classified-text" ? `${cfg.minLines} ${t("lines")}` : `${cfg.minSqCm} cm²`;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/95 p-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#243236] dark:bg-[#141E21]/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+    <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/95 p-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#26272B] dark:bg-[#131416]/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-slate-500" />
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -100,7 +100,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#243236] dark:bg-[#1A2629]" aria-live="polite">
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-[#26272B] dark:bg-[#1A1B1E]" aria-live="polite">
         {!available ? (
           <p className="text-sm font-semibold text-amber-800">{t(loaded ? "Rate not available — upload rate card" : "Checking rates…")}</p>
         ) : eds.length === 0 ? (

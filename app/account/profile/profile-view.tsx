@@ -19,7 +19,7 @@ export function ProfileView() {
   return (
     <div className="mx-auto max-w-xl px-4 py-12">
       <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Your profile</h1>
-      <dl className="mt-6 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-[#141E21]">
+      <dl className="mt-6 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-[#131416]">
         {rows.filter(([, v]) => v).map(([k, v]) => (
           <div key={k} className="flex justify-between gap-4 px-4 py-3 text-sm"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>
         ))}

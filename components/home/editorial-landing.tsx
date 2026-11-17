@@ -23,7 +23,7 @@ function Clipping() {
     <div className="relative mx-auto w-full max-w-[420px] px-3 py-2" aria-hidden="true">
       <div className="absolute -inset-3 rotate-[2.5deg] rounded-md border border-[#E2E8F0] bg-white shadow-[0_18px_40px_-22px_rgba(24,24,27,.45)]" />
       <div className="relative -rotate-[1.5deg] rounded-sm border border-[#D6D3D1] bg-[#F6F3EC] p-4 shadow-[0_14px_30px_-18px_rgba(24,24,27,.5)]">
-        <div className="flex items-baseline justify-between border-b-[3px] border-double border-[#0B1215] pb-1.5">
+        <div className="flex items-baseline justify-between border-b-[3px] border-double border-[#0A0B0D] pb-1.5">
           <span className="text-lg font-black tracking-tight">Malayala Manorama</span>
           <span className="font-mono text-[10px] tracking-widest text-slate-500 uppercase">Kochi · Classifieds</span>
         </div>
@@ -52,9 +52,9 @@ export function EditorialLanding() {
     <>
       <section className="mx-auto grid max-w-[1280px] items-center gap-10 px-4 pt-12 pb-10 sm:px-6 sm:pt-16 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:px-8">
         <div className="min-w-0">
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)]"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />{t("Kerala's newspaper advertising desk")}</p>
-          <h1 className="mt-4 text-[2.5rem] leading-[1.05] font-extrabold tracking-[-0.03em] text-[#0B1215] sm:text-6xl">
-            {t("Put your notice in print,")} <span className="bg-gradient-to-r from-[#0D9488] to-[#0B1215] bg-clip-text text-transparent">{t("across Kerala")}</span>.
+          <p className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)]"><span className="h-1.5 w-1.5 rounded-full bg-[#D12014]" aria-hidden="true" />{t("Kerala's newspaper advertising desk")}</p>
+          <h1 className="mt-4 text-[2.5rem] leading-[1.05] font-extrabold tracking-[-0.03em] text-[#0A0B0D] sm:text-6xl">
+            {t("Put your notice in print,")} <span className="bg-gradient-to-r from-[#D12014] to-[#0A0B0D] bg-clip-text text-transparent">{t("across Kerala")}</span>.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
             {t("Classifieds, display, obituary and tender ads in the state's leading dailies, priced from each paper's official tariff sheet and released the same day.")}
@@ -70,7 +70,7 @@ export function EditorialLanding() {
       <section aria-labelledby="pubs-h" className="mx-auto max-w-[1280px] px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between gap-4">
           <h2 id="pubs-h" className="text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">{t("The papers on our desk")}</h2>
-          <Link href="/newspaper" className="text-sm font-semibold text-[#0D9488] hover:underline">{t("All publications")} →</Link>
+          <Link href="/newspaper" className="text-sm font-semibold text-[#D12014] hover:underline">{t("All publications")} →</Link>
         </div>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {papers.map((p) => {
@@ -79,7 +79,7 @@ export function EditorialLanding() {
               <li key={p.id}>
                 <Link href="/newspaper" className="group flex h-full flex-col justify-between rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-12px_rgba(15,23,42,0.18)] sm:p-5">
                   <div>
-                    <p className="text-lg leading-tight font-bold tracking-[-0.03em] text-[#0B1215] sm:text-xl">{p.name}</p>
+                    <p className="text-lg leading-tight font-bold tracking-[-0.03em] text-[#0A0B0D] sm:text-xl">{p.name}</p>
                     <p className="mt-0.5 text-sm text-slate-500" style={{ fontFamily: '"Noto Sans Malayalam", Manjari, sans-serif' }}>{p.nameMl}</p>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-2 text-xs">
@@ -101,8 +101,8 @@ export function EditorialLanding() {
           <h2 id="flow-h" className="mt-2 max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">{t("From draft to Release Order in three steps")}</h2>
           <ol className="mt-8 grid gap-6 md:grid-cols-3">
             {STEPS.map((s) => (
-              <li key={s.n} className="relative rounded-2xl border border-slate-200/70 bg-[#F2F5F4] p-5">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#0B1215] text-sm font-bold text-white tabular-nums">{s.n}</span>
+              <li key={s.n} className="relative rounded-2xl border border-slate-200/70 bg-[#F3F3F4] p-5">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#0A0B0D] text-sm font-bold text-white tabular-nums">{s.n}</span>
                 <s.icon className="absolute top-5 right-5 h-5 w-5 text-slate-400" aria-hidden="true" />
                 <h3 className="mt-4 text-base font-bold tracking-[-0.02em]">{t(s.title)}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{t(s.body)}</p>
@@ -114,10 +114,10 @@ export function EditorialLanding() {
 
       <section aria-label="Agency details" className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8">
         <ul className="grid gap-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
-          <li className="flex items-start gap-2.5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0B1215]">{t("Registered agency")}</b>{COMPANY.tradeName} · GSTIN {COMPANY.gstin}</span></li>
-          <li className="flex items-start gap-2.5"><FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0B1215]">{t("Official tariffs")}</b>{t("Rates are read from each paper's own rate card")}</span></li>
-          <li className="flex items-start gap-2.5"><ReceiptText className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0B1215]">{t("Itemised quote")}</b>{t("Every charge listed, {pct}% GST shown upfront", { pct: Math.round(GST_RATE * 100) })}</span></li>
-          <li className="flex items-start gap-2.5"><CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0B1215]">{t("Release Order")}</b>{t("Issued the moment your booking is confirmed")}</span></li>
+          <li className="flex items-start gap-2.5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0A0B0D]">{t("Registered agency")}</b>{COMPANY.tradeName} · GSTIN {COMPANY.gstin}</span></li>
+          <li className="flex items-start gap-2.5"><FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0A0B0D]">{t("Official tariffs")}</b>{t("Rates are read from each paper's own rate card")}</span></li>
+          <li className="flex items-start gap-2.5"><ReceiptText className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0A0B0D]">{t("Itemised quote")}</b>{t("Every charge listed, {pct}% GST shown upfront", { pct: Math.round(GST_RATE * 100) })}</span></li>
+          <li className="flex items-start gap-2.5"><CalendarCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0A0B0D]">{t("Release Order")}</b>{t("Issued the moment your booking is confirmed")}</span></li>
         </ul>
       </section>
     </>

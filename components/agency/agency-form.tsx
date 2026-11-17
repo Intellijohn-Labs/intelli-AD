@@ -92,7 +92,7 @@ export function AgencyForm({ mode }: { mode: "signin" | "register" }) {
         <>
           <div role="radiogroup" aria-label="Partner type" className="flex flex-wrap gap-2">
             {TYPES.map((t) => (
-              <label key={t.id} className={cn("cursor-pointer rounded-full border px-3 py-1.5 text-xs font-bold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600", type === t.id ? "border-blue-600 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200" : "border-slate-300 bg-white text-slate-700 hover:border-blue-400 dark:border-slate-700 dark:bg-[#121B1E] dark:text-slate-200")}>
+              <label key={t.id} className={cn("cursor-pointer rounded-full border px-3 py-1.5 text-xs font-bold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600", type === t.id ? "border-blue-600 bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200" : "border-slate-300 bg-white text-slate-700 hover:border-blue-400 dark:border-slate-700 dark:bg-[#101113] dark:text-slate-200")}>
                 <input type="radio" name="partner-type" className="sr-only" checked={type === t.id} onChange={() => setType(t.id)} />
                 {t.label}
               </label>

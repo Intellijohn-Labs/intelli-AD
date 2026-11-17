@@ -47,7 +47,7 @@ export function DigitalArt() {
       <rect x="46" y="42" width="56" height="5" rx="2.5" fill="#ffffff" />
       <rect x="46" y="51" width="34" height="4" rx="2" fill="#cffafe" />
       {[38, 82, 126].map((x, i) => (<g key={x} className="art-anim" style={{ animationName: "art-tile", animationDelay: `${i * 0.35}s` }}><rect x={x} y="68" width="36" height="32" rx="2" fill="#ecfeff" stroke="#67e8f9" /><rect x={x + 4} y="72" width="28" height="14" fill="#a5f3fc" /><rect x={x + 4} y="90" width="20" height="3" rx="1.5" fill="#67e8f9" /></g>))}
-      <path className="art-anim" d="M142 74l0 22 6-5 4 9 4-2-4-9 8 0z" fill="#0B1215" stroke="#fff" strokeWidth="1" style={{ animationName: "art-click", animationDuration: "3.6s", transformOrigin: "0% 0%" }} />
+      <path className="art-anim" d="M142 74l0 22 6-5 4 9 4-2-4-9 8 0z" fill="#0A0B0D" stroke="#fff" strokeWidth="1" style={{ animationName: "art-click", animationDuration: "3.6s", transformOrigin: "0% 0%" }} />
     </Svg>
   );
 }

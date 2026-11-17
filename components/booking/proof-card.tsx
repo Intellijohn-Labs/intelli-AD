@@ -61,7 +61,7 @@ export function ProofCard({ state, onEdit }: { state: BookingState; onEdit: () =
             onMouseDown={(e) => { if (e.target === e.currentTarget) setZoom(false); }}
           >
             <motion.div role="dialog" aria-modal="true" aria-label="Print proof" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }}
-              className="relative max-h-[92vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#141E21]">
+              className="relative max-h-[92vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#131416]">
               <button type="button" onClick={() => setZoom(false)} aria-label="Close proof" className="absolute top-3 right-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
               <p className="mb-3 pr-8 font-mono text-xs font-bold uppercase tracking-wider text-slate-500">{t("Print Proof & Creative Preview")} · {tag}</p>
               {bigImage ? (

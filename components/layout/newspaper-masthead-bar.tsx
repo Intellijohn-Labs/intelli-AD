@@ -39,7 +39,7 @@ export function NewspaperMastheadBar() {
   }, [activeId]);
 
   return (
-    <div id="publication-bar" className="sticky top-[68px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#243236] dark:bg-[#0B1215]/95">
+    <div id="publication-bar" className="sticky top-[68px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#26272B] dark:bg-[#0A0B0D]/95">
       <div className="mx-auto flex max-w-[1500px] items-center gap-4 px-6 py-3 md:px-12">
         <span className="hidden shrink-0 font-mono text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase lg:block">{t("Publication")}</span>
         {/* Tactile publication chips: white pills; the chosen paper becomes a solid ink pill with a sliding highlight. */}
@@ -73,7 +73,7 @@ export function NewspaperMastheadBar() {
                   "relative flex shrink-0 snap-center items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm whitespace-nowrap antialiased transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500",
                   active
                     ? "border-transparent text-white dark:text-slate-900"
-                    : "border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-slate-400 dark:border-[#243236] dark:bg-[#141E21] dark:text-[#FFFFFF] dark:hover:border-[#5B6F9E]",
+                    : "border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-slate-400 dark:border-[#26272B] dark:bg-[#131416] dark:text-[#FFFFFF] dark:hover:border-[#5B6F9E]",
                 )}
               >
                 {active && (

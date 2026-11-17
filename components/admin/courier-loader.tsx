@@ -50,7 +50,7 @@ function Runner({ finished }: { finished: boolean }) {
         </g>
       )}
       {!finished && (
-        <g fill="#34D399">
+        <g fill="#E83E32">
           <path className="cr-sweat-1" d="M31 9 q-2 3 0 4.6 q2 -1.6 0 -4.6z" />
           <path className="cr-sweat-2" d="M36 7 q-1.6 2.6 0 4 q1.6 -1.4 0 -4z" />
         </g>
@@ -62,7 +62,7 @@ function Runner({ finished }: { finished: boolean }) {
       </g>
       <g className={finished ? undefined : "cr-body"}>
         {/* torso */}
-        <path d="M24 20 h13 q3 0 3 3 v10 q0 2 -2 2 h-15 q-2 0 -2 -2 v-10 q0 -3 3 -3z" fill="#0D9488" />
+        <path d="M24 20 h13 q3 0 3 3 v10 q0 2 -2 2 h-15 q-2 0 -2 -2 v-10 q0 -3 3 -3z" fill="#D12014" />
         <rect x="24" y="30" width="16" height="2.6" fill="#7C2D12" opacity=".55" />
         {/* head */}
         <circle cx="31" cy="13" r="6.2" fill="#F5D0A9" />
@@ -71,7 +71,7 @@ function Runner({ finished }: { finished: boolean }) {
         {/* flat cap */}
         <g className={finished ? undefined : "cr-cap"}>
           <path d="M24.6 11 q1 -6.8 8 -6.8 q5.6 0 6.2 6.8z" fill="#292524" />
-          <path d="M33 10.6 h9 q1.4 0 1.4 1.3 h-10.4z" fill="#0B1215" />
+          <path d="M33 10.6 h9 q1.4 0 1.4 1.3 h-10.4z" fill="#0A0B0D" />
         </g>
       </g>
       {/* front leg + front arm holding the rolled sheet */}
@@ -79,11 +79,11 @@ function Runner({ finished }: { finished: boolean }) {
         <path className={finished ? undefined : "cr-leg-a"} d="M33 33 L33 46" />
       </g>
       <g className={finished ? undefined : "cr-arm-a"}>
-        <path d="M34 22 L34 32" stroke="#0D9488" strokeWidth="4" strokeLinecap="round" fill="none" />
+        <path d="M34 22 L34 32" stroke="#D12014" strokeWidth="4" strokeLinecap="round" fill="none" />
         <g transform="rotate(-24 34 33)">
-          <rect x="28" y="31" width="14" height="4.6" rx="2.3" fill="#F2F5F4" stroke="#A8A29E" strokeWidth="1" />
+          <rect x="28" y="31" width="14" height="4.6" rx="2.3" fill="#F3F3F4" stroke="#A8A29E" strokeWidth="1" />
           <line x1="31" y1="33.3" x2="38" y2="33.3" stroke="#A8A29E" strokeWidth=".9" />
-          <rect x="33.6" y="30.6" width="2" height="5.4" fill="#0D9488" opacity=".85" />
+          <rect x="33.6" y="30.6" width="2" height="5.4" fill="#D12014" opacity=".85" />
         </g>
       </g>
     </svg>
@@ -94,11 +94,11 @@ function Runner({ finished }: { finished: boolean }) {
 export function CourierLoader({ pct, finishing }: { pct: number; finishing: boolean }) {
   const p = Math.max(0, Math.min(100, pct));
   return (
-    <div className="rounded-lg border border-[#E2E8F0] bg-[#F2F5F4] p-3 pb-2.5 dark:border-slate-700 dark:bg-slate-900" aria-live="polite">
+    <div className="rounded-lg border border-[#E2E8F0] bg-[#F3F3F4] p-3 pb-2.5 dark:border-slate-700 dark:bg-slate-900" aria-live="polite">
       <style>{CSS}</style>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{courierLine(p, finishing)}</p>
-        <span className="font-mono text-sm font-bold tabular-nums text-[#0D9488]">{Math.round(p)}%</span>
+        <span className="font-mono text-sm font-bold tabular-nums text-[#D12014]">{Math.round(p)}%</span>
       </div>
       <div className="relative mt-1 h-[64px]">
         {/* the runner: left edge follows the percentage, so he stays inside the track at 0% and 100% */}
@@ -109,13 +109,13 @@ export function CourierLoader({ pct, finishing }: { pct: number; finishing: bool
         <div className="absolute right-0 bottom-[5px] flex items-end gap-1" aria-hidden="true">
           <svg viewBox="0 0 30 34" width="30" height="34">
             <rect x="3" y="3" width="2" height="30" fill="#57534E" />
-            <g className="cr-flag"><path d="M5 4 h17 l-4 5.4 l4 5.4 h-17z" fill="#0D9488" /></g>
+            <g className="cr-flag"><path d="M5 4 h17 l-4 5.4 l4 5.4 h-17z" fill="#D12014" /></g>
             <rect x="0" y="31" width="14" height="3" rx="1" fill="#44403C" />
           </svg>
         </div>
         {/* track */}
         <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p)} aria-label="Rate card extraction progress" className="absolute inset-x-0 bottom-0 h-[5px] overflow-hidden rounded-full bg-[#E2E8F0] dark:bg-slate-700">
-          <div className={cn("h-full rounded-full transition-[width] duration-300 ease-out", finishing ? "bg-[#059669]" : "bg-[#14B8A6]")} style={{ width: `${p}%` }} />
+          <div className={cn("h-full rounded-full transition-[width] duration-300 ease-out", finishing ? "bg-[#059669]" : "bg-[#E83E32]")} style={{ width: `${p}%` }} />
         </div>
       </div>
     </div>

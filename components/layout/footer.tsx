@@ -32,7 +32,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="mt-20 w-full border-t border-[#1A2428] bg-[#0B1215] pt-16 pb-12 text-slate-400">
+    <footer className="mt-20 w-full border-t border-[#17181C] bg-[#0A0B0D] pt-16 pb-12 text-slate-400">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:px-6 md:grid-cols-4 lg:px-8">
         {/* Brand */}
         <div>
