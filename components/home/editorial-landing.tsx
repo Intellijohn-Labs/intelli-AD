@@ -72,14 +72,14 @@ export function EditorialLanding() {
           <h2 id="pubs-h" className="text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">{t("The papers on our desk")}</h2>
           <Link href="/newspaper" className="text-sm font-semibold text-[#D12014] hover:underline">{t("All publications")} →</Link>
         </div>
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <ul className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
           {papers.map((p) => {
             const rate = startingRate(p, "commercial-display");
             return (
               <li key={p.id}>
                 <Link href="/newspaper" className="group flex h-full flex-col justify-between rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-12px_rgba(15,23,42,0.18)] sm:p-5">
                   <div className="min-w-0">
-                    <p className="text-lg leading-tight font-bold tracking-[-0.03em] break-words text-[#0A0B0D] sm:text-xl">{p.name}</p>
+                    <p className="text-base leading-tight font-bold tracking-[-0.03em] break-normal text-[#0A0B0D] sm:text-lg xl:text-xl">{p.name}</p>
                     <p className="mt-0.5 text-sm text-slate-500" style={{ fontFamily: '"Noto Sans Malayalam", Manjari, sans-serif' }}>{p.nameMl}</p>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 text-xs">
