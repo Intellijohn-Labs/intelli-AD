@@ -35,7 +35,7 @@ export function canvaUrl(widthCm: number, heightCm: number) {
  * No Canva account link or API is involved: the designer comes back with a copied image (Paste Copied Design or Ctrl/Cmd+V)
  * or a downloaded PNG / JPG / PDF (drag and drop or file picker), and `onAttach` makes it the ad artwork.
  */
-export function CanvaReturn({ widthCm, heightCm, onAttach, attachedName }: { widthCm: number; heightCm: number; onAttach: (file: File) => void; attachedName?: string }) {
+export function CanvaReturn({ widthCm, heightCm, onAttach, disabled = false }: { widthCm: number; heightCm: number; onAttach: (file: File) => void; /** True until a photo / artwork has been uploaded. */ disabled?: boolean }) {
   const { t } = useI18n();
   const w = Number.isFinite(widthCm) && widthCm > 0 ? widthCm : 8;
   const h = Number.isFinite(heightCm) && heightCm > 0 ? heightCm : 10;
@@ -85,20 +85,18 @@ export function CanvaReturn({ widthCm, heightCm, onAttach, attachedName }: { wid
   }
 
   const size = `${Math.round(w * 100) / 100} × ${Math.round(h * 100) / 100} cm`;
+  const btn = "inline-flex h-10 items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1 pr-4 pl-1.5 text-sm font-semibold text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition-all dark:border-[#35363B] dark:bg-[#131416]";
   return (
-    <div className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <CanvaMark size={40} className="shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">{t("Design it in Canva")}</p>
-            <p className="text-xs text-slate-500">{attachedName ? t("Attached: {name}", { name: attachedName }) : t("Opens Canva at {size}. Come back with one paste.", { size })}</p>
-          </div>
-        </div>
-        <a href={canvaUrl(w, h)} target="_blank" rel="noopener noreferrer" onClick={() => { setMsg(null); setOpen(true); }} className="inline-flex h-10 items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1 pr-4 pl-1.5 text-sm font-semibold text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-px hover:border-[#7D2AE8]/50 hover:shadow-[0_6px_16px_-8px_rgba(125,42,232,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7D2AE8] dark:border-[#35363B] dark:bg-[#131416]">
+    <>
+      {disabled ? (
+        <button type="button" disabled aria-disabled="true" title={t("Upload a photo or artwork first")} className={cn(btn, "cursor-not-allowed opacity-50 grayscale")}>
+          <CanvaMark size={28} /> {t("Edit in Canva")}
+        </button>
+      ) : (
+        <a href={canvaUrl(w, h)} target="_blank" rel="noopener noreferrer" onClick={() => { setMsg(null); setOpen(true); }} className={cn(btn, "hover:-translate-y-px hover:border-[#7D2AE8]/50 hover:shadow-[0_6px_16px_-8px_rgba(125,42,232,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7D2AE8]")}>
           <CanvaMark size={28} /> {t("Edit in Canva")}
         </a>
-      </div>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0A0B0D]/60 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
@@ -146,6 +144,6 @@ export function CanvaReturn({ widthCm, heightCm, onAttach, attachedName }: { wid
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
