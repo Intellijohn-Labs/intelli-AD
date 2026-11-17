@@ -6,7 +6,7 @@ import type { ComponentProps, InputHTMLAttributes, ReactNode, SelectHTMLAttribut
 import { cn } from "@/lib/utils";
 
 export const controlStyles =
-  "w-full rounded border border-zinc-400 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-[#0F172A] focus:outline focus:outline-1 focus:outline-[#0F172A]/50 aria-[invalid=true]:border-red-600 dark:border-slate-700 dark:bg-[#0F1D3D] dark:text-[#FFFFFF] dark:placeholder:text-slate-300 dark:focus:border-[#38BDF8] dark:focus:outline-[#38BDF8]/40";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/15 aria-[invalid=true]:border-red-600 dark:border-slate-700 dark:bg-[#0F1D3D] dark:text-[#FFFFFF] dark:placeholder:text-slate-300 dark:focus:border-[#38BDF8] dark:focus:outline-[#38BDF8]/40";
 
 export function Field({
   id,

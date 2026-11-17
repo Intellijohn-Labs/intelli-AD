@@ -28,16 +28,16 @@ interface Media {
 }
 
 const MEDIA: Media[] = [
-  { id: "newspaper", icon: Newspaper, art: <NewspaperArt />, title: "Newspaper Advertising", ml: "പത്രപ്പരസ്യങ്ങൾ", description: "Classifieds, display, tender, obituary and jacket ads in Kerala's leading dailies.", frame: "bg-[#F5F5F4] border border-[#E7E5E4]", glow: "rgba(24,24,27,0.18)" },
-  { id: "digital", icon: Megaphone, art: <DigitalArt />, title: "Digital Marketing", ml: "ഡിജിറ്റൽ പരസ്യങ്ങൾ", description: "Search, social and display campaigns that reach customers online.", frame: "bg-[#F5F5F4] border border-[#E7E5E4]", glow: "rgba(24,24,27,0.18)" },
-  { id: "radio", icon: Radio, art: <RadioArt />, title: "Radio Advertising", ml: "റേഡിയോ പരസ്യങ്ങൾ", description: "FM spots and sponsorships across Kerala's popular stations.", frame: "bg-[#F5F5F4] border border-[#E7E5E4]", glow: "rgba(24,24,27,0.18)" },
-  { id: "cinema", icon: Clapperboard, art: <CinemaArt />, title: "Cinema Advertising", ml: "തിയേറ്റർ പരസ്യങ്ങൾ", description: "On-screen slides and trailers before the film starts.", frame: "bg-[#F5F5F4] border border-[#E7E5E4]", glow: "rgba(24,24,27,0.18)" },
-  { id: "tv", icon: Tv, art: <TvArt />, title: "Television / Cable Ads", ml: "ടെലിവിഷൻ പരസ്യങ്ങൾ", description: "Channel spots and local cable network promotions.", frame: "bg-[#F5F5F4] border border-[#E7E5E4]", glow: "rgba(24,24,27,0.18)" },
-  { id: "outdoor", icon: Bus, art: <OutdoorArt />, title: "Outdoor & Transit Media", ml: "ഹോർഡിംഗ് & ബസ് പരസ്യങ്ങൾ", description: "Hoardings, bus panels and street-level branding.", frame: "bg-[#F5F5F4] border border-[#E7E5E4]", glow: "rgba(24,24,27,0.18)" },
+  { id: "newspaper", icon: Newspaper, art: <NewspaperArt />, title: "Newspaper Advertising", ml: "പത്രപ്പരസ്യങ്ങൾ", description: "Classifieds, display, tender, obituary and jacket ads in Kerala's leading dailies.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
+  { id: "digital", icon: Megaphone, art: <DigitalArt />, title: "Digital Marketing", ml: "ഡിജിറ്റൽ പരസ്യങ്ങൾ", description: "Search, social and display campaigns that reach customers online.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
+  { id: "radio", icon: Radio, art: <RadioArt />, title: "Radio Advertising", ml: "റേഡിയോ പരസ്യങ്ങൾ", description: "FM spots and sponsorships across Kerala's popular stations.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
+  { id: "cinema", icon: Clapperboard, art: <CinemaArt />, title: "Cinema Advertising", ml: "തിയേറ്റർ പരസ്യങ്ങൾ", description: "On-screen slides and trailers before the film starts.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
+  { id: "tv", icon: Tv, art: <TvArt />, title: "Television / Cable Ads", ml: "ടെലിവിഷൻ പരസ്യങ്ങൾ", description: "Channel spots and local cable network promotions.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
+  { id: "outdoor", icon: Bus, art: <OutdoorArt />, title: "Outdoor & Transit Media", ml: "ഹോർഡിംഗ് & ബസ് പരസ്യങ്ങൾ", description: "Hoardings, bus panels and street-level branding.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
 ];
 
 const SANS = "font-[family-name:var(--font-jakarta)]";
-const DISPLAY = "font-[family-name:var(--font-syne)]";
+const DISPLAY = "font-[family-name:var(--font-jakarta)]";
 const ML_SANS = { fontFamily: '"Noto Sans Malayalam", Manjari, sans-serif' };
 
 /** Polite "not available yet" dialog for the media we don't sell online. */
@@ -89,7 +89,7 @@ export function MediaHub() {
         <h2 id="media-h" className={cn(DISPLAY, "text-3xl leading-[1.05] font-black tracking-tight text-slate-900 md:text-5xl dark:text-white")}>
           {lang === "en" ? (
             <>
-              What <span className="text-[#C2410C] italic">media</span> are you looking for?
+              What <span className="text-[#2563EB]">media</span> are you looking for?
             </>
           ) : (
             tl("What media are you looking for?", "ഏത് മാധ്യമത്തിലാണ് പരസ്യം നൽകേണ്ടത്?")
@@ -108,14 +108,14 @@ export function MediaHub() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.06, ease: "easeOut" }}
               style={{ "--glow": m.glow } as CSSProperties}
-              className="group flex h-full flex-col justify-between rounded-xl border border-[#E7E5E4] bg-white p-6 shadow-[0_1px_0_rgba(24,24,27,.04)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_35px_-10px_var(--glow)] dark:border-[#1F2F57]"
+              className="group flex h-full flex-col justify-between rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_0_rgba(24,24,27,.04)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_35px_-10px_var(--glow)] dark:border-[#1F2F57]"
             >
               <div>
                 {/* Saturated gradient canvas hosting the illustration */}
                 <div aria-hidden="true" className={cn("relative flex h-40 items-center justify-center rounded-2xl p-5", m.frame)}>
                   <div className="h-full w-full transition-transform duration-200 ease-out group-hover:scale-105">{m.art}</div>
                   {live ? (
-                    <span className="absolute top-3 left-3 rounded-full bg-[#15803D] px-2.5 py-0.5 font-mono text-[11px] font-bold text-white">{t("Book online")}</span>
+                    <span className="absolute top-3 left-3 rounded-full bg-[#059669] px-2.5 py-0.5 font-mono text-[11px] font-bold text-white">{t("Book online")}</span>
                   ) : (
                     <span className="absolute top-3 left-3 rounded-full border border-slate-200 bg-white/90 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-slate-600 backdrop-blur-md dark:border-white/40 dark:bg-[#132247]/90 dark:text-white">{t("Coming soon")}</span>
                   )}
@@ -129,7 +129,7 @@ export function MediaHub() {
               {live ? (
                 <Link
                   href="/newspaper"
-                  className="mt-5 flex items-center justify-between rounded-lg bg-[#18181B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#27272A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C] active:scale-[0.98] dark:bg-[#FFFFFF] dark:text-slate-950 dark:hover:bg-emerald-500 dark:hover:text-white"
+                  className="mt-5 flex items-center justify-between rounded-lg bg-[#0F172A] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB] active:scale-[0.98] dark:bg-[#FFFFFF] dark:text-slate-950 dark:hover:bg-emerald-500 dark:hover:text-white"
                 >
                   {t("Explore")}
                   <ArrowRight className="h-4 w-4 transition-all duration-200 group-hover:translate-x-1 group-hover:text-emerald-300 dark:group-hover:text-white" aria-hidden="true" />

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import { ChromeOnly, HideOnHome } from "@/components/layout/chrome-only";
 import { Footer } from "@/components/layout/footer";
@@ -12,10 +12,8 @@ import { T } from "@/context/language-context";
 import { COMPANY } from "@/lib/company";
 import "./globals.css";
 
-/** High-contrast editorial serif for the masthead, headlines and display type (variable name kept so existing headings pick it up). */
-const syne = Fraunces({ subsets: ["latin"], weight: ["600", "700", "800", "900"], variable: "--font-syne", display: "swap" });
-/** Clean geometric sans for body copy and subtitles. */
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
+/** Geometric sans for headings, the logo and prices; Inter (loaded below) for dense UI text. */
+const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-jakarta", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "IntelliAd | Smart Newspaper Ad Booking Across Kerala", template: "%s | IntelliAd" },
@@ -28,7 +26,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Browser chrome follows the theme: soft paper in light mode, Deep Midnight Slate (not pure black) in dark.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAF8F5" },
+    { media: "(prefers-color-scheme: light)", color: "#F8FAFC" },
     { media: "(prefers-color-scheme: dark)", color: "#0B132B" },
   ],
   width: "device-width",
@@ -37,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${syne.variable} ${jakarta.variable}`}>
+    <html lang="en" suppressHydrationWarning className={jakarta.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -46,7 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800;900&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Manjari:wght@400;700&family=Gayathri:wght@400;700&family=Noto+Serif+Malayalam:wght@600;700;800&family=Baloo+Chettan+2:wght@600;800&family=Anek+Malayalam:wght@500;800&family=Chilanka&family=Meera+Inimai&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Manjari:wght@400;700&family=Gayathri:wght@400;700&family=Noto+Serif+Malayalam:wght@600;700;800&family=Baloo+Chettan+2:wght@600;800&family=Anek+Malayalam:wght@500;800&family=Chilanka&family=Meera+Inimai&display=swap"
         />
       </head>
       <body className="min-h-screen w-full max-w-full overflow-x-hidden antialiased">

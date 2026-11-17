@@ -15,7 +15,7 @@ const badges = [
   { icon: ShieldCheck, label: "Authorized Partner", tone: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200" },
   { icon: Clock, label: "Next-Day Print Cut-off", tone: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-200" },
   { icon: BadgePercent, label: "Save up to 20% on Multi-Edition", tone: "border-emerald-200 bg-emerald-50 font-bold text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-200" },
-  { icon: Stamp, label: "Verified RO", tone: "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-400/30 dark:bg-purple-500/15 dark:text-purple-200" },
+  { icon: Stamp, label: "Verified RO", tone: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-400/30 dark:bg-slate-500/15 dark:text-slate-200" },
 ];
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
@@ -40,8 +40,8 @@ export function Hero() {
         <motion.p variants={item} className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50 px-3 py-1 text-xs font-bold tracking-wider text-blue-700 uppercase shadow-sm shadow-blue-500/10 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200">
           <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-300" aria-hidden="true" /> {t("Advertising made simple")}
         </motion.p>
-        <motion.h1 variants={item} className="mt-5 font-[family-name:var(--font-syne)] text-4xl leading-[1.04] font-black tracking-tight text-slate-900 md:text-5xl dark:text-[#FFFFFF]">
-          {after === undefined ? headline : <>{before}<span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-rose-600 bg-clip-text text-transparent dark:from-sky-300 dark:via-indigo-300 dark:to-rose-300">Kerala</span>{after}</>}
+        <motion.h1 variants={item} className="mt-5 font-[family-name:var(--font-jakarta)] text-4xl leading-[1.04] font-black tracking-tight text-slate-900 md:text-5xl dark:text-[#FFFFFF]">
+          {after === undefined ? headline : <>{before}<span className="bg-gradient-to-r from-blue-600 via-blue-600 to-slate-600 bg-clip-text text-transparent dark:from-sky-300 dark:via-blue-300 dark:to-slate-300">Kerala</span>{after}</>}
         </motion.h1>
         <motion.p variants={item} className="mt-4 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg dark:text-[#FAFAFA]">
           {t("Book Classified & Display ads in leading newspapers including Malayala Manorama and Mathrubhumi at the lowest rates.")}
@@ -58,7 +58,7 @@ export function Hero() {
               onClick={() => setAdType(a.id)}
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-500",
-                adType === a.id ? "bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-md shadow-blue-500/25" : "text-slate-700 hover:bg-slate-200/70 dark:text-[#FAFAFA] dark:hover:bg-white/10",
+                adType === a.id ? "bg-gradient-to-r from-blue-600 to-blue-600 font-semibold text-white shadow-md shadow-blue-500/25" : "text-slate-700 hover:bg-slate-200/70 dark:text-[#FAFAFA] dark:hover:bg-white/10",
               )}
             >
               {t(a.short)}
@@ -70,7 +70,7 @@ export function Hero() {
           <Link href="/newspaper#rates" className="flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
             <Calculator className="h-4 w-4" aria-hidden="true" /> {t("Check Live Rates")}
           </Link>
-          <Link href="/book" className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-3.5 font-semibold text-white shadow-md shadow-rose-500/25 transition-colors hover:from-rose-500 hover:to-pink-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500">
+          <Link href="/book" className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-600 to-slate-600 px-6 py-3.5 font-semibold text-white shadow-md shadow-slate-500/25 transition-colors hover:from-slate-500 hover:to-slate-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500">
             {t("Book Advertisement")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </motion.div>

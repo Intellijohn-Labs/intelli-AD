@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  */
 const shadow = { floodColor: "var(--art-shadow)" } as const;
 const SANS = "var(--font-jakarta), Arial, sans-serif";
-const DISPLAY = "var(--font-syne), Impact, sans-serif";
+const DISPLAY = "var(--font-jakarta), Impact, sans-serif";
 
 function Art({ label, children, className = "" }: { label?: string; children: ReactNode; className?: string }) {
   return (

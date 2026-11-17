@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-/** Masthead-style wordmark: a serif nameplate between double rules, with a tiny "Est. for Kerala" dateline. */
+/** Geometric logo mark + wordmark with a small "Kerala" badge. */
 export function BrandLogo({ className, onDark = false }: { className?: string; onDark?: boolean }) {
-  const ink = onDark ? "text-white" : "text-[#18181B]";
   return (
-    <Link href="/" aria-label="IntelliAd home" className={cn("group flex flex-col leading-none", className)}>
-      <span className={cn("border-y-[3px] border-double py-1 font-serif text-[1.65rem] leading-none font-black tracking-tight", onDark ? "border-white/70" : "border-[#18181B]", ink)}>
-        Intelli<span className="text-[#C2410C]">Ad</span>
+    <Link href="/" aria-label="IntelliAd home" className={cn("flex items-center gap-2.5", className)}>
+      <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-[10px] bg-[#0F172A] shadow-[0_2px_6px_-1px_rgba(15,23,42,0.4)]">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 19V9l7-5 7 5v10" /><path d="M9.5 19v-5h5v5" /></svg>
       </span>
-      <span className={cn("mt-1 text-[9px] font-bold tracking-[0.28em] uppercase", onDark ? "text-white/70" : "text-stone-500")}>Newspaper ad desk · Kerala</span>
+      <span className={cn("text-[1.2rem] leading-none font-extrabold tracking-[-0.03em]", onDark ? "text-white" : "text-[#0F172A]")}>IntelliAd</span>
+      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] leading-none font-bold tracking-wide text-emerald-700">Kerala</span>
     </Link>
   );
 }

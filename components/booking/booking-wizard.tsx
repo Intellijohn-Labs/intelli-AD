@@ -30,10 +30,10 @@ import { Step3Schedule } from "./step3-schedule";
 import { Step4Checkout } from "./step4-checkout";
 
 const STEPS = [
-  { n: 1, label: "Publication & category", title: "Select Publication & Edition" },
-  { n: 2, label: "Compose & preview ", title: "Compose Ad" },
+  { n: 1, label: "Publication & Category", title: "Select Publication & Edition" },
+  { n: 2, label: "Compose & Preview", title: "Compose Ad" },
   { n: 3, label: "Schedule", title: "Select Release Date" },
-  { n: 4, label: "Summary & pay", title: "Review & Checkout" },
+  { n: 4, label: "Review & Pay", title: "Review & Checkout" },
 ] as const;
 
 const slide = {
@@ -45,22 +45,23 @@ const slide = {
 function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) {
   const { t } = useI18n();
   return (
-    <ol className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Booking progress">
+    <ol className="relative grid grid-cols-4 gap-1 overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-1.5 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)]" aria-label="Booking progress">
       {STEPS.map((s) => {
         const done = s.n < current;
         const active = s.n === current;
         return (
-          <li key={s.n} className="flex flex-1 items-center gap-2" aria-current={active ? "step" : undefined}>
-            <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left disabled:cursor-default", done && "hover:bg-navy-50")}>
-              <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded border-2 font-mono text-sm font-bold", done ? "border-[#18181B] bg-[#18181B] text-white" : active ? "border-[#C2410C] bg-[#C2410C] text-white" : "border-stone-300 bg-white text-stone-400")}>
-                {done ? <Check className="h-4 w-4" aria-hidden="true" /> : s.n}
+          <li key={s.n} aria-current={active ? "step" : undefined}>
+            <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex w-full min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-left transition-colors disabled:cursor-default sm:justify-start sm:px-3", active ? "bg-[#0F172A] text-white shadow-[0_4px_10px_-4px_rgba(15,23,42,0.5)]" : done ? "text-slate-700 hover:bg-slate-50" : "text-slate-400")}>
+              <span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular-nums", active ? "bg-white/15 text-white" : done ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
+                {done ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : s.n}
               </span>
-              <span className={cn("hidden text-sm font-semibold sm:block", active ? "text-[#18181B] underline decoration-[#C2410C] decoration-2 underline-offset-[6px] dark:text-white" : "text-stone-500")}>{t(s.label)}</span>
+              <span className="hidden truncate text-sm font-semibold sm:block">{t(s.label)}</span>
               <span className="sr-only">{done ? "completed" : active ? "current step" : "upcoming"}</span>
             </button>
           </li>
         );
       })}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-slate-100"><span className="block h-full bg-[#2563EB] transition-[width] duration-300" style={{ width: `${(current / 4) * 100}%` }} /></span>
     </ol>
   );
 }
@@ -123,12 +124,12 @@ function MobileProofBar({ state }: { state: BookingState }) {
 
   return (
     <div className="lg:hidden">
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E7E5E4] bg-[#FAF8F5]/95 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(24,24,27,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E2E8F0] bg-[#F8FAFC]/95 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(24,24,27,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
         <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
           <motion.p animate={controls} className="min-w-0 truncate font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-white" aria-live="polite">
-            {size} · <span className="text-[#15803D] dark:text-emerald-400"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
+            {size} · <span className="text-[#059669] dark:text-emerald-400"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
           </motion.p>
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#18181B] bg-[#18181B] px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-[#27272A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0F172A] bg-[#0F172A] px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-[#1E293B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]">
             <Eye className="h-4 w-4" aria-hidden="true" /> Preview Ad
           </button>
         </div>
@@ -181,10 +182,10 @@ function MiniSummary({ state }: { state: BookingState }) {
   const capsTag = capsLine ? ` (${t("All Caps")})` : "";
   const unitWord = (u: string) => (u === "words" ? t("word") : u === "lines" ? t("line") : t("cm²"));
   return (
-    <Card className="p-5 sm:p-6">
-      <div className="-mx-5 -mt-5 mb-4 flex items-baseline justify-between border-b-[3px] border-double border-[#18181B] px-5 pt-4 pb-2 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-5">
-        <p className="font-serif text-lg font-black tracking-tight">{t("Release Order")}</p>
-        <p className="font-mono text-[10px] font-bold tracking-widest text-stone-500 uppercase">{t("Live estimate")}</p>
+    <Card className="p-5 shadow-lg shadow-slate-900/[0.04] sm:p-6">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold tracking-wider text-emerald-700 uppercase"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />{t("Live estimate")}</span>
+        <span className="text-xs font-medium text-slate-400">{t("Release Order")}</span>
       </div>
       {(() => {
         const posId = state.display.position;
@@ -196,28 +197,33 @@ function MiniSummary({ state }: { state: BookingState }) {
           paperLines.some((l) => l.bwOnly) && { k: "bw", text: t("B/W only"), tone: "gold" },
           state.adType !== "classified-text" && state.display.colorMode === "color" && { k: "clr", text: t("Colour"), tone: "terra" },
         ].filter(Boolean) as { k: string; text: string; tone: string }[];
-        return chips.length ? <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Active rate options">{chips.map((c) => <li key={c.k} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", c.tone === "ink" ? "border-[#18181B] bg-[#18181B] text-white" : c.tone === "gold" ? "border-[#B45309]/40 bg-[#B45309]/10 text-[#B45309]" : "border-[#C2410C]/40 bg-[#C2410C]/10 text-[#C2410C]")}>{c.text}</li>)}</ul> : null;
+        return chips.length ? <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Active rate options">{chips.map((c) => <li key={c.k} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", c.tone === "ink" ? "border-[#0F172A] bg-[#0F172A] text-white" : c.tone === "gold" ? "border-[#B45309]/40 bg-[#B45309]/10 text-[#B45309]" : "border-[#2563EB]/40 bg-[#2563EB]/10 text-[#2563EB]")}>{c.text}</li>)}</ul> : null;
       })()}
-      <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#18181B] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
-      <p className="text-xs text-zinc-500">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</p>
-      <dl className="mt-4 space-y-1.5 border-t border-dashed border-zinc-400 pt-4 text-sm">
+      <p className="text-[2.5rem] leading-none font-extrabold tracking-[-0.03em] tabular-nums text-[#0F172A] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
+      <p className="mt-1.5 text-xs font-medium text-slate-500">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</p>
+      <dl className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-sm">
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Type")}</dt><dd className="font-medium">{t(getAdType(state.adType).short)}</dd></div>
         <div className="flex justify-between gap-3"><dt className="text-zinc-500">{t("Category")}</dt><dd className="text-right font-medium">{(() => { const c = getCategory(state.categoryId); return c ? tl(c.name, c.nameMl) : "—"; })()}</dd></div>
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Editions")}</dt><dd className="font-medium">{quote.editionCount}</dd></div>
       </dl>
       {quote.editionCount > 0 && (
-        <div className="mt-4 border-t border-dashed border-zinc-400 pt-4">
+        <div className="mt-4 border-t border-slate-100 pt-4">
           <PriceBreakdown quote={quote} adType={state.adType} />
         </div>
       )}
-      <div className="mt-4 border-t border-dashed border-zinc-400 pt-4 font-mono text-xs text-zinc-600">
+      <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 tabular-nums">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
         {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName! + (pkg.capsApplied ? ` (${t("All Caps")})` : ""), price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name) + capsTag, price: formatINR(capsLine ? capsLine.rate : rate.amount), unit: capsLine ? unitWord("words") : t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
+      {state.step < 4 && (
+        <button type="button" onClick={() => (document.querySelector("[data-step-next]") as HTMLButtonElement | null)?.click()} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-4 py-3 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.2),0_8px_16px_-8px_rgba(15,23,42,0.5)] transition-all hover:-translate-y-px hover:bg-[#1E293B]">
+          {t(state.step === 1 ? "Continue to Compose" : state.step === 2 ? "Continue to Schedule" : "Continue to Review")} →
+        </button>
+      )}
       {user && (
         <button type="button" onClick={() => toast(saveDraft(user.identifier, state) ? "Draft saved to Ad Drafts" : "Couldn't save the draft in this browser")}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold hover:bg-zinc-100 dark:border-white/20 dark:hover:bg-white/10">
+          className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200/80 px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/20 dark:hover:bg-white/10">
           <Save className="h-4 w-4" /> {t("Save as draft")}
         </button>
       )}
@@ -270,7 +276,7 @@ function Shell() {
       </Card>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
         <Card className={cn("p-5 sm:p-6 lg:p-8", showMini && "lg:col-span-8", !showMini && "lg:col-span-12")}>
-          <h2 className="mb-6 font-serif text-2xl font-bold text-[#0F172A] dark:text-zinc-50">{state.step}. {t(STEPS[state.step - 1].title)}</h2>
+          <h2 className="sr-only">{state.step}. {t(STEPS[state.step - 1].title)}</h2>
           <AnimatePresence mode="wait" custom={dir} initial={false}>
             <motion.div key={state.step} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }}>
               {stepEl}

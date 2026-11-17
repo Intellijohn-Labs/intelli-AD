@@ -6,7 +6,7 @@ import { useI18n } from "@/context/language-context";
 export function StepNav({ onBack, onNext, nextLabel = "Continue", error, beforeNext }: { onBack?: () => void; onNext: () => void; nextLabel?: string; error?: string | null; beforeNext?: ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className="mt-8 border-t border-zinc-200/70 pt-5 dark:border-zinc-700">
+    <div className="mt-8 border-t border-slate-100 pt-5 dark:border-zinc-700">
       {error && (
         <p role="alert" className="mb-3 rounded bg-red-50 dark:bg-red-500/20 px-3 py-2 text-sm font-medium text-red-800 dark:text-red-200">
           {t(error)}
@@ -22,7 +22,7 @@ export function StepNav({ onBack, onNext, nextLabel = "Continue", error, beforeN
         )}
         <div className="flex flex-wrap items-center justify-end gap-3">
           {beforeNext}
-          <Button onClick={onNext}>
+          <Button onClick={onNext} data-step-next="true">
             {t(nextLabel)} <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>

@@ -11,7 +11,6 @@ import { CategoryIcon } from "@/components/ui/category-icon";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/field";
 import { brandFor } from "@/data/brand-colors";
-import { AD_TYPE_TINT, CATEGORY_TINT } from "@/lib/tints";
 import { useBooking } from "@/lib/booking-store";
 import { useI18n } from "@/context/language-context";
 import { usePublication } from "@/lib/publication";
@@ -89,10 +88,12 @@ export function Step1Selection() {
   };
 
   const total = Object.values(state.selection).reduce((a, ids) => a + ids.length, 0);
-  const cardBase = "relative cursor-pointer rounded-md border p-4 transition-[border-color,background-color,box-shadow] duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500";
+  const cardBase = "relative cursor-pointer rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_22px_-10px_rgba(15,23,42,0.14)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600";
+  const cardOn = "border-blue-600 bg-blue-50/60 ring-2 ring-blue-600/15";
+  const tag = "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] leading-none font-semibold";
   const cardMotion = {};
   const Tick = () => (
-    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-sm bg-[#0F172A] text-white dark:bg-[#FFFFFF] dark:text-[#0F172A]" aria-hidden="true">
+    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-white" aria-hidden="true">
       <Check className="h-3 w-3" />
     </motion.span>
   );
@@ -106,24 +107,25 @@ export function Step1Selection() {
       )}
 
       <fieldset>
-        <legend className="mb-3 text-lg font-bold text-navy-900">{t("1. Ad type")}</legend>
+        <legend className="mb-2.5 text-sm font-semibold text-slate-900">{t("Ad type")}</legend>
         <div className="grid grid-cols-3 gap-4">
           {AD_TYPES.map((a) => (
-            <motion.label key={a.id} {...cardMotion} className={cn(cardBase, AD_TYPE_TINT[a.id].base, state.adType === a.id && AD_TYPE_TINT[a.id].on)}>
+            <motion.label key={a.id} {...cardMotion} className={cn(cardBase, state.adType === a.id && cardOn)}>
               <input type="radio" name="adType" className="sr-only" checked={state.adType === a.id} onChange={() => update({ adType: a.id })} />
               {state.adType === a.id && <Tick />}
-              <span className="block text-sm font-bold">{t(a.label)}</span>
-              <span className="mt-1 block text-xs text-zinc-600">{t(a.description)}</span>
+              <span className="block pr-6 text-sm font-semibold text-slate-900">{t(a.label)}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">{t(a.description)}</span>
+              <span className={cn(tag, "mt-2.5 border-slate-200 bg-slate-50 text-slate-600")}>{a.id === "classified-text" ? t("Per line") : t("Per cm²")}</span>
             </motion.label>
           ))}
         </div>
       </fieldset>
 
       <fieldset>
-        <legend className="mb-3 text-lg font-bold text-navy-900">{t("2. Category")}</legend>
+        <legend className="mb-2.5 text-sm font-semibold text-slate-900">{t("Category")}</legend>
         <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((c) => (
-            <motion.label key={c.id} {...cardMotion} className={cn(cardBase, "flex flex-col items-start gap-1.5", CATEGORY_TINT[c.id].base, state.categoryId === c.id && CATEGORY_TINT[c.id].on)}>
+            <motion.label key={c.id} {...cardMotion} className={cn(cardBase, "flex flex-col items-start gap-1.5", state.categoryId === c.id && cardOn)}>
               <input type="radio" name="category" className="sr-only" checked={state.categoryId === c.id} onChange={() => {
                 if (state.categoryId === c.id) return;
                 // Category-specific content (template text, memorial photo, notice fields) must not leak into another category.
@@ -133,11 +135,13 @@ export function Step1Selection() {
                 switchCategory(c.id);
               }} />
               {state.categoryId === c.id && <Tick />}
-              <CategoryIcon name={c.icon} className="h-5 w-5" />
-              <span className="text-sm font-bold">{tl(c.name, c.nameMl)}</span>
-              {c.badge && <span className="text-xs text-zinc-500">{tl(c.badge.en, c.badge.ml)}</span>}
-              {isDisplayOnlyCategory(c.id) && <Badge tone="navy">{state.adType === "classified-text" ? t("Billed per line") : state.adType === "classified-display" ? t("Billed by size (cm²)") : t("Billed by size")}</Badge>}
-              {c.documents.some((d) => d.required) && <Badge tone="amber">{t("Documents needed")}</Badge>}
+              <span className={cn("grid h-9 w-9 place-items-center rounded-xl", state.categoryId === c.id ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600")}><CategoryIcon name={c.icon} className="h-[18px] w-[18px]" /></span>
+              <span className="mt-0.5 text-sm font-semibold text-slate-900">{tl(c.name, c.nameMl)}</span>
+              {c.badge && <span className="text-xs text-slate-500">{tl(c.badge.en, c.badge.ml)}</span>}
+              <span className="mt-auto flex flex-wrap gap-1.5 pt-1">
+                {isDisplayOnlyCategory(c.id) && <span className={cn(tag, "border-slate-200 bg-slate-50 text-slate-600")}>{state.adType === "classified-text" ? t("Per line") : t("Per cm²")}</span>}
+                {c.documents.some((d) => d.required) && <span className={cn(tag, "border-amber-200 bg-amber-50 text-amber-700")}>{t("Docs required")}</span>}
+              </span>
             </motion.label>
           ))}
         </div>
@@ -156,14 +160,14 @@ export function Step1Selection() {
 
       <section aria-labelledby="pubs-h">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <h3 id="pubs-h" className="text-lg font-bold text-navy-900">
-            {t("3. Publications & editions")} <span className="text-sm font-normal text-zinc-500">{t("({n} selected)", { n: total })}</span>
+          <h3 id="pubs-h" className="text-sm font-semibold text-slate-900">
+            {t("Publications & editions")} <span className="text-sm font-normal text-zinc-500">{t("({n} selected)", { n: total })}</span>
           </h3>
           <div className="flex flex-wrap gap-2">
             <Input aria-label={t("Search paper or city…")} placeholder={t("Search paper or city…")} className="h-9 w-48" value={query} onChange={(e) => setQuery(e.target.value)} />
-            <div role="group" aria-label="Publication scope" className="flex rounded border border-zinc-300 bg-white p-0.5 text-xs font-semibold">
+            <div role="group" aria-label="Publication scope" className="flex rounded-xl border border-slate-200/70 bg-white p-0.5 text-xs font-semibold">
               {(["all", "national", "regional"] as const).map((s) => (
-                <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)} className={cn("rounded-md px-2.5 py-1.5", scope === s ? "bg-navy-800 text-white" : "text-zinc-600 hover:bg-zinc-100")}>
+                <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)} className={cn("rounded-lg px-2.5 py-1.5 transition-colors", scope === s ? "bg-[#0F172A] text-white" : "text-slate-600 hover:bg-slate-100")}>
                   {t(s === "all" ? "All" : s === "national" ? "National" : "Regional")}
                 </button>
               ))}
@@ -180,7 +184,7 @@ export function Step1Selection() {
             const suggestions = comboSuggestions(paper.id, selected);
             const locked = !availableFor(paper);
             return (
-              <motion.div key={paper.id} aria-disabled={locked || undefined} className={cn("overflow-hidden rounded-md border transition-shadow duration-300", locked && "pointer-events-none cursor-not-allowed opacity-50", selected.length ? "ring-1 ring-[#18181B]" : "hover:border-stone-400")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: "#fff", borderColor: selected.length ? "#18181B" : "#E7E5E4", borderLeft: `4px solid ${brandFor(paper.id).primary}`, boxShadow: selected.length ? "0 8px 22px -14px rgba(24,24,27,.45)" : "0 1px 0 rgba(24,24,27,.04)" }}>
+              <motion.div key={paper.id} aria-disabled={locked || undefined} className={cn("overflow-hidden rounded-2xl border transition-all duration-150", locked && "pointer-events-none cursor-not-allowed opacity-50", selected.length ? "" : "hover:-translate-y-0.5 hover:border-slate-300")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: "#fff", borderColor: selected.length ? "#2563EB" : "rgb(226 232 240 / .7)", boxShadow: selected.length ? "0 0 0 2px rgba(37,99,235,.15), 0 8px 22px -12px rgba(15,23,42,.25)" : "0 2px 10px -3px rgba(15,23,42,.06)" }}>
                 <button type="button" aria-expanded={isOpen} aria-controls={`panel-${paper.id}`} disabled={locked} tabIndex={locked ? -1 : undefined} onClick={() => { setOpen(isOpen ? null : paper.id); if (!isOpen) setActive(paper.id); }} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
                   <span>
                     <span className="text-lg font-bold">{pn(paper)}</span>
@@ -215,7 +219,7 @@ export function Step1Selection() {
                     {suggestions.length > 0 && (
                       <div className="mb-3 flex flex-wrap gap-2">
                         {suggestions.map((s) => (
-                          <button key={s.groupId} type="button" onClick={() => setEditions(paper.id, [...new Set([...selected, ...s.missingEditionIds])])} className="inline-flex items-center gap-1.5 rounded border border-dashed border-zinc-500 bg-transparent px-3 py-1.5 font-mono text-xs font-semibold text-zinc-800 hover:bg-black/5 dark:bg-amber-500/20">
+                          <button key={s.groupId} type="button" onClick={() => setEditions(paper.id, [...new Set([...selected, ...s.missingEditionIds])])} className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/60 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-50 dark:bg-amber-500/20">
                             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> {t("Add all {group} editions for {pct}% off", { group: place(s.groupName), pct: s.discountPct })}
                             <span className="font-normal">(+{s.missingEditionIds.length})</span>
                           </button>
@@ -243,7 +247,7 @@ export function Step1Selection() {
                               const on = c.ids.every((id) => selected.includes(id));
                               return (
                                 <button key={c.name} type="button" aria-pressed={on} onClick={() => setEditions(paper.id, on ? selected.filter((id) => !c.ids.includes(id)) : [...new Set([...selected, ...c.ids])])}
-                                  className={cn("rounded border px-3 py-1.5 text-sm font-semibold transition-colors", on ? "border-navy-600 bg-navy-700 text-white" : "border-dashed border-zinc-500 bg-white hover:border-navy-400")}>
+                                  className={cn("rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all duration-150", on ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50")}>
                                   {c.name} <span className="font-normal opacity-80">· {(c.rate!.word_rate ?? 0) > 0 ? `${formatINR(c.rate!.word_rate!)}/${t("word")}` : state.display.colorMode === "color" && (c.rate!.color_sq_cm_rate ?? 0) > 0 ? `${formatINR(c.rate!.color_sq_cm_rate!)}/cm² (${t("Colour")})` : `${formatINR(c.rate!.sq_cm_rate)}/cm² (${t("B/W")})`}</span>
                                 </button>
                               );
@@ -271,7 +275,7 @@ export function Step1Selection() {
                             {eds.map((e) => {
                               const on = selected.includes(e.id);
                               return (
-                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rate not available — upload rate card")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded border px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", on ? "border-navy-600 bg-navy-700 text-white" : "border-zinc-300 bg-white hover:border-navy-400")}>
+                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rate not available — upload rate card")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600", on ? "border-blue-600 bg-blue-600 text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)]" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50")}>
                                   <input type="checkbox" className="sr-only" checked={on} disabled={!edOk(paper, e.name)} onChange={() => setEditions(paper.id, on ? selected.filter((id) => id !== e.id) : [...selected, e.id])} />
                                   {place(e.name)}
                                 </label>

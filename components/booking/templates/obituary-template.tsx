@@ -173,9 +173,9 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
       )}
 
       {!isText && aiReady && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-500/30 dark:bg-blue-500/10">
           {aiReady && (
-            <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
+            <button type="button" onClick={() => setAiOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-blue-600 to-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
               <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
             </button>
           )}

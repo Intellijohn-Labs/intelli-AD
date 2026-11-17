@@ -110,7 +110,7 @@ export function TemplateComposer({
           <button type="button" onClick={insertContact} className={cn(link, "text-blue-600 hover:underline dark:text-blue-400")}><PhoneCall className="h-3 w-3" aria-hidden="true" /> {lang === "ml" ? "+ ഫോൺ നമ്പർ ചേർക്കുക" : "+ Insert contact"} / ഫോൺ നമ്പർ ചേർക്കുക</button>
           {active && <button type="button" onClick={copySample} className={cn(link, "text-slate-500 hover:text-blue-600 dark:text-slate-300")}><Copy className="h-3 w-3" aria-hidden="true" /> Copy sample</button>}
           {aiReady && <button type="button" onClick={() => setAiOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-3 py-1 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] transition-shadow hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
+            className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-blue-600 to-blue-600 px-3 py-1 text-xs font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.55)] transition-shadow hover:shadow-[0_0_22px_rgba(124,58,237,0.8)]">
             <Sparkles className="h-3 w-3" aria-hidden="true" /> ✨ AI സഹായി (AI Suggestions)
           </button>}
           <button type="button" onClick={() => { onChange(""); setActiveId(null); }} className={cn(link, "text-slate-500 hover:text-rose-500 dark:text-slate-300")}><Eraser className="h-3 w-3" aria-hidden="true" /> Clear text</button>

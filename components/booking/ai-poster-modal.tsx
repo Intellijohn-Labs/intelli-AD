@@ -125,18 +125,18 @@ export function AiPosterModal({ open, onClose, people, text, category, colorMode
             <label htmlFor="poster-custom" className="text-sm font-semibold text-slate-900 dark:text-white">ഡിസൈൻ നിർദ്ദേശങ്ങൾ (Design Suggestions - Optional)</label>
             <input id="poster-custom" type="text" value={custom} maxLength={300} onChange={(e) => setCustom(e.target.value)} disabled={busy}
               placeholder="ഉദാ: ഫോട്ടോയ്ക്ക് ഇരുവശത്തും കത്തിച്ച നിലവിളക്ക് വേണം / Include a lit traditional Kerala brass lamp beside the portrait"
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-2 focus:outline-violet-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-2 focus:outline-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
             <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Quick motif suggestions">
               {MOTIFS.map((m) => {
                 const on = custom.includes(m);
                 return <button key={m} type="button" aria-pressed={on} onClick={() => toggleMotif(m)} disabled={busy}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${on ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"}`}>{m}</button>;
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${on ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"}`}>{m}</button>;
               })}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={() => generate()} disabled={busy} aria-busy={busy}
-              className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-violet-600 to-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.5)] disabled:opacity-70">
+              className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(124,58,237,0.5)] disabled:opacity-70">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} AI പോസ്റ്റർ നിർമ്മിക്കുക (Generate 3 Ad Styles)
             </button>
             <span className="text-xs text-slate-500 dark:text-slate-300">{photo ? "അപ്‌ലോഡ് ചെയ്ത ഫോട്ടോ ഉപയോഗിക്കും." : "ഫോട്ടോ ഇല്ല: ഫോട്ടോ ഇല്ലാതെ അലങ്കാര ഡിസൈൻ ഉണ്ടാക്കും."} ഓരോ ഡിസൈനും ഉണ്ടാക്കാൻ അര മിനിറ്റോളം എടുക്കും.</span>
@@ -163,12 +163,12 @@ export function AiPosterModal({ open, onClose, people, text, category, colorMode
                         <span className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"><ZoomIn className="h-4 w-4" aria-hidden="true" /></span>
                       </button>
                     )}
-                    {s.state === "loading" && <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700"><Loader2 className="h-6 w-6 animate-spin text-violet-600" aria-hidden="true" /></div>}
+                    {s.state === "loading" && <div className="absolute inset-0 flex animate-pulse items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700"><Loader2 className="h-6 w-6 animate-spin text-blue-600" aria-hidden="true" /></div>}
                     {s.state === "error" && <p className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs font-medium text-rose-700 dark:text-rose-300">{s.message}</p>}
                     {s.state === "idle" && <p className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs text-slate-400">ഡിസൈൻ ഇവിടെ കാണാം</p>}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <button type="button" onClick={() => use(st.id)} disabled={s.state !== "ready"} className="flex-1 rounded-xl bg-violet-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-40">Use This Design / തിരഞ്ഞെടുക്കുക</button>
+                    <button type="button" onClick={() => use(st.id)} disabled={s.state !== "ready"} className="flex-1 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40">Use This Design / തിരഞ്ഞെടുക്കുക</button>
                     {(s.state === "ready" || s.state === "error") && <button type="button" onClick={() => generate(st.id)} disabled={busy} aria-label={`Regenerate ${st.en}`} className="rounded-xl border border-slate-300 p-2.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /></button>}
                   </div>
                   </div>

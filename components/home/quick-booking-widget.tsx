@@ -47,7 +47,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white/95 p-7 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#132247]/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-rose-500" />
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-slate-500" />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-[family-name:var(--font-jakarta)] text-xl font-extrabold tracking-tight text-slate-900 dark:text-[#FFFFFF]">{t("Quick booking")}</h2>
@@ -127,7 +127,7 @@ export function QuickBookingWidget({ adType }: { adType: AdType }) {
       {!available ? (
         <button type="button" disabled className="mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-slate-200 py-4 font-bold text-slate-500">{t("Proceed to Booking")}</button>
       ) : (
-      <Link href={bookHref({ type: adType, paper: paperId, eds })} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 py-4 font-bold text-white shadow-lg shadow-rose-600/30 transition-all hover:scale-[1.01] hover:from-rose-500 hover:to-red-500 hover:shadow-rose-600/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 active:scale-[0.99]">
+      <Link href={bookHref({ type: adType, paper: paperId, eds })} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-slate-600 to-red-600 py-4 font-bold text-white shadow-lg shadow-slate-600/30 transition-all hover:scale-[1.01] hover:from-slate-500 hover:to-red-500 hover:shadow-slate-600/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 active:scale-[0.99]">
         {t("Proceed to Booking")} <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
       )}

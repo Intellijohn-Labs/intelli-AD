@@ -18,9 +18,9 @@ const links = [
   { href: "/account/bookings", label: "Track Booking" },
 ];
 
-const CTA = "inline-flex items-center justify-center rounded-lg border border-[#18181B] bg-[#18181B] px-4 py-2 text-sm font-bold text-white shadow-[0_2px_0_#000] transition-colors hover:bg-[#27272A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C] active:translate-y-px active:shadow-none";
+const CTA = "inline-flex h-9 items-center justify-center rounded-xl bg-[#0F172A] px-4 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-px hover:bg-[#1E293B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]";
 
-const AGENCY_BADGE = "flex items-center gap-2 rounded-lg border border-[#E7E5E4] bg-white px-3 py-1.5 text-xs font-bold text-[#9A3412] transition-colors hover:border-[#C2410C] dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/60";
+const AGENCY_BADGE = "flex h-9 items-center gap-1.5 rounded-xl border border-slate-200/70 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-[#1F2F57] dark:bg-[#132247] dark:text-slate-200";
 
 /** Masthead-style header: wordmark, quiet nav with a terracotta rule under the active page, language switch, one ink CTA. */
 export function Header() {
@@ -39,16 +39,16 @@ export function Header() {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
   const linkCls = (href: string) =>
     cn(
-      "border-b-2 px-1 py-1.5 text-sm font-semibold transition-colors",
-      isActive(href) ? "border-[#C2410C] text-[#18181B] dark:text-white" : "border-transparent text-stone-600 hover:text-[#18181B] dark:text-[#FAFAFA] dark:hover:text-white",
+      "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+      isActive(href) ? "bg-slate-100 text-[#0F172A] dark:bg-white/10 dark:text-white" : "text-slate-500 hover:bg-slate-50 hover:text-[#0F172A] dark:text-[#FAFAFA] dark:hover:text-white",
     );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#E7E5E4] bg-[#FAF8F5]/95 backdrop-blur-sm dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
-      <div className="mx-auto flex min-h-10 max-w-[1500px] items-center justify-between gap-4 px-6 py-3.5 md:px-12">
+    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
+      <div className="mx-auto grid h-16 max-w-[1500px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6 lg:px-10">
         <div className="flex shrink-0 items-center"><BrandLogo /></div>
 
-        <nav aria-label="Main" className="ml-8 hidden min-w-0 flex-1 items-center gap-2 min-[1120px]:flex min-[1120px]:ml-12 min-[1120px]:gap-6">
+        <nav aria-label="Main" className="hidden min-w-0 items-center justify-center gap-1 min-[1120px]:flex">
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} aria-current={isActive(l.href) ? "page" : undefined} className={linkCls(l.href)}>
               {t(l.label)}
@@ -62,7 +62,7 @@ export function Header() {
           {!inPartnerArea && <Link href="/login?tab=agency" className={AGENCY_BADGE}><Building2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("Akshaya / Agency Login")}</Link>}
           <AuthControl />
           {user?.is_agency && logout}
-          <Link href="/book" className={CTA}>{t("Book an ad")}</Link>
+          {pathname !== "/book" && <Link href="/book" className={CTA}>{t("Book an ad")}</Link>}
         </div>
 
         <div className="flex items-center gap-2 min-[1120px]:hidden">
