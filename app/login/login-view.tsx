@@ -80,7 +80,7 @@ export function LoginView() {
           <div className="flex items-center gap-3">
             <Image src="/images/intelliad-icon.png" alt="" width={600} height={540} priority className="h-14 w-auto" />
             <h1 className="font-serif text-4xl leading-none font-black tracking-tight">
-              <span className="text-[#0B1215] dark:text-[#FFFFFF]">Intelli</span><span className="text-emerald-700 dark:text-emerald-400">Ad</span>
+              <span className="mr-2 rounded-lg bg-emerald-400 px-2 py-0.5 text-[#0B1215]">AI</span><span className="text-[#0B1215] dark:text-[#FFFFFF]">admanager</span>
             </h1>
           </div>
           <p className="mt-3 border-t-2 border-[#0B1215] pt-2 font-mono text-xs font-medium tracking-wide text-zinc-700 uppercase dark:border-[#34464B] dark:text-slate-200">Kerala&apos;s Premier Newspaper Ad Booking Platform</p>
@@ -148,7 +148,7 @@ export function LoginView() {
             </>)}
           </div>
         </div>
-        <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to the Terms &amp; Privacy Policy of IntelliAd, operated by {COMPANY.tradeName}.</p>
+        <p className="mt-4 text-center text-xs text-zinc-500">By continuing you agree to the Terms &amp; Privacy Policy of AI admanager, operated by {COMPANY.tradeName}.</p>
       </motion.main>
       {/* Only when an admin has an active banner: below the card on phones, beside it on desktop */}
       <LoginPromo />

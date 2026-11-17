@@ -82,7 +82,7 @@ export function AgencyForm({ mode }: { mode: "signin" | "register" }) {
       <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center dark:border-emerald-500/30 dark:bg-emerald-500/10">
         <MailCheck className="mx-auto h-8 w-8 text-emerald-600" aria-hidden="true" />
         <p className="mt-2 font-bold text-emerald-900 dark:text-emerald-100">Check your email</p>
-        <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">Confirm <b>{confirmEmail}</b> using the link we sent, then sign in. Partner access is switched on after IntelliAd verifies your centre or agency.</p>
+        <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">Confirm <b>{confirmEmail}</b> using the link we sent, then sign in. Partner access is switched on after AI admanager verifies your centre or agency.</p>
       </div>
     );
 

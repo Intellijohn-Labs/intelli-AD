@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { getSessionUser, isAdminUser } from "@/lib/supabase/session";
 
-export const metadata: Metadata = { title: { default: "Admin", template: "%s | IntelliAd Admin" }, robots: { index: false } };
+export const metadata: Metadata = { title: { default: "Admin", template: "%s | AI admanager Admin" }, robots: { index: false } };
 
 /**
  * Second line of defence behind proxy.ts: verifies the session with Supabase on the server and requires the

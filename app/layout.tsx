@@ -16,8 +16,9 @@ import "./globals.css";
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-jakarta", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "IntelliAd | Smart Newspaper Ad Booking Across Kerala", template: "%s | IntelliAd" },
-  applicationName: "IntelliAd",
+  title: { default: "AI admanager | Smart Newspaper Ad Booking Across Kerala", template: "%s | AI admanager" },
+  applicationName: "AI admanager",
+  openGraph: { siteName: "AI admanager", title: "AI admanager | Smart Newspaper Ad Booking Across Kerala", type: "website", locale: "en_IN" },
   publisher: COMPANY.tradeName,
   creator: COMPANY.tradeName,
   authors: [{ name: COMPANY.tradeName }],

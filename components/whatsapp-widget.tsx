@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/context/language-context";
 
 const PHONE_NUMBER = "919645128949"; // Replace with your support phone number
-const DEFAULT_MESSAGE = encodeURIComponent("Hello IntelliAd, I need assistance with booking an advertisement.");
+const DEFAULT_MESSAGE = encodeURIComponent("Hello AI admanager, I need assistance with booking an advertisement.");
 const WHATSAPP_URL = `https://wa.me/${PHONE_NUMBER}?text=${DEFAULT_MESSAGE}`;
 
 /** Floating WhatsApp support shortcut, fixed bottom-right on every page. */

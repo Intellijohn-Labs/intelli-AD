@@ -1,5 +1,5 @@
 /**
- * Single source of truth for which publications IntelliAd supports, in display order.
+ * Single source of truth for which publications AI admanager supports, in display order.
  * data/newspapers.ts builds `newspapers` from this list, and the booking wizard, home page, rate validation and the
  * admin hub all read that, so they can never disagree.
  */

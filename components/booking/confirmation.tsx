@@ -69,7 +69,7 @@ export function Confirmation({ receipt, onNew }: { receipt: ReceiptData; onNew: 
           <Card id="release-order" className="p-5 text-sm">
             <div className="flex items-start justify-between border-b-2 border-double border-navy-800 pb-3">
               <div>
-                <p className="font-headline text-xl font-black tracking-wide">INTELLIAD</p>
+                <p className="font-headline text-xl font-black tracking-tight"><span className="mr-1.5 rounded-md bg-emerald-400 px-1.5 py-0.5 text-[#0B1215]">AI</span>admanager</p>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">{t("Release Order")}</p>
               </div>
               <span className="rotate-[-4deg] rounded border-2 border-zinc-900 px-2 py-0.5 text-xs font-black text-zinc-900">{t("PAID")}</span>

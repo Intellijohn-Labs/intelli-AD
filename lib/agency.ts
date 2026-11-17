@@ -20,7 +20,7 @@ export const OPENING_WALLET = 25000; // demo opening balance; there is no paymen
 export interface AgencyBooking {
   id: string;
   roNumber: string;
-  /** IntelliAd booking verification ID printed on the customer receipt. */
+  /** AI admanager booking verification ID printed on the customer receipt. */
   verificationId: string;
   createdAt: string;
   customer: { name: string; phone: string };
@@ -204,7 +204,7 @@ const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const inr = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
- * Printable customer receipts (one page per booking) headed with the centre's name and seal plus the IntelliAd
+ * Printable customer receipts (one page per booking) headed with the centre's name and seal plus the AI admanager
  * verification ID. Commission is deliberately not shown: this is the customer's copy.
  */
 export function customerReceiptsHtml(user: AuthUser, list: AgencyBooking[]): string {
@@ -213,9 +213,9 @@ export function customerReceiptsHtml(user: AuthUser, list: AgencyBooking[]): str
   const seal = `<svg viewBox="0 0 110 110" width="96" height="96" aria-label="Centre seal"><g fill="none" stroke="#1d4ed8" stroke-width="2"><circle cx="55" cy="55" r="52"/><circle cx="55" cy="55" r="44" stroke-width="1"/></g><g fill="#1d4ed8" font-family="Arial,sans-serif" text-anchor="middle"><text x="55" y="38" font-size="8" font-weight="700" letter-spacing="1.5">AUTHORISED</text><foreignObject x="14" y="42" width="82" height="30"><div xmlns="http://www.w3.org/1999/xhtml" style="font:700 9px/1.15 Arial,sans-serif;color:#1d4ed8;text-align:center;display:flex;align-items:center;justify-content:center;height:30px">${esc(centre)}</div></foreignObject><text x="55" y="84" font-size="7">${esc(code)}</text><text x="55" y="95" font-size="6.5" letter-spacing="1">PARTNER</text></g></svg>`;
   const pages = list.map((b) => `
 <section class="page">
-  <header><div><h1>${esc(centre)}</h1><p>${esc(code ? `Partner code ${code} · ` : "")}Authorised booking partner of IntelliAd</p></div>${seal}</header>
+  <header><div><h1>${esc(centre)}</h1><p>${esc(code ? `Partner code ${code} · ` : "")}Authorised booking partner of AI admanager</p></div>${seal}</header>
   <h2>Ad Booking Receipt</h2>
-  <p class="verify">IntelliAd verification ID <b>${esc(b.verificationId)}</b></p>
+  <p class="verify">AI admanager verification ID <b>${esc(b.verificationId)}</b></p>
   <table class="meta">
     <tr><th>Booking ID</th><td>${esc(b.id)}</td><th>Release Order</th><td>${esc(b.roNumber)}</td></tr>
     <tr><th>Customer</th><td>${esc(b.customer.name)}</td><th>Mobile</th><td>${esc(b.customer.phone)}</td></tr>

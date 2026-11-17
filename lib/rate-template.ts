@@ -51,7 +51,7 @@ export async function buildProtectedTemplate(paper: Newspaper, existing: RateRow
 
   const help = wb.addWorksheet("help");
   help.addRows([
-    ["IntelliAd rate template for " + paper.name],
+    ["AI admanager rate template for " + paper.name],
     ["Fill the yellow cells only. Headings, newspaper, edition, category and ad_type are locked; do not rename or reorder columns."],
     ["Leave every yellow cell of a row empty for combinations you don't want to publish."],
     ["classified-text rows: base_rate (price for the minimum lines) is required; extra_line_rate is the price per extra line; min_lines is the minimum billable lines."],
@@ -72,7 +72,7 @@ export async function downloadProtectedTemplate(paper: Newspaper, existing: Rate
   const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = `IntelliAd_${paper.name.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "")}_Rate_Template.xlsx`;
+  a.download = `AI_admanager_${paper.name.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "")}_Rate_Template.xlsx`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

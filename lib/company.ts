@@ -1,7 +1,7 @@
 /** Official business details (from the GST registration certificate). Single source for the footer, receipts and legal text. */
 export const COMPANY = {
   /** Brand customers see. */
-  brand: "IntelliAd",
+  brand: "AI admanager",
   /** Trade / business name on the GST certificate. */
   tradeName: "LEADSNDEALS INTELLIGENT AUTOMATIONS",
   /** Legal name of the registered person (the proprietor). */

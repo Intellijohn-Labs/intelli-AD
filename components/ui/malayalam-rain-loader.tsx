@@ -82,7 +82,7 @@ export function MalayalamRainLoader({ onComplete }: { onComplete: () => void }) 
       exit={{ opacity: 0, pointerEvents: "none" }}
       transition={{ duration: 0.5, ease: "easeOut" }}
       role="dialog"
-      aria-label="Namaskaram. Welcome to IntelliAd"
+      aria-label="Namaskaram. Welcome to AI admanager"
     >
       <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-t from-indigo-500/15 to-transparent" />
 
@@ -133,7 +133,7 @@ export function MalayalamRainLoader({ onComplete }: { onComplete: () => void }) 
           className="mt-3 text-xs font-medium tracking-[0.25em] text-slate-300 uppercase sm:text-sm"
           initial={{ opacity: 0, y: 8 }} animate={assembled ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }} transition={{ duration: 0.6 }}
         >
-          Welcome to IntelliAd
+          Welcome to AI admanager
         </motion.p>
       </div>
     </motion.div>
