@@ -21,8 +21,6 @@ import { CreativeUpload } from "./creative-upload";
 import { DisplaySizer } from "./display-sizer";
 import { columnsFor, displayWidth, isDisplayOnlyCategory, type CreativeMode } from "@/lib/display";
 import { uploadArtwork } from "@/lib/supabase/storage";
-import { CanvaReturn } from "./canva-return";
-import type { FileMeta } from "@/lib/types";
 import { ObituaryComposer } from "./templates/obituary-template";
 import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
@@ -91,21 +89,6 @@ export function Step2Compose() {
   const { register, control, watch, setValue, getValues, handleSubmit, formState } = form;
   const errors = formState.errors;
   const v = watch();
-  // "Edit in Canva": a design returned from Canva becomes the ad artwork (same path as an uploaded file or a generated poster).
-  const attachFromCanva = (file: File) => {
-    const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined };
-    if (displayOnly) update({ creativeMode: "upload" });
-    setValue("artwork", meta, { shouldValidate: true, shouldDirty: true });
-    void uploadArtwork(file).then((r) => { if (r.url) setValue("artwork", { ...meta, url: r.url }, { shouldValidate: true, shouldDirty: true }); });
-  };
-  const canvaGated = (disabled: boolean) => <CanvaReturn widthCm={v.widthCm} heightCm={v.heightCm} onAttach={attachFromCanva} disabled={disabled} imageUrl={/^image\//.test(v.artwork?.type ?? "") || v.artwork?.previewUrl ? (v.artwork?.previewUrl ?? v.artwork?.url ?? null) : null} />;
-  /** Canva row for non-obituary ads: sits right under the artwork upload and unlocks once a file is uploaded. */
-  const canvaRow = (
-    <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-3">{canvaGated(!v.artwork)}</div>
-      {!v.artwork && <p className="text-xs text-zinc-500">{t("Upload artwork first to unlock Canva Edit")}</p>}
-    </div>
-  );
 
   // Edits made in the proof box (inline text, bold/border toolbar, replaced photo) land in the booking state;
   // mirror them into the form so it never writes stale values back.
@@ -214,7 +197,6 @@ export function Step2Compose() {
           {displayOnly && mode === "upload" && (
             <Controller control={control} name="artwork" render={({ field }) => <CreativeUpload value={field.value} onChange={field.onChange} widthCm={v.widthCm} heightCm={v.heightCm} error={errors.artwork?.message} />} />
           )}
-          {displayOnly && mode === "upload" && canvaRow}
           {displayOnly && mode === "builder" && textError && <FieldError message={textError} />}
           {isObituary && (isText || mode === "builder") && (
             <ObituaryComposer
@@ -229,7 +211,6 @@ export function Step2Compose() {
               onColor={(c) => setValue("colorMode", c, { shouldDirty: true })}
               onText={(txt) => setValue("text", txt, { shouldValidate: true, shouldDirty: true })}
               onPhoto={(f) => setValue("artwork", f, { shouldValidate: true, shouldDirty: true })}
-              canva={({ disabled }) => canvaGated(disabled)}
             />
           )}
           {isTender && (isText || mode === "builder") && (
@@ -253,7 +234,6 @@ export function Step2Compose() {
               }
             />
           )}
-          {isTender && (isText || mode === "builder") && canvaRow}
           {isText ? (
             <>
               <TemplateComposer
@@ -334,7 +314,6 @@ export function Step2Compose() {
                   <FileDropzone label={isObituary ? t("Portrait photo / artwork") : t("Artwork")} hint={t("PDF, JPG or PNG · print-ready at 300 dpi · up to 25 MB · optional if you wrote the ad above")} value={field.value} onChange={field.onChange} error={errors.artwork?.message} />
                 )}
               />
-              {!isText && !isObituary && !isTender && canvaRow}
             </>
           )}
 

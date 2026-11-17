@@ -1,7 +1,7 @@
 "use client";
 
 import { Flame, Sparkles } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { getNewspaper } from "@/data/newspapers";
 import { AiAssistantModal, useAiStatus } from "../ai-assistant-modal";
 import { AiPosterModal } from "../ai-poster-modal";
@@ -53,7 +53,7 @@ const chip = "rounded border px-3 py-1.5 text-xs font-semibold transition-colors
  * (In Memoriam), fill the fields, and the print text is generated into the ad text.
  * The portrait is the ad's artwork upload (classified display / box ads).
  */
-export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, canva, charsPerLine = 28, colWidthCm = 4 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; /** A generated AI poster was chosen: it becomes the finished ad artwork. */ onPoster?: (file: File, meta: FileMeta) => void; /** Colour mode change from the photo section (keeps the Step 2 form in sync). */ onColor?: (c: "bw" | "color") => void; /** Extra action beside AI Poster Generation (the Canva button); gets the same "needs a photo" gating. */ canva?: (o: { disabled: boolean }) => ReactNode; charsPerLine?: number; colWidthCm?: number }) {
+export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerLine = 28, colWidthCm = 4 }: { onText: (text: string) => void; onPhoto: (f: FileMeta | null) => void; /** A generated AI poster was chosen: it becomes the finished ad artwork. */ onPoster?: (file: File, meta: FileMeta) => void; /** Colour mode change from the photo section (keeps the Step 2 form in sync). */ onColor?: (c: "bw" | "color") => void; charsPerLine?: number; colWidthCm?: number }) {
   const { state, update } = useBooking();
   const { text: aiReady, poster: posterReady } = useAiStatus();
   const [aiOpen, setAiOpen] = useState(false);
@@ -264,18 +264,13 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, canva, ch
         </div>
       </fieldset>
       )}
-      {((posterReady && onPoster) || canva) && (
-        <div className="-mt-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-3">
-            {posterReady && onPoster && (
-            <button type="button" onClick={() => setPosterOpen(true)} disabled={!hasPhoto} aria-describedby="poster-hint"
-              className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-500 to-rose-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(225,29,72,0.45)] hover:shadow-[0_0_22px_rgba(225,29,72,0.7)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
-              <Sparkles className="h-4 w-4" aria-hidden="true" /> ✨ AI Poster Generation
-            </button>
-            )}
-            {canva?.({ disabled: !hasPhoto })}
-          </div>
-          {!hasPhoto && <p id="poster-hint" className="text-xs text-zinc-500">{f.joint ? "Upload both photos first" : "Upload a photo first"} to unlock {posterReady && onPoster ? "AI Poster Generation" : ""}{posterReady && onPoster && canva ? " & " : ""}{canva ? "Canva Edit" : ""} · ആദ്യം ഫോട്ടോ{f.joint ? "കൾ" : ""} അപ്‌ലോഡ് ചെയ്യുക.</p>}
+      {posterReady && onPoster && (
+        <div className="-mt-1 space-y-1">
+          <button type="button" onClick={() => setPosterOpen(true)} disabled={!hasPhoto} aria-describedby="poster-hint"
+            className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-500 to-rose-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_14px_rgba(225,29,72,0.45)] hover:shadow-[0_0_22px_rgba(225,29,72,0.7)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
+            <Sparkles className="h-4 w-4" aria-hidden="true" /> ✨ AI Poster Generation
+          </button>
+          {!hasPhoto && <p id="poster-hint" className="text-xs text-zinc-500">{f.joint ? "Upload both photos first to generate AI posters" : "Upload a photo first to generate AI posters"} · AI പോസ്റ്റർ ഉണ്ടാക്കാൻ ആദ്യം ഫോട്ടോ{f.joint ? "കൾ" : ""} അപ്‌ലോഡ് ചെയ്യുക.</p>}
         </div>
       )}
     </section>
