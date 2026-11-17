@@ -13,12 +13,10 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 
 const links = [
-  { href: "/book", label: "Book Ad" },
   { href: "/newspaper", label: "Rate Cards" },
   { href: "/account/bookings", label: "Track Booking" },
 ];
 
-const CTA = "inline-flex h-9 items-center justify-center rounded-xl bg-[#D12014] px-4 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(232,62,50,0.4),0_6px_18px_-6px_rgba(232,62,50,0.55)] transition-all hover:-translate-y-px hover:bg-[#A91400] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 const AGENCY_BADGE = "flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10";
 
@@ -28,7 +26,7 @@ export function Header() {
   const { t } = useI18n();
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const navLinks = user?.is_admin ? [...links, { href: "/admin", label: "Admin" }] : links;
+  const navLinks = links;
   // Partners (or anyone already inside the partner area) never see a link to the page they are on.
   const inPartnerArea = !!user?.is_agency || pathname.startsWith("/agency") || pathname.startsWith("/partner");
   const logout = (
@@ -62,8 +60,7 @@ export function Header() {
           {!inPartnerArea && <Link href="/login?tab=agency" className={AGENCY_BADGE}><Building2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("Akshaya / Agency Login")}</Link>}
           <AuthControl />
           {user?.is_agency && logout}
-          {pathname !== "/book" && <Link href="/book" className={CTA}>{t("Book an ad")}</Link>}
-        </div>
+                  </div>
 
         <div className="flex items-center gap-2 min-[1120px]:hidden">
           <AuthControl />
@@ -94,9 +91,6 @@ export function Header() {
           </div>
           {!inPartnerArea && <Link href="/login?tab=agency" onClick={() => setOpen(false)} className={cn(AGENCY_BADGE, "mt-2 justify-center py-2.5")}><Building2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("Akshaya / Agency Login")}</Link>}
           {user?.is_agency && <div className="mt-2 [&>button]:w-full [&>button]:justify-center [&>button]:py-2.5">{logout}</div>}
-          <Link href="/book" onClick={() => setOpen(false)} className={cn(CTA, "mt-3")}>
-            {t("Book an ad")}
-          </Link>
         </nav>
       )}
     </header>
