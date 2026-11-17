@@ -4,6 +4,7 @@ import { GST_RATE, type Quote } from "@/lib/pricing";
 import { useI18n } from "@/context/language-context";
 import { cn, formatINR } from "@/lib/utils";
 import type { AdType } from "@/lib/types";
+import { tintOf, type TintId } from "@/lib/tint-colors";
 
 function Row({ label, sub, value, negative, strong, muted }: { label: string; sub?: string; value: number; negative?: boolean; strong?: boolean; muted?: boolean }) {
   return (
@@ -20,7 +21,7 @@ function Row({ label, sub, value, negative, strong, muted }: { label: string; su
   );
 }
 
-export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; adType: AdType; showEditions?: boolean }) {
+export function PriceBreakdown({ quote, adType, showEditions, tintColor }: { quote: Quote; adType: AdType; showEditions?: boolean; tintColor?: TintId }) {
   const { t: tr } = useI18n();
   const { totals: t, metrics: m, editionCount } = quote;
   const isText = adType === "classified-text";
@@ -44,7 +45,7 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
       <Row label={isText ? tr("Extra lines / words") : tr("Extra area")} sub={extraSub} value={t.extra} />
       <Row
         label={tr("Visual enhancements")}
-        sub={quote.enhancementItems.length ? quote.enhancementItems.map((i) => `${tr(i.label)} ${formatINR(i.amount)}`).join(" · ") : isText ? tr("None") : tr("Black & white")}
+        sub={quote.enhancementItems.length ? quote.enhancementItems.map((i) => { const c = i.key === "tint" ? tintOf(tintColor) : null; return `${tr(i.label)}${c ? ` · ${c.label} (${c.hex})` : ""} ${formatINR(i.amount)}`; }).join(" · ") : isText ? tr("None") : tr("Black & white")}
         value={t.enhancements}
       />
       {t.discount > 0 && <Row label={tr("Combo / bulk discount")} sub={tr("Multi-edition savings")} value={t.discount} negative />}

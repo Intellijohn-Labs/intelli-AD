@@ -138,13 +138,13 @@ export function NewspaperPreview({
       <div className="relative">
         <span className="absolute -top-2.5 left-3 z-10 bg-[#F3F3F4] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Width: {colWidthCm} cm</span>
         <span className="absolute -top-2.5 right-3 z-10 whitespace-nowrap bg-[#F3F3F4] px-1.5 font-mono text-[10px] font-bold text-stone-700 dark:bg-[#1E2430] dark:text-slate-200">Height: ≈{heightCm} cm</span>
-        <div className="font-serif newsprint relative rounded-[2px] border border-stone-500/70 p-4 tracking-tight text-stone-900 shadow-[0_0_0_3px_#F3F3F4,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)] dark:border-slate-300 dark:bg-[#1E2430] dark:text-slate-100 dark:shadow-[3px_3px_0px_rgba(255,255,255,0.18)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
-          <div className="mb-2 border-y-[3px] border-double border-stone-800 py-1 text-center dark:border-slate-300">
+        <div className="font-serif newsprint proof-sheet relative rounded-[2px] border border-stone-500/70 p-4 tracking-tight text-stone-900 shadow-[0_0_0_3px_#F3F3F4,0_0_0_4px_rgba(24,24,27,0.35),0_10px_22px_-10px_rgba(24,24,27,0.45)] dark:shadow-[0_0_0_3px_#1A1B1E,0_0_0_4px_rgba(255,255,255,0.25)]" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", Georgia, serif' }}>
+          <div className="mb-2 border-y-[3px] border-double border-stone-800 py-1 text-center">
             <p className="font-serif text-lg leading-tight font-black tracking-tight">{paperName}</p>
-            <p className="font-sans text-[9px] font-bold tracking-[0.2em] uppercase text-stone-600">{t("Classifieds")} · {categoryName}</p>
+            <p className="proof-muted font-sans text-[9px] font-bold tracking-[0.2em] uppercase text-stone-600">{t("Classifieds")} · {categoryName}</p>
           </div>
           <div className="relative mx-auto px-3 py-2 leading-tight" style={{ fontSize: TEXT_PX[textStyle.size ?? "md"], width: `min(100%, ${(charsPerLine * 0.68 + 1.5).toFixed(1)}em)` }}>
-            {enhancements.tint && <span aria-hidden="true" data-tint={tintOf(enhancements.tintColor).id} className="absolute inset-0 bg-[var(--tint)] dark:opacity-25" style={{ ["--tint" as string]: tintOf(enhancements.tintColor).hex }} />}
+            {enhancements.tint && <span aria-hidden="true" data-tint={tintOf(enhancements.tintColor).id} className="absolute inset-0 bg-[var(--tint)]" style={{ ["--tint" as string]: tintOf(enhancements.tintColor).hex }} />}
             {enhancements.border && (
               <span aria-hidden="true" className={cn("absolute inset-0 border-slate-900 dark:border-slate-200", bs === "double" ? "border-[5px] border-double" : "border-2")} />
             )}
@@ -154,7 +154,7 @@ export function NewspaperPreview({
                 <InlineEditor value={editor.rawText} onChange={editor.onText} onDone={() => setEditing(false)} />
               ) : lines.length === 0 ? (
                 <p
-                  className={cn("text-zinc-400 italic", editor && "cursor-text")}
+                  className={cn("proof-muted text-zinc-400 italic", editor && "cursor-text")}
                   {...(editor ? { role: "button", tabIndex: 0, onClick: () => setEditing(true), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") setEditing(true); } } : {})}
                 >{t("Your ad appears here as you type…")}</p>
               ) : (
@@ -176,7 +176,7 @@ export function NewspaperPreview({
               )}
             </div>
           </div>
-          <div aria-hidden="true" className="mt-2 border-t-[3px] border-double border-slate-800 dark:border-slate-300" />
+          <div aria-hidden="true" className="mt-2 border-t-[3px] border-double border-slate-800" />
         </div>
       </div>
       <figcaption className="mt-3 text-center text-xs text-zinc-500">

@@ -131,7 +131,7 @@ export function Step4Checkout() {
       <aside className="lg:sticky lg:top-[152px] lg:self-start">
         <Card className="p-5 sm:p-6">
           <h3 className="mb-3 text-lg font-bold text-navy-900 dark:text-zinc-50">{t("Price breakdown")}</h3>
-          <PriceBreakdown quote={quote} adType={state.adType} showEditions />
+          <PriceBreakdown quote={quote} adType={state.adType} tintColor={state.enhancements.tintColor} showEditions />
           <div className="mt-4">
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" className="mt-0.5 h-4 w-4 accent-navy-800" aria-invalid={!!errors.terms} {...register("terms")} />

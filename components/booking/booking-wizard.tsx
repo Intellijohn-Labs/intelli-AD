@@ -208,7 +208,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       </dl>
       {quote.editionCount > 0 && (
         <div className="mt-4 border-t border-white/10 pt-4">
-          <PriceBreakdown quote={quote} adType={state.adType} />
+          <PriceBreakdown quote={quote} adType={state.adType} tintColor={state.enhancements.tintColor} />
         </div>
       )}
       <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300 tabular-nums">

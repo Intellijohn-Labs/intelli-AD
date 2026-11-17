@@ -337,3 +337,9 @@ html.no-splash #aiadm-splash { display: none; }
 
 /* Publication titles are tinted with each paper's brand colour; lift them toward white on dark surfaces so dark blues / greens stay legible. */
 .dark .pub-title { color: color-mix(in srgb, var(--c) 38%, #ffffff) !important; }
+
+/* Live proof sheet: real newsprint, so ink stays dark and borders stay dark in both themes. */
+.proof-sheet, html.dark .proof-sheet { background-color: #F6F3EC; border-color: rgba(120,113,108,.7); }
+.proof-sheet, .proof-sheet *, html.dark .proof-sheet, html.dark .proof-sheet * { color: #18181B; }
+.proof-sheet .proof-muted, html.dark .proof-sheet .proof-muted { color: #3F3F46; }
+html.dark .proof-sheet .border-stone-800, html.dark .proof-sheet .border-slate-800, html.dark .proof-sheet .border-slate-900 { border-color: #292524; }
