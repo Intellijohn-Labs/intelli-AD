@@ -8,6 +8,7 @@ import type { TextStyle } from "@/lib/booking-store";
 import { splitParagraphs } from "@/lib/paragraphs";
 import { cn, wrapText } from "@/lib/utils";
 import type { Enhancements } from "@/lib/types";
+import { tintOf } from "@/lib/tint-colors";
 
 /** Approximate set height of one classified line (7 pt type on 8 pt leading is ~0.28 cm; we allow for rules and leading). */
 export const LINE_CM = 0.34;
@@ -143,7 +144,7 @@ export function NewspaperPreview({
             <p className="font-sans text-[9px] font-bold tracking-[0.2em] uppercase text-stone-600">{t("Classifieds")} · {categoryName}</p>
           </div>
           <div className="relative mx-auto px-3 py-2 leading-tight" style={{ fontSize: TEXT_PX[textStyle.size ?? "md"], width: `min(100%, ${(charsPerLine * 0.68 + 1.5).toFixed(1)}em)` }}>
-            {enhancements.tint && <span aria-hidden="true" className="absolute inset-0 bg-stone-400/35 dark:bg-amber-400/25" />}
+            {enhancements.tint && <span aria-hidden="true" data-tint={tintOf(enhancements.tintColor).id} className="absolute inset-0 bg-[var(--tint)] dark:opacity-25" style={{ ["--tint" as string]: tintOf(enhancements.tintColor).hex }} />}
             {enhancements.border && (
               <span aria-hidden="true" className={cn("absolute inset-0 border-slate-900 dark:border-slate-200", bs === "double" ? "border-[5px] border-double" : "border-2")} />
             )}

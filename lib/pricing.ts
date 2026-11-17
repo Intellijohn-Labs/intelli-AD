@@ -12,7 +12,7 @@ export const GST_RATE = 0.05;
 /** Rate-sheet column holding each flat enhancement charge. */
 export const ENHANCEMENT_RATE_KEY = { bold: "bold_heading_rate", tick: "tick_rate", border: "border_rate" } as const;
 
-export const ENHANCEMENT_LABEL: Record<keyof Enhancements, string> = {
+export const ENHANCEMENT_LABEL: Record<Exclude<keyof Enhancements, "tintColor">, string> = {
   bold: "Bold first line",
   tick: "Tick mark ✔",
   border: "Border box",
@@ -349,7 +349,7 @@ export function calculateQuote(input: QuoteInput): Quote {
   const colorLabel = "Colour printing";
   const enhancementItems = Object.entries(enhTotals).map(([key, amount]) => ({
     key,
-    label: key === "color" ? colorLabel : key.startsWith("pos:") ? `Page position: ${key.slice(4)}` : ENHANCEMENT_LABEL[key as keyof Enhancements],
+    label: key === "color" ? colorLabel : key.startsWith("pos:") ? `Page position: ${key.slice(4)}` : ENHANCEMENT_LABEL[key as keyof typeof ENHANCEMENT_LABEL],
     amount: round2(amount * count),
   }));
 

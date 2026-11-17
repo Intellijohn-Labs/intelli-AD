@@ -7,6 +7,7 @@ import { cutoffFor, cutoffRuleFor } from "./cutoff";
 import { ENHANCEMENT_LABEL, GST_RATE, type Quote } from "./pricing";
 import { formatDate, formatDateTime, formatINR } from "./utils";
 import { COMPANY } from "./company";
+import { tintOf } from "./tint-colors";
 
 export type PaymentMethod = "upi" | "card" | "netbanking";
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
@@ -48,9 +49,10 @@ export function createReceipt(
   const paperIds = Object.keys(s.selection).filter((k) => s.selection[k].length);
   const isText = s.adType === "classified-text";
   const enh = isText
-    ? (Object.keys(s.enhancements) as (keyof typeof s.enhancements)[]).filter((k) => s.enhancements[k]).map((k) => {
+    ? (Object.keys(ENHANCEMENT_LABEL) as (keyof typeof ENHANCEMENT_LABEL)[]).filter((k) => s.enhancements[k]).map((k) => {
         const amt = quote.enhancementItems.find((i) => i.key === k)?.amount;
-        return `${ENHANCEMENT_LABEL[k]} (${amt ? formatINR(amt, { decimals: true }) : "Free"})`;
+        const tint = k === "tint" ? ` · ${tintOf(s.enhancements.tintColor).label} ${tintOf(s.enhancements.tintColor).hex}` : "";
+        return `${ENHANCEMENT_LABEL[k]}${tint} (${amt ? formatINR(amt, { decimals: true }) : "Free"})`;
       })
     : s.display.colorMode === "color"
       ? ["Colour printing"]

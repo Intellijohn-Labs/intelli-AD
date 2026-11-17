@@ -3,13 +3,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Bookings" };
 
-interface Row { booking_ref: string; created_at: string; ad_type: string; category: string; publication: string; status: string; pricing: { total?: number } | null; customer_details: { name?: string } | null }
+interface Row { booking_ref: string; created_at: string; ad_type: string; category: string; publication: string; status: string; pricing: { total?: number } | null; enhancements: { tint?: boolean; tintColor?: string; tintHex?: string } | null; customer_details: { name?: string } | null }
 
 /** Latest bookings. Read with the service-role key on the server (the public key can't read bookings); the admin layout has already verified the session. */
 export default async function BookingsPage() {
   const admin = createAdminClient();
   const { data, error } = admin
-    ? await admin.from("bookings").select("booking_ref, created_at, ad_type, category, publication, status, pricing, customer_details").order("created_at", { ascending: false }).limit(100)
+    ? await admin.from("bookings").select("booking_ref, created_at, ad_type, category, publication, status, pricing, enhancements, customer_details").order("created_at", { ascending: false }).limit(100)
     : { data: null, error: { message: "SUPABASE_SERVICE_ROLE_KEY isn't set on the server." } };
   const rows = (data ?? []) as Row[];
   return (
@@ -28,7 +28,7 @@ export default async function BookingsPage() {
                 <td className="px-3 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString("en-IN")}</td>
                 <td className="px-3 py-2">{r.customer_details?.name ?? "—"}</td>
                 <td className="px-3 py-2">{r.publication}</td>
-                <td className="px-3 py-2">{r.ad_type} · {r.category}</td>
+                <td className="px-3 py-2">{r.ad_type} · {r.category}{r.enhancements?.tint && r.enhancements.tintHex && <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-slate-200 px-1.5 py-0.5 text-[11px]" title="Requested background tint"><span className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ backgroundColor: r.enhancements.tintHex }} aria-hidden="true" />tint {r.enhancements.tintColor}</span>}</td>
                 <td className="px-3 py-2">{r.pricing?.total?.toLocaleString("en-IN") ?? "—"}</td>
                 <td className="px-3 py-2">{r.status === "confirmed" ? "Confirmed" : "Pending payment"}</td>
               </tr>

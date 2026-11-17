@@ -21,6 +21,7 @@ import { CreativeUpload } from "./creative-upload";
 import { DisplaySizer } from "./display-sizer";
 import { columnsFor, displayWidth, isDisplayOnlyCategory, type CreativeMode } from "@/lib/display";
 import { uploadArtwork } from "@/lib/supabase/storage";
+import { DEFAULT_TINT, TINT_COLORS, tintOf } from "@/lib/tint-colors";
 import { ObituaryComposer } from "./templates/obituary-template";
 import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
@@ -81,7 +82,7 @@ export function Step2Compose() {
       heightCm: state.display.heightCm,
       colorMode: state.display.colorMode,
       position: state.display.position ?? "",
-      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline, highlighter: !!state.enhancements.highlighter, caps: !!state.enhancements.caps },
+      enhancements: { ...state.enhancements, tick: !!state.enhancements.tick, underline: !!state.enhancements.underline, highlighter: !!state.enhancements.highlighter, caps: !!state.enhancements.caps, tintColor: state.enhancements.tintColor ?? DEFAULT_TINT },
       artwork: state.artwork,
       documents: state.documents ?? {},
     },
@@ -97,7 +98,7 @@ export function Step2Compose() {
     if (state.text !== cur.text) setValue("text", state.text, { shouldValidate: true });
     if ((state.artwork?.previewUrl ?? null) !== (cur.artwork?.previewUrl ?? null) || (state.artwork?.name ?? null) !== (cur.artwork?.name ?? null) || (state.artwork?.url ?? null) !== (cur.artwork?.url ?? null)) setValue("artwork", state.artwork, { shouldValidate: true });
     const e = state.enhancements, c = cur.enhancements;
-    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline || !!e.highlighter !== !!c.highlighter || !!e.caps !== !!c.caps) setValue("enhancements", e);
+    if (e.bold !== c.bold || e.border !== c.border || e.tick !== c.tick || e.tint !== c.tint || !!e.underline !== !!c.underline || !!e.highlighter !== !!c.highlighter || !!e.caps !== !!c.caps || (e.tintColor ?? DEFAULT_TINT) !== (c.tintColor ?? DEFAULT_TINT)) setValue("enhancements", { ...e, tintColor: e.tintColor ?? DEFAULT_TINT });
   }, [state.text, state.artwork, state.enhancements, getValues, setValue]);
 
   // Keep the shared booking state (and therefore the live quote) in sync with the form.
@@ -105,7 +106,7 @@ export function Step2Compose() {
     const sub = watch((val) => {
       update({
         text: val.text ?? "",
-        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline, highlighter: !!val.enhancements?.highlighter, caps: !!val.enhancements?.caps },
+        enhancements: { bold: !!val.enhancements?.bold, border: !!val.enhancements?.border, tick: !!val.enhancements?.tick, tint: !!val.enhancements?.tint, underline: !!val.enhancements?.underline, highlighter: !!val.enhancements?.highlighter, caps: !!val.enhancements?.caps, tintColor: tintOf(val.enhancements?.tintColor).id },
         display: {
           columns: val.columns ?? 2,
           widthCm: Number.isFinite(val.widthCm) ? (val.widthCm as number) : undefined,
@@ -273,7 +274,27 @@ export function Step2Compose() {
                     </label>
                   )} />
                 ))}
-                {tintPcts.length > 0 && <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: tintPcts.join(" / ") })} checked={field.value} onChange={field.onChange} />} />}
+                {tintPcts.length > 0 && <Controller control={control} name="enhancements.tint" render={({ field }) => <Switch id="enh-tint" label={t("Background tint")} description={t("+{pct}% of text charge", { pct: tintPcts.join(" / ") })} checked={field.value} onChange={(on) => { field.onChange(on); if (on && !v.enhancements?.tintColor) setValue("enhancements.tintColor", DEFAULT_TINT, { shouldDirty: true }); }} />} />}
+                {tintPcts.length > 0 && v.enhancements?.tint && (
+                  <Controller control={control} name="enhancements.tintColor" render={({ field }) => (
+                    <div role="radiogroup" aria-label={t("Tint colour")} className="rounded-xl border border-slate-200/70 bg-white px-3 py-2.5 dark:border-[#35363B]">
+                      <p className="mb-2 text-xs font-semibold text-slate-600">{t("Tint colour")} · <span className="font-normal">{t(tintOf(field.value).label)}</span></p>
+                      <div className="flex flex-wrap gap-2">
+                        {TINT_COLORS.map((c) => {
+                          const on = tintOf(field.value).id === c.id;
+                          return (
+                            <button key={c.id} type="button" role="radio" aria-checked={on} aria-label={`${c.label} (${c.hex})`} title={`${c.label} · ${c.use}`} onClick={() => field.onChange(c.id)}
+                              className={cn("group flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-xs font-semibold transition-all", on ? "border-[#D12014] bg-[#D12014]/5 ring-2 ring-[#D12014]/20" : "border-slate-200 hover:border-slate-300")}>
+                              <span className="h-6 w-6 rounded-full border border-black/15" style={{ backgroundColor: c.hex }} aria-hidden="true" />
+                              <span className="whitespace-nowrap">{c.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-slate-500">{t("Newsprint-safe 10–18% pastel. The tint surcharge on the rate card is the same for every colour.")}</p>
+                    </div>
+                  )} />
+                )}
                 {!/[ഀ-ൿ]/.test(v.text ?? "") && <Controller control={control} name="enhancements.caps" render={({ field }) => <Switch id="enh-caps" label={t("All Caps (UPPERCASE)")} description={(rule?.caps_word_rate ?? 0) > 0 ? t("Capitals rate {rate}/word", { rate: formatINR(rule!.caps_word_rate!) }) : t("Ad copy is set in capitals")} checked={!!field.value} onChange={(on) => { field.onChange(on); if (on) setValue("text", (v.text ?? "").toUpperCase(), { shouldValidate: true, shouldDirty: true }); }} />} />}
                 {hlTiers && <Controller control={control} name="enhancements.highlighter" render={({ field }) => <Switch id="enh-highlighter" label={t("Highlighter symbol")} description={hlFee ? t("+{fee} for {n} edition(s)", { fee: formatINR(hlFee), n: editionCount }) : t("Fee depends on the number of editions")} checked={!!field.value} onChange={field.onChange} />} />}
                 {underlinePcts.length > 0 && <Controller control={control} name="enhancements.underline" render={({ field }) => <Switch id="enh-underline" label={t("Underline")} description={t("+{pct}% of text charge", { pct: underlinePcts.join(" / ") })} checked={!!field.value} onChange={field.onChange} />} />}

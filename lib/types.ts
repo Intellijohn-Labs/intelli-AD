@@ -1,3 +1,4 @@
+import type { TintId } from "./tint-colors";
 export type AdType = "classified-text" | "classified-display" | "commercial-display";
 
 export type CategoryId =
@@ -17,6 +18,8 @@ export interface Enhancements {
   /** Tick mark (✔) at the beginning of the ad. */
   tick: boolean;
   tint: boolean;
+  /** Which pastel the background tint is printed in (only meaningful when `tint` is on). Doesn't affect the price. */
+  tintColor?: TintId;
   /** Underline (classified text): a percentage printed on the rate card. */
   underline?: boolean;
   /** Highlighter symbol before the ad (classified text): a flat fee printed on the rate card, by number of editions. */

@@ -3,6 +3,7 @@ import type { BookingState } from "@/lib/booking-store";
 import { displayWidth } from "@/lib/display";
 import { applySpacing } from "@/lib/paragraphs";
 import { getNewspaper } from "@/data/newspapers";
+import { tintOf } from "@/lib/tint-colors";
 import { createClient, supabaseConfigured } from "./client";
 
 export type BookingStatus = "pending_payment" | "confirmed";
@@ -58,7 +59,7 @@ export function buildBookingRow(state: BookingState, quote: Quote, customer: Cus
     dimensions: isText
       ? { width: null, height: null, lines: quote.metrics.lines }
       : { width: displayWidth(state.display, colW), height: state.display.heightCm, lines: quote.metrics.lines },
-    enhancements: { ...state.enhancements, colorMode: state.display.colorMode },
+    enhancements: { ...state.enhancements, tintColor: state.enhancements.tint ? tintOf(state.enhancements.tintColor).id : undefined, tintHex: state.enhancements.tint ? tintOf(state.enhancements.tintColor).hex : undefined, colorMode: state.display.colorMode }, // the newspaper reads which pastel was requested
     pricing: { baseRate: quote.totals.base, gst: quote.totals.gst, total: quote.totals.total, extra: quote.totals.extra, discount: quote.totals.discount, insertions: quote.totals.insertions, multiDayDiscount: quote.totals.multiDay, multiDayPct: quote.totals.multiDayPct },
     customer_details: { ...customer },
     status,
