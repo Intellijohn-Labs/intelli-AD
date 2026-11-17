@@ -21,6 +21,8 @@ import { CreativeUpload } from "./creative-upload";
 import { DisplaySizer } from "./display-sizer";
 import { columnsFor, displayWidth, isDisplayOnlyCategory, type CreativeMode } from "@/lib/display";
 import { uploadArtwork } from "@/lib/supabase/storage";
+import { CanvaReturn } from "./canva-return";
+import type { FileMeta } from "@/lib/types";
 import { ObituaryComposer } from "./templates/obituary-template";
 import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
@@ -192,6 +194,20 @@ export function Step2Compose() {
               positions={positions}
               position={v.position ?? ""}
               onPosition={(id) => setValue("position", id, { shouldDirty: true })}
+            />
+          )}
+          {(!isText || isObituary || isTender) && (
+            <CanvaReturn
+              widthCm={v.widthCm}
+              heightCm={v.heightCm}
+              attachedName={v.artwork?.name}
+              onAttach={(file) => {
+                // A design returned from Canva becomes the ad artwork (same path as an uploaded file or a generated poster).
+                const meta: FileMeta = { name: file.name, size: file.size, type: file.type, previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined };
+                if (displayOnly) update({ creativeMode: "upload" });
+                setValue("artwork", meta, { shouldValidate: true, shouldDirty: true });
+                void uploadArtwork(file).then((r) => { if (r.url) setValue("artwork", { ...meta, url: r.url }, { shouldValidate: true, shouldDirty: true }); });
+              }}
             />
           )}
           {displayOnly && mode === "upload" && (
