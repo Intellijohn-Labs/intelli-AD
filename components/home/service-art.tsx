@@ -46,7 +46,7 @@ export function ClassifiedTextArt() {
         <Lin id="ct-edge" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#e8dcc0" /><Stop o={1} c="#b9a679" /></Lin>
         <Lin id="ct-mark" x1={0} y1={0} x2={1} y2={0}><Stop o={0} c="#FDE047" a={0.88} /><Stop o={0.5} c="#FBBF24" a={0.85} /><Stop o={1} c="#F59E0B" a={0.85} /></Lin>
         <Lin id="gold-grad" x1={0} y1={0} x2={1} y2={1}><Stop o={0} c="#FEF3C7" /><Stop o={0.3} c="#FBBF24" /><Stop o={0.65} c="#D97706" /><Stop o={1} c="#92400E" /></Lin>
-        <Lin id="ct-metal" x1={0} y1={0} x2={1} y2={0}><Stop o={0} c="#0f172a" /><Stop o={0.3} c="#475569" /><Stop o={0.45} c="#e2e8f0" /><Stop o={0.62} c="#64748b" /><Stop o={1} c="#0b1220" /></Lin>
+        <Lin id="ct-metal" x1={0} y1={0} x2={1} y2={0}><Stop o={0} c="#0B1215" /><Stop o={0.3} c="#475569" /><Stop o={0.45} c="#e2e8f0" /><Stop o={0.62} c="#64748b" /><Stop o={1} c="#0b1220" /></Lin>
         <Lin id="ct-barrel" x1={0} y1={0} x2={1} y2={0}><Stop o={0} c="#172554" /><Stop o={0.35} c="#4f6ef0" /><Stop o={0.5} c="#93a8ff" /><Stop o={0.7} c="#3347c9" /><Stop o={1} c="#0f1b4d" /></Lin>
         <filter id="ct-grain" x="0" y="0" width="100%" height="100%">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" />
@@ -106,11 +106,11 @@ export function ClassifiedDisplayArt() {
         <Blur id="cd-glow" s={4} />
         <Lin id="cd-plane" x2={1} y2={1}><Stop o={0} c="#bfdbfe" a={0.9} /><Stop o={1} c="#c7d2fe" a={0.55} /></Lin>
         <Lin id="cd-face" x2={1} y2={1}><Stop o={0} c="#ffffff" /><Stop o={0.6} c="#eef2ff" /><Stop o={1} c="#dbe4ff" /></Lin>
-        <Lin id="cd-rim" x2={1} y2={1}><Stop o={0} c="#38bdf8" /><Stop o={0.5} c="#2563eb" /><Stop o={1} c="#4338ca" /></Lin>
+        <Lin id="cd-rim" x2={1} y2={1}><Stop o={0} c="#34D399" /><Stop o={0.5} c="#0D9488" /><Stop o={1} c="#4338ca" /></Lin>
         <Lin id="cd-side" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#4338ca" /><Stop o={1} c="#1e1b4b" /></Lin>
         <radialGradient id="cd-av" cx="0.35" cy="0.3" r="0.9"><Stop o={0} c="#bae6fd" /><Stop o={0.5} c="#6366f1" /><Stop o={1} c="#312e81" /></radialGradient>
         <radialGradient id="cd-body" cx="0.4" cy="0.2" r="0.9"><Stop o={0} c="#ffffff" /><Stop o={1} c="#a5b4fc" /></radialGradient>
-        <Lin id="cd-head" x2={1} y2={0}><Stop o={0} c="#1d4ed8" /><Stop o={1} c="#6366f1" /></Lin>
+        <Lin id="cd-head" x2={1} y2={0}><Stop o={0} c="#0F766E" /><Stop o={1} c="#6366f1" /></Lin>
         <Lin id="cd-pill" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#a5f3fc" /><Stop o={0.5} c="#22d3ee" /><Stop o={1} c="#0891b2" /></Lin>
         <Lin id="cd-glass" x2={1} y2={1}><Stop o={0} c="#fff" a={0.75} /><Stop o={0.5} c="#fff" a={0.12} /><Stop o={1} c="#fff" a={0} /></Lin>
         <clipPath id="cd-av-clip"><circle cx="76" cy="78" r="20" /></clipPath>
@@ -122,7 +122,7 @@ export function ClassifiedDisplayArt() {
         <rect x="22" y="14" width="196" height="132" rx="22" fill="url(#cd-plane)" />
         <rect x="22" y="14" width="196" height="132" rx="22" fill="none" stroke="#fff" strokeWidth="1.2" opacity="0.7" />
         {/* box glow + extruded body */}
-        <use href="#cd-box" fill="none" stroke="#38bdf8" strokeWidth="5" opacity="0.5" filter="url(#cd-glow)" />
+        <use href="#cd-box" fill="none" stroke="#34D399" strokeWidth="5" opacity="0.5" filter="url(#cd-glow)" />
         <g filter="url(#cd-sh)">
           {[8, 7, 6, 5, 4, 3, 2, 1].map((k) => <use key={k} href="#cd-box" transform={`translate(${k * 0.5} ${k})`} fill="url(#cd-side)" />)}
           <use href="#cd-box" fill="url(#cd-face)" />
@@ -177,7 +177,7 @@ export function TenderNoticeArt() {
         <Lin id="tn-roll" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#fff3d1" /><Stop o={0.35} c="#e3c88a" /><Stop o={0.75} c="#b8944f" /><Stop o={1} c="#8a6a30" /></Lin>
         <radialGradient id="tn-crest" cx="0.35" cy="0.3" r="0.9"><Stop o={0} c="#FDE68A" /><Stop o={0.45} c="#D97706" /><Stop o={1} c="#78350F" /></radialGradient>
         <Lin id="tn-row" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#ffffff" /><Stop o={1} c="#e7e0cd" /></Lin>
-        <Lin id="tn-head" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#475569" /><Stop o={1} c="#1e293b" /></Lin>
+        <Lin id="tn-head" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#475569" /><Stop o={1} c="#1A2428" /></Lin>
         <filter id="tn-ink" x="-20%" y="-20%" width="140%" height="140%">
           <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n" />
           <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 2.0" result="m" />
@@ -253,7 +253,7 @@ export function ObituaryArt() {
         <radialGradient id="shading" cx="0.38" cy="0.3" r="0.85"><Stop o={0} c="#e9e0d2" /><Stop o={0.55} c="#9c8c78" /><Stop o={1} c="#4a3f33" /></radialGradient>
         <Lin id="ob-photo" x1={0} y1={0} x2={0} y2={1}><Stop o={0} c="#f8f1e4" /><Stop o={1} c="#bfb09a" /></Lin>
         <Lin id="ob-brass" x1={0} y1={0} x2={1} y2={0}><Stop o={0} c="#92400E" /><Stop o={0.3} c="#FCD34D" /><Stop o={0.5} c="#FFF3B0" /><Stop o={0.75} c="#D97706" /><Stop o={1} c="#78350F" /></Lin>
-        <radialGradient id="ob-petal" cx="0.4" cy="0.35" r="0.8"><Stop o={0} c="#ffffff" /><Stop o={1} c="#F8FAFC" /></radialGradient>
+        <radialGradient id="ob-petal" cx="0.4" cy="0.35" r="0.8"><Stop o={0} c="#ffffff" /><Stop o={1} c="#F2F5F4" /></radialGradient>
         <clipPath id="ob-clip"><ellipse cx="108" cy="68" rx="30" ry="38" /></clipPath>
       </defs>
       <ellipse cx="108" cy="68" rx="90" ry="78" fill="url(#ob-glow)" />
@@ -322,7 +322,7 @@ export function JacketsArt() {
           <rect x={left ? 8 : 6} y="19" width={left ? 30 : 26} height="3" rx="1.5" fill="#fff" opacity="0.6" />
           {!left && <g><rect x="52" y="5" width="24" height="18" rx="3" fill="#fff" opacity="0.95" /><rect x="56" y="9" width="16" height="3.4" rx="1.7" fill="#7C3AED" /><rect x="56" y="15" width="10" height="3.4" rx="1.7" fill="#F97316" /></g>}
           {/* headline + photo + mini ad layouts */}
-          <rect x="6" y="36" width="70" height="8" rx="2" fill="#1e293b" opacity="0.88" />
+          <rect x="6" y="36" width="70" height="8" rx="2" fill="#1A2428" opacity="0.88" />
           <rect x="6" y="48" width="33" height="25" rx="3" fill="url(#jk-img)" />
           <path d="M6 73l11-11 8 7 7-9 7 9v4Z" fill="#fff" opacity="0.45" />
           {[0, 1, 2].map((i) => <rect key={i} x="43" y={49 + i * 8} width={[31, 25, 29][i]} height="4" rx="2" fill="#94a3b8" opacity="0.9" />)}

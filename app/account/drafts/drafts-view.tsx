@@ -45,7 +45,7 @@ export function DraftsView() {
             const papers = Object.keys(s.selection).filter((k) => s.selection[k]?.length).map((k) => getNewspaper(k)?.name).filter(Boolean).join(", ");
             const snippet = s.text.trim().replace(/\s+/g, " ");
             return (
-              <li key={d.id} className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-white/15 dark:bg-[#0F1D3D]">
+              <li key={d.id} className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-white/15 dark:bg-[#121B1E]">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-bold">{papers || "No publication chosen yet"}</p>

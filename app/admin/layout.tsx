@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!isAdminUser(user)) redirect("/login?notice=unauthorized");
   // Isolated shell: own header, no customer header/footer/stepper/booking actions (the root layout hides them under /admin).
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950">
+    <div className="min-h-screen bg-[#F2F5F4] dark:bg-slate-950">
       <AdminHeader email={user?.email ?? ""} />
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">{children}</div>
     </div>

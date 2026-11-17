@@ -7,12 +7,12 @@ import type { AdType } from "@/lib/types";
 
 function Row({ label, sub, value, negative, strong, muted }: { label: string; sub?: string; value: number; negative?: boolean; strong?: boolean; muted?: boolean }) {
   return (
-    <div className={cn("flex items-start justify-between gap-4 border-b border-slate-100 py-2 text-sm last:border-b-0", strong && "border-t border-b-0 border-slate-200 pt-3 text-base font-bold", muted && "text-slate-500")}>
+    <div className={cn("flex items-start justify-between gap-4 border-b border-slate-100 py-2 text-sm last:border-b-0 dark:border-white/10", strong && "border-t border-b-0 border-slate-200 pt-3 text-base font-bold dark:border-white/15", muted && "text-slate-500 dark:text-slate-400")}>
       <div>
         <p>{label}</p>
         {sub && <p className="text-xs font-normal text-zinc-500 dark:text-slate-200">{sub}</p>}
       </div>
-      <p className={cn("font-semibold tracking-tight tabular-nums", negative && "font-semibold text-emerald-700 dark:text-emerald-200")}>
+      <p className={cn("font-semibold tracking-tight tabular-nums", strong && "dark:text-emerald-300 dark:[text-shadow:0_0_18px_rgba(52,211,153,0.35)]", negative && "font-semibold text-emerald-700 dark:text-emerald-300")}>
         {negative && value > 0 ? "−" : ""}
         {formatINR(value, { decimals: true })}
       </p>
@@ -59,7 +59,7 @@ export function PriceBreakdown({ quote, adType, showEditions }: { quote: Quote; 
       <Row label={tr("Total payable")} value={t.total} strong />
       {showEditions && quote.lines.length > 0 && (
         <details className="mt-3 rounded border border-dashed border-zinc-400 bg-white p-3 text-sm">
-          <summary className="cursor-pointer font-semibold text-[#0F172A] dark:text-zinc-100">{tr("Per-edition breakdown")}</summary>
+          <summary className="cursor-pointer font-semibold text-[#0B1215] dark:text-zinc-100">{tr("Per-edition breakdown")}</summary>
           <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
             {quote.lines.map((l) => (
               <li key={l.editionId} className="flex justify-between gap-3 py-1.5">

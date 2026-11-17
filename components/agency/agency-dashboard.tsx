@@ -26,7 +26,7 @@ const KINDS: { id: ExpressKind; label: string; adType: AdType; category?: Catego
 
 const TEXT_CATEGORIES: CategoryId[] = ["business", "matrimonial", "property", "recruitment", "public-notice", "name-change"];
 
-const card = "rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#2B3D6B] dark:bg-[#132247]";
+const card = "rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-[#34464B] dark:bg-[#141E21]";
 
 function printReceipts(user: AuthUser, list: AgencyBooking[]) {
   if (!list.length) return;
@@ -136,7 +136,7 @@ export function AgencyDashboard() {
               <label className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-200">
                 <input type="checkbox" checked={allOn} onChange={() => setSelected(allOn ? [] : ledger.bookings.map((b) => b.id))} className="h-4 w-4 accent-blue-700" /> Select all for bulk printing
               </label>
-              <ul className="mt-2 divide-y divide-slate-200 dark:divide-[#2B3D6B]">
+              <ul className="mt-2 divide-y divide-slate-200 dark:divide-[#34464B]">
                 {ledger.bookings.map((b) => (
                   <li key={b.id} className="flex items-start gap-3 py-3">
                     <input type="checkbox" aria-label={`Select ${b.roNumber}`} checked={selected.includes(b.id)} onChange={() => toggle(b.id)} className="mt-1 h-4 w-4 accent-blue-700" />

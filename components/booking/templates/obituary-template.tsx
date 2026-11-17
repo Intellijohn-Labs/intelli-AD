@@ -94,7 +94,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
   });
 
   return (
-    <section aria-labelledby="obit-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#1F2F57] dark:bg-slate-800/40">
+    <section aria-labelledby="obit-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#243236] dark:bg-slate-800/40">
       <div>
         <h3 id="obit-h" className="font-bold text-zinc-900 dark:text-white">{anniv ? "Death Anniversary / In Memoriam · ചരമവാർഷികം" : "Obituary · മരണവാർത്ത"}</h3>
         <p className="mt-1 text-xs text-zinc-600 dark:text-slate-200">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
@@ -109,7 +109,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
 
       <div role="group" aria-label="Quick drafts" className="flex flex-wrap gap-2">
         {OBITUARY_PRESETS.filter((p) => p.kind === kind).map((p) => (
-          <button key={p.id} type="button" title={p.description} className={cn(chip, "border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-[#0F1D3D] dark:text-white")}
+          <button key={p.id} type="button" title={p.description} className={cn(chip, "border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-[#121B1E] dark:text-white")}
             onClick={() => apply({ ...p.build(new Date()), kind })}>
             {p.titleMl} <span className="font-normal text-zinc-500">· {p.title}</span>
           </button>
@@ -131,7 +131,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
             <p className="mb-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-100">Tribute verse · സ്മരണാഞ്ജലി വരികൾ</p>
             <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Tribute presets">
               {TRIBUTES.map((t) => (
-                <button key={t.id} type="button" onClick={() => set({ tribute: tributeText(t.id, f.name) })} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>{t.label}</button>
+                <button key={t.id} type="button" onClick={() => set({ tribute: tributeText(t.id, f.name) })} className={cn(chip, "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}>{t.label}</button>
               ))}
             </div>
             <ParagraphField id="ob-tribute" label="Tribute text" rows={4} maxHeight={260} value={f.tribute} onChange={(v) => set({ tribute: v })} placeholder="ഇവിടെ അനുശോചന കുറിപ്പുകൾ പാരഗ്രാഫുകളായി ടൈപ്പ് ചെയ്യുക (ഉദാ: ഞങ്ങളുടെ പ്രിയപ്പെട്ട... നിത്യശാന്തി നേരുന്നു)..." textClassName="font-clipping" />
@@ -191,14 +191,14 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
       <ParagraphField id="ob-prayer" label="Prayer / tribute · പ്രാർത്ഥന" hint="Printed in italics under the details · e.g. ആത്മാവിന് നിത്യശാന്തി നേരുന്നു." rows={3} maxHeight={240} value={f.prayer} onChange={(v) => set({ prayer: v })} textClassName="font-clipping" />
 
       {isText ? (
-        <p className="border-t border-zinc-300 pt-4 text-xs text-zinc-600 dark:border-[#1F2F57] dark:text-slate-200">Booked as Classified Text: billed per line, with no photo or border. Choose Classified Display in step 1 for a photo, frame and size-based pricing.</p>
+        <p className="border-t border-zinc-300 pt-4 text-xs text-zinc-600 dark:border-[#243236] dark:text-slate-200">Booked as Classified Text: billed per line, with no photo or border. Choose Classified Display in step 1 for a photo, frame and size-based pricing.</p>
       ) : (
-      <fieldset className="space-y-4 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
+      <fieldset className="space-y-4 border-t border-zinc-300 pt-4 dark:border-[#243236]">
         <legend className="text-sm font-bold">Photo, frame &amp; heading · ഫോട്ടോ</legend>
         <div role="radiogroup" aria-label="Memorial type" className="grid grid-cols-2 gap-2">
           {([[false, "ഒരാൾ (Single)"], [true, "രണ്ട് പേർ (Joint / Couple Memorial)"]] as const).map(([j, label]) => (
             <button key={String(j)} type="button" role="radio" aria-checked={!!f.joint === j} onClick={() => set({ joint: j })}
-              className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", !!f.joint === j ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+              className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", !!f.joint === j ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}>
               {label}
             </button>
           ))}
@@ -208,7 +208,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
         )}
         <PhotoCropper label={f.joint ? "Left portrait · ഇടതുവശത്തെ ഫോട്ടോ" : undefined} photo={state.artwork} onPhoto={onPhoto} crop={f.photoCrop} onCrop={(c) => set({ photoCrop: c })} round={f.photoFrame === "round"} />
         {f.joint && (
-          <div className="space-y-3 rounded-lg border border-zinc-300 bg-white/60 p-3 dark:border-[#1F2F57] dark:bg-slate-900/30">
+          <div className="space-y-3 rounded-lg border border-zinc-300 bg-white/60 p-3 dark:border-[#243236] dark:bg-slate-900/30">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="ob-b1" label="First person · birth date · ജനന തീയതി"><Input id="ob-b1" {...input("birthDate", "date")} /></Field>
               <Field id="ob-d1" label="First person · death date · മരണ തീയതി" hint={anniv ? undefined : "Blank uses the date of demise"}><Input id="ob-d1" {...input("deathDate", "date")} /></Field>
@@ -221,7 +221,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
         )}
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Photo shape">
           {(["round", "rect"] as const).map((fr) => (
-            <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
+            <button key={fr} type="button" aria-pressed={f.photoFrame === fr} onClick={() => set({ photoFrame: fr })} className={cn(chip, f.photoFrame === fr ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#121B1E]")}>
               {fr === "round" ? "Circular photo" : "Rectangular photo"}
             </button>
           ))}
@@ -231,7 +231,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
           <div role="radiogroup" aria-label="Border frame" className="grid grid-cols-3 gap-2">
             {FRAME_STYLES.map((a) => (
               <button key={a.id} type="button" role="radio" aria-checked={f.frameStyle === a.id} onClick={() => set({ frameStyle: a.id })}
-                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameStyle === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", f.frameStyle === a.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}>
                 {a.ml}<span className="block font-normal text-zinc-500">{a.en}</span>
               </button>
             ))}
@@ -242,7 +242,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
           <div role="radiogroup" aria-label="Heading style" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {HEADING_STYLES.map((h) => (
               <button key={h.id} type="button" role="radio" aria-checked={f.headingStyle === h.id} onClick={() => set({ headingStyle: h.id })}
-                className={cn("rounded border px-2 py-2 text-center text-base focus-visible:outline-2 focus-visible:outline-navy-500", f.headingStyle === h.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}
+                className={cn("rounded border px-2 py-2 text-center text-base focus-visible:outline-2 focus-visible:outline-navy-500", f.headingStyle === h.id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}
                 style={{ fontFamily: h.family, fontWeight: h.weight, fontStyle: h.italic ? "italic" : "normal", letterSpacing: h.spacing }}>
                 {h.label}
               </button>
@@ -255,7 +255,7 @@ export function ObituaryComposer({ onText, onPhoto, onPoster, onColor, charsPerL
             {([["bw", "Black & White", "ബ്ലാക്ക് & വൈറ്റ്"], ["color", "Colour", "Multi Colour · നിറം"]] as const).map(([id, en, ml]) => (
               <button key={id} type="button" role="radio" aria-checked={state.display.colorMode === id}
                 onClick={() => (onColor ? onColor(id) : update({ display: { ...state.display, colorMode: id } }))}
-                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", state.display.colorMode === id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}>
+                className={cn("rounded border px-2 py-2 text-center text-xs font-semibold focus-visible:outline-2 focus-visible:outline-navy-500", state.display.colorMode === id ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}>
                 {en}<span className="block font-normal text-zinc-500">{ml}</span>
               </button>
             ))}
@@ -321,7 +321,7 @@ function Frame({ url, round, crop, onCrop, onPhoto, scale = 1 }: { scale?: numbe
   return (
     <div className="relative shrink-0 overflow-visible" style={{ width: W + pad * 2, height: H + pad * 2, padding: pad }} aria-hidden={!url && !interactive}>
       <div
-        className={cn("group/photo relative h-full w-full overflow-hidden border-2 border-[#0F172A] bg-zinc-100", round && "rounded-full", interactive && "cursor-grab touch-none active:cursor-grabbing")}
+        className={cn("group/photo relative h-full w-full overflow-hidden border-2 border-[#0B1215] bg-zinc-100", round && "rounded-full", interactive && "cursor-grab touch-none active:cursor-grabbing")}
         {...(interactive ? { onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: () => { drag.current = null; }, role: "button", tabIndex: 0, "aria-label": url ? "Drag to reposition the photo, click to replace it" : "Click to add a photo", onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter") input.current?.click(); } } : {})}
       >
         {url ? (
@@ -365,11 +365,11 @@ function Cross({ className }: { className?: string }) {
 /** Border frame around the whole notice: traditional floral bands, Christian cross, or a minimal rule. */
 function NoticeFrame({ style, children }: { style: "traditional" | "christian" | "minimal"; children: React.ReactNode }) {
   // The frame grows to the height it is given (the print box) and centres its content, so a short notice sits balanced in it.
-  if (style === "minimal") return <div className="flex flex-1 flex-col justify-center border border-[#0F172A] p-3">{children}</div>;
+  if (style === "minimal") return <div className="flex flex-1 flex-col justify-center border border-[#0B1215] p-3">{children}</div>;
   if (style === "christian") {
     return (
-      <div className="flex flex-1 flex-col border-[3px] border-double border-[#0F172A] p-1">
-        <div className="flex flex-1 flex-col justify-center border border-[#0F172A] p-3 pt-2">
+      <div className="flex flex-1 flex-col border-[3px] border-double border-[#0B1215] p-1">
+        <div className="flex flex-1 flex-col justify-center border border-[#0B1215] p-3 pt-2">
           <div className="mb-1 flex justify-center"><Cross /></div>
           {children}
         </div>
@@ -377,9 +377,9 @@ function NoticeFrame({ style, children }: { style: "traditional" | "christian" |
     );
   }
   return (
-    <div className="flex flex-1 flex-col border-2 border-[#0F172A] p-1">
+    <div className="flex flex-1 flex-col border-2 border-[#0B1215] p-1">
       <FloralBand />
-      <div className="flex flex-1 flex-col justify-center border-x border-[#0F172A] px-3 py-2">{children}</div>
+      <div className="flex flex-1 flex-col justify-center border-x border-[#0B1215] px-3 py-2">{children}</div>
       <FloralBand />
     </div>
   );
@@ -430,7 +430,7 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
         <p className="py-6 text-center text-sm text-zinc-400 italic">Your notice appears here as you fill the form…</p>
       ) : (
         <NoticeFrame style={isText ? "minimal" : f.frameStyle}>
-          <h4 className="flex items-center justify-center gap-2 border-b border-[#0F172A] pb-1.5 text-center text-lg leading-snug" style={{ fontFamily: heading.family, fontWeight: heading.weight, fontStyle: heading.italic ? "italic" : "normal", letterSpacing: heading.spacing }}>
+          <h4 className="flex items-center justify-center gap-2 border-b border-[#0B1215] pb-1.5 text-center text-lg leading-snug" style={{ fontFamily: heading.family, fontWeight: heading.weight, fontStyle: heading.italic ? "italic" : "normal", letterSpacing: heading.spacing }}>
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
             {inlineText ? <EditableLine value={header} onCommit={commit(0)} /> : header}
             {anniv && <Flame className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
@@ -446,8 +446,8 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
             </div>
           </div>
           {footer && (inlineText
-            ? <EditableLine value={footer} onCommit={commit(all.length - 1)} className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic" />
-            : <p className="mt-2 border-t border-[#0F172A] pt-1 text-right text-[13px] font-bold italic">{footer}</p>)}
+            ? <EditableLine value={footer} onCommit={commit(all.length - 1)} className="mt-2 border-t border-[#0B1215] pt-1 text-right text-[13px] font-bold italic" />
+            : <p className="mt-2 border-t border-[#0B1215] pt-1 text-right text-[13px] font-bold italic">{footer}</p>)}
         </NoticeFrame>
       )}
     </div>
@@ -456,7 +456,7 @@ export function ObituaryPreview({ state, bare = false, editable = false, inlineT
   if (bare) return notice;
   return (
     <figure aria-label="Obituary preview" className="mx-auto w-full" style={{ maxWidth: narrow ? 240 : 384 }}>
-      <div className="border-2 border-[#0F172A] shadow-sm">{notice}</div>
+      <div className="border-2 border-[#0B1215] shadow-sm">{notice}</div>
       <PreviewCaption state={state} />
     </figure>
   );

@@ -59,7 +59,7 @@ export function DisplaySizer({
               type="button"
               aria-pressed={on}
               onClick={() => onSize(p.widthCm, p.heightCm)}
-              className={cn("rounded border px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-navy-500", on ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#0F1D3D]")}
+              className={cn("rounded border px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-navy-500", on ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white hover:border-navy-400 dark:bg-[#121B1E]")}
             >
               <span className="block font-mono font-bold">{p.widthCm} × {p.heightCm} cm</span>
               <span className="block text-xs text-zinc-500">{p.label} · {p.widthCm * p.heightCm} cm²</span>
@@ -81,7 +81,7 @@ export function DisplaySizer({
 
       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Colour mode">
         {(["bw", "color"] as const).map((c) => (
-          <label key={c} className={cn("cursor-pointer rounded border px-3 py-2.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", colorMode === c ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
+          <label key={c} className={cn("cursor-pointer rounded border px-3 py-2.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy-500", colorMode === c ? "border-navy-700 bg-navy-50 ring-1 ring-navy-700 dark:bg-navy-900/60" : "border-zinc-300 bg-white dark:bg-[#121B1E]")}>
             <input type="radio" className="sr-only" checked={colorMode === c} onChange={() => onColor(c)} />
             <span className="font-semibold">{c === "bw" ? "Black & white" : "Multi-colour"}</span>
             <span className="block text-xs text-zinc-500">{c === "bw" ? "Colour multiplier ×1.00" : `Colour multiplier ×${(1 + colorPremiumPct / 100).toFixed(2)}`}</span>

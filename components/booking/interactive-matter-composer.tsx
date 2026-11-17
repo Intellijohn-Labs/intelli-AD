@@ -42,7 +42,7 @@ export function InteractiveMatterComposer({ value, onChange, chars, words, lines
   const frame = ob.frameStyle === "christian" ? "border-[3px] border-double" : ob.frameStyle === "minimal" ? "border" : "border-2 ring-2 ring-offset-2 ring-stone-400";
 
   return (
-    <section aria-labelledby="matter-h" className="rounded-xl border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#0F1D3D]">
+    <section aria-labelledby="matter-h" className="rounded-xl border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#121B1E]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id="matter-h" className="font-bold">ഫൈനൽ പ്രിന്റ് ലേഔട്ടും മാറ്ററും / Final Print Layout &amp; Matter</h3>

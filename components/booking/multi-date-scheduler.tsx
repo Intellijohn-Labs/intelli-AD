@@ -79,7 +79,7 @@ export function MultiDateScheduler({ now, earliest, max, isDisabled, isNonPrint 
   const pct = multiDayPct(dates.length);
 
   return (
-    <section aria-labelledby="sched-h" className="rounded-xl border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#0F1D3D]">
+    <section aria-labelledby="sched-h" className="rounded-xl border border-zinc-300 bg-white p-4 dark:border-white/15 dark:bg-[#121B1E]">
       <h3 id="sched-h" className="font-bold">പ്രസിദ്ധീകരണ തീയതികളും ഷെഡ്യൂളും / Publication Dates &amp; Repeat</h3>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">ഒരേ പരസ്യം ഒന്നിലധികം ദിവസങ്ങളിൽ നൽകാം. 3 ദിവസത്തിൽ കൂടുതൽ ബുക്ക് ചെയ്യുമ്പോൾ പ്രത്യേക ഇളവുകൾ ലഭ്യമാണ്.</p>
 

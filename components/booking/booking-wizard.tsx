@@ -51,7 +51,7 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
         const active = s.n === current;
         return (
           <li key={s.n} aria-current={active ? "step" : undefined}>
-            <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex w-full min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-left transition-colors disabled:cursor-default sm:justify-start sm:px-3", active ? "bg-[#0F172A] text-white shadow-[0_4px_10px_-4px_rgba(15,23,42,0.5)]" : done ? "text-slate-700 hover:bg-slate-50" : "text-slate-400")}>
+            <button type="button" disabled={!done} onClick={() => onGo(s.n)} className={cn("flex w-full min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-left transition-colors disabled:cursor-default sm:justify-start sm:px-3", active ? "bg-[#0B1215] text-white shadow-[0_4px_10px_-4px_rgba(15,23,42,0.5)]" : done ? "text-slate-700 hover:bg-slate-50" : "text-slate-400")}>
               <span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular-nums", active ? "bg-white/15 text-white" : done ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
                 {done ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : s.n}
               </span>
@@ -61,7 +61,7 @@ function Stepper({ current, onGo }: { current: Step; onGo: (s: Step) => void }) 
           </li>
         );
       })}
-      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-slate-100"><span className="block h-full bg-[#2563EB] transition-[width] duration-300" style={{ width: `${(current / 4) * 100}%` }} /></span>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-slate-100"><span className="block h-full bg-[#0D9488] transition-[width] duration-300" style={{ width: `${(current / 4) * 100}%` }} /></span>
     </ol>
   );
 }
@@ -82,7 +82,7 @@ function LivePreview({ state }: { state: BookingState }) {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
         className="group relative -m-2 cursor-pointer rounded-2xl p-2 transition-all hover:ring-2 hover:ring-blue-500/50 focus-visible:outline-2 focus-visible:outline-blue-600"
       >
-        <h3 className="mb-4 border-b border-[#0F172A] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#2B3D6B]">LIVE NEWSPAPER PROOF / അച്ചടി പ്രിവ്യൂ</h3>
+        <h3 className="mb-4 border-b border-[#0B1215] pb-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-[#34464B]">LIVE NEWSPAPER PROOF / അച്ചടി പ്രിവ്യൂ</h3>
         <span aria-hidden="true" className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">🔍 Click to expand &amp; customize layout</span>
         <div className="pointer-events-none"><AdRender state={state} /></div>
       </div>
@@ -124,12 +124,12 @@ function MobileProofBar({ state }: { state: BookingState }) {
 
   return (
     <div className="lg:hidden">
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E2E8F0] bg-[#F8FAFC]/95 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(24,24,27,0.08)] backdrop-blur-md dark:border-[#1F2F57] dark:bg-[#0B132B]/95">
+      <div className="fixed inset-x-0 bottom-0 z-40 dark border-t border-white/10 bg-[#0B1215]/95 px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-white shadow-[0_-8px_24px_rgba(11,18,21,0.4)] backdrop-blur-md">
         <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
-          <motion.p animate={controls} className="min-w-0 truncate font-mono text-sm font-bold text-slate-900 tabular-nums dark:text-white" aria-live="polite">
-            {size} · <span className="text-[#059669] dark:text-emerald-400"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
+          <motion.p animate={controls} className="min-w-0 truncate text-sm font-semibold text-slate-300 tabular-nums" aria-live="polite">
+            {size} · <span className="text-base font-extrabold text-emerald-300"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
           </motion.p>
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#0F172A] bg-[#0F172A] px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-[#1E293B] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]">
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-emerald-400 px-3.5 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-emerald-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
             <Eye className="h-4 w-4" aria-hidden="true" /> Preview Ad
           </button>
         </div>
@@ -141,7 +141,7 @@ function MobileProofBar({ state }: { state: BookingState }) {
           <motion.div className="fixed inset-0 z-[999] flex items-end bg-slate-900/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
             <motion.div
               role="dialog" aria-modal="true" aria-label="Live newspaper proof"
-              className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-3xl bg-[#F6F8FA] p-4 pb-8 shadow-2xl dark:bg-[#0B132B]"
+              className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-3xl bg-[#F6F8FA] p-4 pb-8 shadow-2xl dark:bg-[#0B1215]"
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 38 }}
             >
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden="true" />
@@ -182,9 +182,9 @@ function MiniSummary({ state }: { state: BookingState }) {
   const capsTag = capsLine ? ` (${t("All Caps")})` : "";
   const unitWord = (u: string) => (u === "words" ? t("word") : u === "lines" ? t("line") : t("cm²"));
   return (
-    <Card className="p-5 shadow-lg shadow-slate-900/[0.04] sm:p-6">
+    <Card className="dark border-white/10 bg-[#0B1215] p-5 text-white shadow-[0_24px_48px_-24px_rgba(11,18,21,0.7)] dark:border-white/10 dark:bg-[#0B1215] sm:p-6">
       <div className="mb-3 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold tracking-wider text-emerald-700 uppercase"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />{t("Live estimate")}</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold tracking-wider text-emerald-300 uppercase"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden="true" />{t("Live estimate")}</span>
         <span className="text-xs font-medium text-slate-400">{t("Release Order")}</span>
       </div>
       {(() => {
@@ -197,33 +197,33 @@ function MiniSummary({ state }: { state: BookingState }) {
           paperLines.some((l) => l.bwOnly) && { k: "bw", text: t("B/W only"), tone: "gold" },
           state.adType !== "classified-text" && state.display.colorMode === "color" && { k: "clr", text: t("Colour"), tone: "terra" },
         ].filter(Boolean) as { k: string; text: string; tone: string }[];
-        return chips.length ? <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Active rate options">{chips.map((c) => <li key={c.k} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", c.tone === "ink" ? "border-[#0F172A] bg-[#0F172A] text-white" : c.tone === "gold" ? "border-[#B45309]/40 bg-[#B45309]/10 text-[#B45309]" : "border-[#2563EB]/40 bg-[#2563EB]/10 text-[#2563EB]")}>{c.text}</li>)}</ul> : null;
+        return chips.length ? <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Active rate options">{chips.map((c) => <li key={c.k} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", c.tone === "ink" ? "border-white/15 bg-white/10 text-white" : c.tone === "gold" ? "border-amber-400/25 bg-amber-400/15 text-amber-300" : "border-emerald-400/30 bg-emerald-400/10 text-emerald-300")}>{c.text}</li>)}</ul> : null;
       })()}
-      <p className="text-[2.5rem] leading-none font-extrabold tracking-[-0.03em] tabular-nums text-[#0F172A] dark:text-zinc-50">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
-      <p className="mt-1.5 text-xs font-medium text-slate-500">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</p>
-      <dl className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-sm">
+      <p className="text-[2.5rem] leading-none font-extrabold tracking-[-0.03em] tabular-nums text-emerald-300 [text-shadow:0_0_28px_rgba(52,211,153,0.4)]">{loaded ? <AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /> : <span aria-label="Loading rates" className="inline-block h-9 w-28 animate-pulse rounded bg-zinc-200 align-middle dark:bg-white/15" />}</p>
+      <p className="mt-1.5 text-xs font-medium text-slate-400">{t("incl. {pct}% GST", { pct: Math.round(GST_RATE * 100) })}</p>
+      <dl className="mt-5 space-y-2 border-t border-white/10 pt-4 text-sm">
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Type")}</dt><dd className="font-medium">{t(getAdType(state.adType).short)}</dd></div>
         <div className="flex justify-between gap-3"><dt className="text-zinc-500">{t("Category")}</dt><dd className="text-right font-medium">{(() => { const c = getCategory(state.categoryId); return c ? tl(c.name, c.nameMl) : "—"; })()}</dd></div>
         <div className="flex justify-between"><dt className="text-zinc-500">{t("Editions")}</dt><dd className="font-medium">{quote.editionCount}</dd></div>
       </dl>
       {quote.editionCount > 0 && (
-        <div className="mt-4 border-t border-slate-100 pt-4">
+        <div className="mt-4 border-t border-white/10 pt-4">
           <PriceBreakdown quote={quote} adType={state.adType} />
         </div>
       )}
-      <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 tabular-nums">
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300 tabular-nums">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
         {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName! + (pkg.capsApplied ? ` (${t("All Caps")})` : ""), price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name) + capsTag, price: formatINR(capsLine ? capsLine.rate : rate.amount), unit: capsLine ? unitWord("words") : t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
       {state.step < 4 && (
-        <button type="button" onClick={() => (document.querySelector("[data-step-next]") as HTMLButtonElement | null)?.click()} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-4 py-3 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.2),0_8px_16px_-8px_rgba(15,23,42,0.5)] transition-all hover:-translate-y-px hover:bg-[#1E293B]">
+        <button type="button" onClick={() => (document.querySelector("[data-step-next]") as HTMLButtonElement | null)?.click()} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(52,211,153,0.4),0_10px_24px_-10px_rgba(52,211,153,0.6)] transition-all hover:-translate-y-px hover:bg-emerald-300">
           {t(state.step === 1 ? "Continue to Compose" : state.step === 2 ? "Continue to Schedule" : "Continue to Review")} →
         </button>
       )}
       {user && (
         <button type="button" onClick={() => toast(saveDraft(user.identifier, state) ? "Draft saved to Ad Drafts" : "Couldn't save the draft in this browser")}
-          className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200/80 px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/20 dark:hover:bg-white/10">
+          className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/5">
           <Save className="h-4 w-4" /> {t("Save as draft")}
         </button>
       )}

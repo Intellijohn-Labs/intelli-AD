@@ -11,7 +11,7 @@ const STAGGER_S = 0.2;
 
 /** "നമസ്കാരം" (Namaskaram), one glyph cluster per entry, each with its own colour + glow. */
 const GLYPHS = [
-  { ch: "ന", color: "#38bdf8", glow: "56,189,248" }, // sky blue
+  { ch: "ന", color: "#34D399", glow: "56,189,248" }, // sky blue
   { ch: "മ", color: "#fbbf24", glow: "251,191,36" }, // warm gold
   { ch: "സ്കാ", color: "#fb7185", glow: "251,113,133" }, // rose / coral
   { ch: "രം", color: "#a855f7", glow: "168,85,247" }, // electric violet

@@ -57,7 +57,7 @@ function MetalClip() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 48" className="absolute -top-5 right-5 h-11 w-6 rotate-12 drop-shadow-[0_2px_2px_rgba(0,0,0,0.35)]">
       <defs>
-        <linearGradient id="clip-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f8fafc" /><stop offset="0.35" stopColor="#94a3b8" /><stop offset="0.6" stopColor="#e2e8f0" /><stop offset="1" stopColor="#64748b" /></linearGradient>
+        <linearGradient id="clip-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#F2F5F4" /><stop offset="0.35" stopColor="#94a3b8" /><stop offset="0.6" stopColor="#e2e8f0" /><stop offset="1" stopColor="#64748b" /></linearGradient>
       </defs>
       <path d="M8 34V12a5 5 0 0 1 10 0v26a8 8 0 0 1-16 0V16" fill="none" stroke="url(#clip-metal)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M8 33V13a5 5 0 0 1 3-4.6" fill="none" stroke="#fff" strokeWidth="0.9" strokeLinecap="round" opacity="0.9" />
@@ -83,7 +83,7 @@ function Clipping({ ad, index }: { ad: Ad; index: number }) {
       )}
       <div className="font-typeset">
         <div className="flex items-center justify-between gap-2 border-y border-slate-800 py-1">
-          <span className="text-sm leading-tight font-bold text-[#0f172a]" style={paper.style}>{paper.label}</span>
+          <span className="text-sm leading-tight font-bold text-[#0B1215]" style={paper.style}>{paper.label}</span>
           <span className="border border-slate-700 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-800 uppercase">{ad.category}</span>
         </div>
         <div className={cn("mt-2 p-2 text-xs leading-snug break-words text-slate-900 sm:text-sm", ad.boxed && "border-2 border-slate-900", ad.bold && "font-bold")}>

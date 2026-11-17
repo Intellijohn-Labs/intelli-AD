@@ -66,14 +66,14 @@ export function ServicesHub() {
   return (
     <section aria-labelledby="services-h" className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
       <div className="mx-auto mb-10 max-w-3xl text-center">
-        <p className="mb-4 inline-block rounded-full bg-slate-100 px-3 py-1 font-mono text-[11px] tracking-widest text-slate-700 uppercase dark:bg-[#17284F] dark:text-[#FFFFFF]">{t("Newspaper advertising services")}</p>
+        <p className="mb-4 inline-block rounded-full bg-slate-100 px-3 py-1 font-mono text-[11px] tracking-widest text-slate-700 uppercase dark:bg-[#1A2629] dark:text-[#FFFFFF]">{t("Newspaper advertising services")}</p>
         <h2 id="services-h" className="font-[family-name:var(--font-jakarta)] text-3xl font-black tracking-tight text-slate-900 md:text-5xl dark:text-white">{t("Newspaper Advertising Hub")}</h2>
         <p className="mt-3 text-lg font-semibold text-slate-800 dark:text-[#FFFFFF]">{tl("Choose Your Newspaper Advertising Format", "ഏത് തരം പത്രപരസ്യമാണ് നൽകേണ്ടത്?")}</p>
         <p className="mt-2 text-sm text-slate-600 md:text-base dark:text-[#FAFAFA]">{t("Book classifieds, display notices, tenders, and remembrances directly across Kerala's leading dailies.")}</p>
         <button
           type="button"
           onClick={showPublicationBar}
-          className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-800 shadow-2xs transition-colors hover:border-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#1F2F57] dark:bg-[#132247] dark:text-[#FFFFFF] dark:hover:border-[#FFFFFF]"
+          className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-800 shadow-2xs transition-colors hover:border-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#243236] dark:bg-[#141E21] dark:text-[#FFFFFF] dark:hover:border-[#FFFFFF]"
         >
           <Newspaper className="h-4 w-4 text-[#E11D48]" aria-hidden="true" />
           <span>{t("Booking in")}: <strong className="font-bold">{pn(paper)}</strong></span>
@@ -136,7 +136,7 @@ export function ServicesHub() {
 
       <ul className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Platform highlights">
         {STATS.map(({ icon: Icon, value, label, note }) => (
-          <li key={label} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:border-[#1F2F57]">
+          <li key={label} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:border-[#243236]">
             <Icon className="mt-1 h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
             <div className="min-w-0">
               <p className="font-mono text-xl leading-tight font-bold tracking-tight text-slate-900 dark:text-[#FFFFFF]">{value}</p>

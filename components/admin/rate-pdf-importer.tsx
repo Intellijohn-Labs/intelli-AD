@@ -29,7 +29,7 @@ const NUMS: { key: ImportField; label: string; types: ImportRow["ad_type"][]; st
   { key: "color_sq_cm_rate", label: "Colour ₹ / cm²", types: ["classified-display", "commercial-display"], step: "0.01" },
   { key: "color_surcharge_percent", label: "Colour +% (info)", types: ["classified-display", "commercial-display"], step: "0.01" },
 ];
-const card = "rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
+const card = "rounded-xl border border-[#E2E8F0] bg-[#F2F5F4] p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 const fmtSize = (b: number) => (b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
 /** Admin: upload a newspaper's tariff PDF, review the extracted rates in an editable table, then save them to the live rate book. */
@@ -160,7 +160,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
             const configured = ai ? ai.keys[e].configured : true;
             return (
               <button key={e} type="button" role="radio" aria-checked={engine === e} disabled={!!busy} onClick={() => setEngine(e)}
-                className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50", engine === e ? "bg-[#2563EB] text-white shadow-[inset_0_-1px_0_rgba(0,0,0,.18)]" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-700")}>
+                className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50", engine === e ? "bg-[#0D9488] text-white shadow-[inset_0_-1px_0_rgba(0,0,0,.18)]" : "text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-700")}>
                 {e === "claude" ? "Claude" : "Gemini"}
                 {!configured && <span className="ml-1.5 text-[10px] font-normal opacity-80">no key</span>}
               </button>
@@ -168,10 +168,10 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
           })}
         </div>
       </div>
-      {ai && !ai.keys[engine].configured && <p className="mt-1.5 text-xs text-[#1D4ED8] dark:text-amber-300">There&rsquo;s no {engine === "claude" ? "Claude" : "Gemini"} key saved yet. Add one in AI Settings, or pick the other parser.</p>}
+      {ai && !ai.keys[engine].configured && <p className="mt-1.5 text-xs text-[#0F766E] dark:text-amber-300">There&rsquo;s no {engine === "claude" ? "Claude" : "Gemini"} key saved yet. Add one in AI Settings, or pick the other parser.</p>}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-stretch">
-        <div className={cn("flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3", file ? "border-[#2563EB]/60 bg-white dark:bg-slate-800" : "border-slate-300 bg-[#F1F5F9] dark:border-slate-600 dark:bg-slate-800/60")}>
+        <div className={cn("flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3", file ? "border-[#0D9488]/60 bg-white dark:bg-slate-800" : "border-slate-300 bg-[#F1F5F9] dark:border-slate-600 dark:bg-slate-800/60")}>
           <input ref={fileRef} id="rate-pdf-file" type="file" accept="application/pdf,.pdf" disabled={!!busy} className="sr-only"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
@@ -182,7 +182,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
             }} />
           {file ? (
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="grid h-10 w-9 shrink-0 place-items-center rounded-sm border border-[#E2E8F0] bg-[#F8FAFC] text-[9px] font-black tracking-wider text-[#2563EB] shadow-[1px_1px_0_#E2E8F0] dark:border-slate-600 dark:bg-slate-900">PDF</span>
+              <span className="grid h-10 w-9 shrink-0 place-items-center rounded-sm border border-[#E2E8F0] bg-[#F2F5F4] text-[9px] font-black tracking-wider text-[#0D9488] shadow-[1px_1px_0_#E2E8F0] dark:border-slate-600 dark:bg-slate-900">PDF</span>
               <span className="min-w-0"><span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-50">{file.name}</span><span className="block text-xs text-slate-500">{fmtSize(file.size)} · ready to extract</span></span>
             </div>
           ) : (
@@ -190,7 +190,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
           )}
           <label htmlFor="rate-pdf-file" className={cn("cursor-pointer rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-800 shadow-[0_1px_0_#D6D3D1] hover:bg-slate-50 focus-within:outline-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50", !!busy && "pointer-events-none opacity-50")}>{file ? "Change PDF" : "Browse PDF"}</label>
         </div>
-        <button type="button" onClick={() => void extract()} disabled={!file || !!busy} className="inline-flex items-center justify-center gap-2 rounded-md border border-[#0F172A] bg-[#0F172A] px-5 py-2.5 text-sm font-bold text-white shadow-[0_2px_0_#000] hover:bg-[#1E293B] active:translate-y-px active:shadow-none disabled:opacity-50">
+        <button type="button" onClick={() => void extract()} disabled={!file || !!busy} className="inline-flex items-center justify-center gap-2 rounded-md border border-[#0B1215] bg-[#0B1215] px-5 py-2.5 text-sm font-bold text-white shadow-[0_2px_0_#000] hover:bg-[#1A2428] active:translate-y-px active:shadow-none disabled:opacity-50">
           {busy === "reading" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />} {busy === "reading" ? "Reading…" : "Extract Rates"}
         </button>
       </div>
@@ -225,7 +225,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                       const errs = r.include ? problems.get(r.uid) ?? [] : [];
                       return (
                         <tr key={r.uid} className={cn("border-t border-slate-200 align-top dark:border-slate-700", !r.include && "opacity-45", errs.length > 0 && "bg-red-50/60 dark:bg-red-950/20")}>
-                          <td className="px-2 py-1.5"><input type="checkbox" checked={r.include} onChange={(e) => edit(r.uid, { include: e.target.checked })} aria-label={`Include ${r.edition} ${r.category} ${r.ad_type}`} className="h-4 w-4 accent-[#2563EB]" /></td>
+                          <td className="px-2 py-1.5"><input type="checkbox" checked={r.include} onChange={(e) => edit(r.uid, { include: e.target.checked })} aria-label={`Include ${r.edition} ${r.category} ${r.ad_type}`} className="h-4 w-4 accent-[#0D9488]" /></td>
                           <td className="px-2 py-1.5 font-semibold whitespace-nowrap">{r.edition === "all" ? "All editions" : r.edition}</td>
                           <td className="px-2 py-1.5">{r.category === "all" ? "All" : r.category}</td>
                           <td className="px-2 py-1.5 whitespace-nowrap">{r.ad_type}</td>
@@ -263,7 +263,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                   <tbody>
                     {extras.map((x) => (
                       <tr key={x.uid} className={cn("border-t border-slate-200 align-top dark:border-slate-700", !x.include && "opacity-45")}>
-                        <td className="px-2 py-1.5"><input type="checkbox" checked={x.include} aria-label={`Include ${x.label}`} className="h-4 w-4 accent-[#2563EB]" onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, include: e.target.checked } : y))} /></td>
+                        <td className="px-2 py-1.5"><input type="checkbox" checked={x.include} aria-label={`Include ${x.label}`} className="h-4 w-4 accent-[#0D9488]" onChange={(e) => setExtras((xs) => xs.map((y) => y.uid === x.uid ? { ...y, include: e.target.checked } : y))} /></td>
                         <td className="px-2 py-1.5 font-semibold">{x.label}</td>
                         <td className="px-2 py-1.5 text-slate-500">{x.source}</td>
                         <td className="px-2 py-1.5">

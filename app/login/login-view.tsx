@@ -23,8 +23,8 @@ function Broadsheet() {
     <div aria-hidden="true" className="absolute inset-0 overflow-hidden opacity-[0.09] dark:opacity-[0.07]">
       <div className="mx-auto grid h-full max-w-[1600px] -rotate-2 scale-110 grid-cols-2 gap-x-8 text-[#3f3a33] dark:text-[#FAFAFA] sm:grid-cols-3 lg:grid-cols-5" style={{ fontFamily: '"Noto Serif Malayalam", "Noto Sans Malayalam", serif' }}>
         {HEADLINES.map((h, i) => (
-          <div key={i} className="border-r border-[#0F172A]/30 pr-6 first:pl-0">
-            <p className="mt-6 border-b-2 border-[#0F172A]/50 pb-2 text-3xl leading-tight font-extrabold">{h}</p>
+          <div key={i} className="border-r border-[#0B1215]/30 pr-6 first:pl-0">
+            <p className="mt-6 border-b-2 border-[#0B1215]/50 pb-2 text-3xl leading-tight font-extrabold">{h}</p>
             <p className="mt-4 text-sm leading-relaxed">{BODY.repeat(14)}</p>
           </div>
         ))}
@@ -69,7 +69,7 @@ export function LoginView() {
   const agency = tab === "agency";
   const admin = tab === "admin";
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F8FAFC] px-4 py-10 dark:bg-[#0B132B]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F2F5F4] px-4 py-10 dark:bg-[#0B1215]">
       <Broadsheet />
       <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-10">
       <motion.main
@@ -80,10 +80,10 @@ export function LoginView() {
           <div className="flex items-center gap-3">
             <Image src="/images/intelliad-icon.png" alt="" width={600} height={540} priority className="h-14 w-auto" />
             <h1 className="font-serif text-4xl leading-none font-black tracking-tight">
-              <span className="text-[#0F172A] dark:text-[#FFFFFF]">Intelli</span><span className="text-emerald-700 dark:text-emerald-400">Ad</span>
+              <span className="text-[#0B1215] dark:text-[#FFFFFF]">Intelli</span><span className="text-emerald-700 dark:text-emerald-400">Ad</span>
             </h1>
           </div>
-          <p className="mt-3 border-t-2 border-[#0F172A] pt-2 font-mono text-xs font-medium tracking-wide text-zinc-700 uppercase dark:border-[#2B3D6B] dark:text-slate-200">Kerala&apos;s Premier Newspaper Ad Booking Platform</p>
+          <p className="mt-3 border-t-2 border-[#0B1215] pt-2 font-mono text-xs font-medium tracking-wide text-zinc-700 uppercase dark:border-[#34464B] dark:text-slate-200">Kerala&apos;s Premier Newspaper Ad Booking Platform</p>
         </div>
 
         <div className="mx-auto w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">

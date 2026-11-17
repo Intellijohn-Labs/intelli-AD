@@ -22,10 +22,10 @@ export function AdminHeader({ email }: { email: string }) {
   const { signOut } = useAuth();
   const [busy, setBusy] = useState(false);
   return (
-    <header className="sticky top-0 z-40 border-b border-[#E2E8F0] bg-[#F8FAFC]/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+    <header className="sticky top-0 z-40 dark border-b border-white/10 bg-[#0B1215]/95 text-white backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
         <Link href="/admin" className="flex items-center gap-2 font-serif text-xl font-black tracking-tight text-slate-900 dark:text-white">
-          Intelli<span className="text-[#2563EB] dark:text-emerald-400">Ad</span>
+          Intelli<span className="text-emerald-400">Ad</span>
         </Link>
         <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase dark:bg-slate-100 dark:text-slate-900"><ShieldCheck className="h-3 w-3" aria-hidden="true" />Admin Mode</span>
         <div className="ml-auto flex items-center gap-3">
@@ -39,7 +39,7 @@ export function AdminHeader({ email }: { email: string }) {
             const on = l.exact ? path === l.href : path.startsWith(l.href);
             return (
               <Link key={l.href} href={l.href} prefetch aria-current={on ? "page" : undefined}
-                className={cn("shrink-0 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap", on ? "border-[#2563EB] text-[#0F172A] dark:text-sky-300" : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-300")}>
+                className={cn("shrink-0 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap", on ? "border-emerald-400 text-emerald-300" : "border-transparent text-slate-300 hover:text-white")}>
                 {l.label}
               </Link>
             );

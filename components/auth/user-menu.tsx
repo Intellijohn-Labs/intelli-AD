@@ -33,7 +33,7 @@ export function AuthControl({ className }: { className?: string }) {
   return (
     <div ref={wrap} className={`relative ${className ?? ""}`}>
       <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={user.name} onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#2B3D6B] dark:text-[#FFFFFF] dark:hover:border-[#FFFFFF] dark:hover:text-white">
+        className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 dark:border-[#34464B] dark:text-[#FFFFFF] dark:hover:border-[#FFFFFF] dark:hover:text-white">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#E11D48]/10 text-[10px] font-bold text-[#E11D48]">{initials}</span>
         <span className="hidden max-w-[9rem] truncate lg:inline">{user.name}</span>
         {user.partner_status && <span className={`hidden rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase lg:inline ${user.partner_status === "approved" ? "bg-blue-600 text-white" : "bg-amber-100 text-amber-800"}`}>{user.partner_status === "approved" ? "Partner" : "Pending"}</span>}
@@ -41,7 +41,7 @@ export function AuthControl({ className }: { className?: string }) {
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-            className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-[#2B3D6B]">
+            className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-[#34464B]">
             <div className="border-b border-zinc-100 px-4 py-3">
               <p className="truncate text-sm font-bold text-zinc-900">{user.name}</p>
               <p className="truncate text-xs text-zinc-500">{user.identifier}</p>

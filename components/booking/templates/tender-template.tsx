@@ -30,7 +30,7 @@ export function TenderComposer({ logoSlot, onText }: { logoSlot: ReactNode; onTe
   const input = (key: keyof TenderFields) => ({ value: f[key] as string, onChange: (e: { target: { value: string } }) => set({ [key]: e.target.value } as Partial<TenderFields>) });
 
   return (
-    <section aria-labelledby="tender-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#1F2F57] dark:bg-slate-800/40">
+    <section aria-labelledby="tender-h" className="space-y-5 rounded-md border border-zinc-300 bg-zinc-50/70 p-4 sm:p-5 dark:border-[#243236] dark:bg-slate-800/40">
       <div>
         <h3 id="tender-h" className="font-bold text-zinc-900 dark:text-white">Tender Notice · ദർഘാസ് പരസ്യം</h3>
         <p className="mt-1 text-xs text-zinc-600 dark:text-slate-200">Fill in the details and the notice is written for you. You can still edit the generated text below.</p>
@@ -42,7 +42,7 @@ export function TenderComposer({ logoSlot, onText }: { logoSlot: ReactNode; onTe
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Logo shape">
           <span className="text-xs font-semibold text-zinc-600">Logo preview:</span>
           {(["square", "round"] as const).map((sh) => (
-            <button key={sh} type="button" aria-pressed={f.logoShape === sh} onClick={() => set({ logoShape: sh })} className={cn(chip, f.logoShape === sh ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#0F1D3D]")}>
+            <button key={sh} type="button" aria-pressed={f.logoShape === sh} onClick={() => set({ logoShape: sh })} className={cn(chip, f.logoShape === sh ? "border-navy-700 bg-navy-50 text-navy-900" : "border-zinc-300 bg-white dark:bg-[#121B1E]")}>
               {sh === "square" ? "Square" : "Circular"}
             </button>
           ))}
@@ -65,10 +65,10 @@ export function TenderComposer({ logoSlot, onText }: { logoSlot: ReactNode; onTe
       </div>
 
       {isText ? (
-        <p className="border-t border-zinc-300 pt-4 text-xs text-zinc-600 dark:border-[#1F2F57] dark:text-slate-200">Booked as Classified Text: legal text lines billed per line, with no logo. Choose Classified Display in step 1 for a logo, item table and size-based pricing.</p>
+        <p className="border-t border-zinc-300 pt-4 text-xs text-zinc-600 dark:border-[#243236] dark:text-slate-200">Booked as Classified Text: legal text lines billed per line, with no logo. Choose Classified Display in step 1 for a logo, item table and size-based pricing.</p>
       ) : (
         <>
-      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
+      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#243236]">
         <legend className="text-sm font-bold">Schedule of items · ഇനങ്ങൾ</legend>
         {f.items.length === 0 && <p className="text-xs text-zinc-600 dark:text-slate-200">Add rows for each work or item. They print as a ruled table.</p>}
         {f.items.map((it, i) => {
@@ -83,13 +83,13 @@ export function TenderComposer({ logoSlot, onText }: { logoSlot: ReactNode; onTe
           );
         })}
         {f.items.length < 8 && (
-          <button type="button" onClick={() => set({ items: [...f.items, { name: "", qty: "", amount: "" }] })} className={cn(chip, "inline-flex items-center gap-1 border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-[#0F1D3D] dark:text-white")}>
+          <button type="button" onClick={() => set({ items: [...f.items, { name: "", qty: "", amount: "" }] })} className={cn(chip, "inline-flex items-center gap-1 border-navy-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-[#121B1E] dark:text-white")}>
             <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add item row
           </button>
         )}
       </fieldset>
 
-      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#1F2F57]">
+      <fieldset className="space-y-3 border-t border-zinc-300 pt-4 dark:border-[#243236]">
         <legend className="text-sm font-bold">Authorised signature &amp; seal · ഒപ്പും മുദ്രയും</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="td-sign" label="Signatory name · ഒപ്പിടുന്ന ഉദ്യോഗസ്ഥൻ"><Input id="td-sign" {...input("signatory")} /></Field>
@@ -108,8 +108,8 @@ export function TenderComposer({ logoSlot, onText }: { logoSlot: ReactNode; onTe
 
 const Row = ({ k, v }: { k: string; v: string }) => (
   <tr className="align-top">
-    <th scope="row" className="w-[42%] border border-[#0F172A] px-2 py-1 text-left font-bold">{k}</th>
-    <td className="border border-[#0F172A] px-2 py-1">{v}</td>
+    <th scope="row" className="w-[42%] border border-[#0B1215] px-2 py-1 text-left font-bold">{k}</th>
+    <td className="border border-[#0B1215] px-2 py-1">{v}</td>
   </tr>
 );
 
@@ -126,10 +126,10 @@ export function TenderPreview({ state, bare = false, editable = false }: { state
 
   const notice = (
     // Outer + inner rules make the classic double-line frame. paper-grain keeps it light newsprint in dark mode.
-    <div className="paper-grain border-2 border-[#0F172A] bg-[#faf8f5] p-1 text-zinc-950" style={SERIF}>
-      <div className="border border-[#0F172A] p-3">
-        <div className="flex items-center justify-center gap-3 border-b-2 border-double border-[#0F172A] pb-2">
-          {(logo || !isText) && <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-[#0F172A] bg-white text-center text-[9px] leading-tight text-zinc-500", round && "rounded-full")}>
+    <div className="paper-grain border-2 border-[#0B1215] bg-[#faf8f5] p-1 text-zinc-950" style={SERIF}>
+      <div className="border border-[#0B1215] p-3">
+        <div className="flex items-center justify-center gap-3 border-b-2 border-double border-[#0B1215] pb-2">
+          {(logo || !isText) && <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-[#0B1215] bg-white text-center text-[9px] leading-tight text-zinc-500", round && "rounded-full")}>
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logo} alt="Organisation logo" className="h-full w-full object-contain p-0.5" />
@@ -157,25 +157,25 @@ export function TenderPreview({ state, bare = false, editable = false }: { state
           <table className="mt-2 w-full border-collapse text-[12.5px] leading-snug" aria-label="Schedule of items">
             <thead>
               <tr className="bg-zinc-200/70">
-                <th className="w-7 border border-[#0F172A] px-1 py-0.5">#</th>
-                <th className="border border-[#0F172A] px-2 py-0.5 text-left">ഇനം</th>
-                <th className="border border-[#0F172A] px-2 py-0.5">അളവ്</th>
-                <th className="border border-[#0F172A] px-2 py-0.5 text-right">തുക (₹)</th>
+                <th className="w-7 border border-[#0B1215] px-1 py-0.5">#</th>
+                <th className="border border-[#0B1215] px-2 py-0.5 text-left">ഇനം</th>
+                <th className="border border-[#0B1215] px-2 py-0.5">അളവ്</th>
+                <th className="border border-[#0B1215] px-2 py-0.5 text-right">തുക (₹)</th>
               </tr>
             </thead>
             <tbody>
               {items.map((it, i) => (
                 <tr key={i} className="align-top">
-                  <td className="border border-[#0F172A] px-1 py-0.5 text-center">{i + 1}</td>
-                  <td className="border border-[#0F172A] px-2 py-0.5">{it.name}</td>
-                  <td className="border border-[#0F172A] px-2 py-0.5 text-center">{it.qty}</td>
-                  <td className="border border-[#0F172A] px-2 py-0.5 text-right">{it.amount}</td>
+                  <td className="border border-[#0B1215] px-1 py-0.5 text-center">{i + 1}</td>
+                  <td className="border border-[#0B1215] px-2 py-0.5">{it.name}</td>
+                  <td className="border border-[#0B1215] px-2 py-0.5 text-center">{it.qty}</td>
+                  <td className="border border-[#0B1215] px-2 py-0.5 text-right">{it.amount}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <p className="mt-2 border-t border-[#0F172A] pt-1 text-[12.5px] font-semibold">വിശദവിവരങ്ങൾക്ക്: {contact || "[ഫോൺ / വെബ്സൈറ്റ്]"}</p>
+        <p className="mt-2 border-t border-[#0B1215] pt-1 text-[12.5px] font-semibold">വിശദവിവരങ്ങൾക്ക്: {contact || "[ഫോൺ / വെബ്സൈറ്റ്]"}</p>
         {hasSign && (
           <div className={cn("mt-3 flex gap-3", f.sealPos === "center" ? "flex-col items-center" : f.sealPos === "right" ? "flex-row-reverse items-end justify-between" : "items-end justify-between")}>
             {f.seal ? (
@@ -189,7 +189,7 @@ export function TenderPreview({ state, bare = false, editable = false }: { state
               >സീൽ<br />SEAL</button>
             ) : <span />}
             <div className="min-w-[45%] text-center text-[12.5px]">
-              <div className="h-8 border-b border-[#0F172A]" aria-hidden="true" />
+              <div className="h-8 border-b border-[#0B1215]" aria-hidden="true" />
               <p className="mt-0.5 font-bold">{f.signatory.trim() || "[ഒപ്പ് / പേര്]"}</p>
               {f.designation.trim() && <p>{f.designation.trim()}</p>}
             </div>

@@ -88,12 +88,12 @@ export function Step1Selection() {
   };
 
   const total = Object.values(state.selection).reduce((a, ids) => a + ids.length, 0);
-  const cardBase = "relative cursor-pointer rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_22px_-10px_rgba(15,23,42,0.14)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600";
-  const cardOn = "border-blue-600 bg-blue-50/60 ring-2 ring-blue-600/15";
+  const cardBase = "relative cursor-pointer rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)] transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_22px_-10px_rgba(15,23,42,0.14)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-teal-600";
+  const cardOn = "border-teal-600/50 bg-teal-50/75 ring-2 ring-teal-500/20";
   const tag = "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] leading-none font-semibold";
   const cardMotion = {};
   const Tick = () => (
-    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#2563EB] text-white" aria-hidden="true">
+    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12 }} className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#0D9488] text-white" aria-hidden="true">
       <Check className="h-3 w-3" />
     </motion.span>
   );
@@ -135,7 +135,7 @@ export function Step1Selection() {
                 switchCategory(c.id);
               }} />
               {state.categoryId === c.id && <Tick />}
-              <span className={cn("grid h-9 w-9 place-items-center rounded-xl", state.categoryId === c.id ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600")}><CategoryIcon name={c.icon} className="h-[18px] w-[18px]" /></span>
+              <span className={cn("grid h-9 w-9 place-items-center rounded-xl", state.categoryId === c.id ? "bg-teal-600/15 text-teal-800" : "bg-teal-950/[0.05] text-teal-800")}><CategoryIcon name={c.icon} className="h-[18px] w-[18px]" /></span>
               <span className="mt-0.5 text-sm font-semibold text-slate-900">{tl(c.name, c.nameMl)}</span>
               {c.badge && <span className="text-xs text-slate-500">{tl(c.badge.en, c.badge.ml)}</span>}
               <span className="mt-auto flex flex-wrap gap-1.5 pt-1">
@@ -167,7 +167,7 @@ export function Step1Selection() {
             <Input aria-label={t("Search paper or city…")} placeholder={t("Search paper or city…")} className="h-9 w-48" value={query} onChange={(e) => setQuery(e.target.value)} />
             <div role="group" aria-label="Publication scope" className="flex rounded-xl border border-slate-200/70 bg-white p-0.5 text-xs font-semibold">
               {(["all", "national", "regional"] as const).map((s) => (
-                <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)} className={cn("rounded-lg px-2.5 py-1.5 transition-colors", scope === s ? "bg-[#0F172A] text-white" : "text-slate-600 hover:bg-slate-100")}>
+                <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)} className={cn("rounded-lg px-2.5 py-1.5 transition-colors", scope === s ? "bg-[#0B1215] text-white" : "text-slate-600 hover:bg-slate-100")}>
                   {t(s === "all" ? "All" : s === "national" ? "National" : "Regional")}
                 </button>
               ))}
@@ -184,7 +184,7 @@ export function Step1Selection() {
             const suggestions = comboSuggestions(paper.id, selected);
             const locked = !availableFor(paper);
             return (
-              <motion.div key={paper.id} aria-disabled={locked || undefined} className={cn("overflow-hidden rounded-2xl border transition-all duration-150", locked && "pointer-events-none cursor-not-allowed opacity-50", selected.length ? "" : "hover:-translate-y-0.5 hover:border-slate-300")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: "#fff", borderColor: selected.length ? "#2563EB" : "rgb(226 232 240 / .7)", boxShadow: selected.length ? "0 0 0 2px rgba(37,99,235,.15), 0 8px 22px -12px rgba(15,23,42,.25)" : "0 2px 10px -3px rgba(15,23,42,.06)" }}>
+              <motion.div key={paper.id} aria-disabled={locked || undefined} className={cn("overflow-hidden rounded-2xl border transition-all duration-150", locked && "pointer-events-none cursor-not-allowed opacity-50", selected.length ? "" : "hover:-translate-y-0.5 hover:border-slate-300")} style={{ ["--c" as string]: brandFor(paper.id).primary, backgroundColor: "#fff", borderColor: selected.length ? "rgb(13 148 136 / .5)" : "rgb(226 232 240 / .7)", boxShadow: selected.length ? "0 0 0 2px rgba(20,184,166,.2), 0 8px 22px -12px rgba(11,18,21,.25)" : "0 2px 10px -3px rgba(15,23,42,.06)" }}>
                 <button type="button" aria-expanded={isOpen} aria-controls={`panel-${paper.id}`} disabled={locked} tabIndex={locked ? -1 : undefined} onClick={() => { setOpen(isOpen ? null : paper.id); if (!isOpen) setActive(paper.id); }} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
                   <span>
                     <span className="text-lg font-bold">{pn(paper)}</span>
@@ -247,7 +247,7 @@ export function Step1Selection() {
                               const on = c.ids.every((id) => selected.includes(id));
                               return (
                                 <button key={c.name} type="button" aria-pressed={on} onClick={() => setEditions(paper.id, on ? selected.filter((id) => !c.ids.includes(id)) : [...new Set([...selected, ...c.ids])])}
-                                  className={cn("rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all duration-150", on ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50")}>
+                                  className={cn("rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all duration-150", on ? "border-[#0B1215] bg-[#0B1215] text-white" : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50")}>
                                   {c.name} <span className="font-normal opacity-80">· {(c.rate!.word_rate ?? 0) > 0 ? `${formatINR(c.rate!.word_rate!)}/${t("word")}` : state.display.colorMode === "color" && (c.rate!.color_sq_cm_rate ?? 0) > 0 ? `${formatINR(c.rate!.color_sq_cm_rate!)}/cm² (${t("Colour")})` : `${formatINR(c.rate!.sq_cm_rate)}/cm² (${t("B/W")})`}</span>
                                 </button>
                               );
@@ -275,7 +275,7 @@ export function Step1Selection() {
                             {eds.map((e) => {
                               const on = selected.includes(e.id);
                               return (
-                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rate not available — upload rate card")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600", on ? "border-blue-600 bg-blue-600 text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)]" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50")}>
+                                <label key={e.id} title={edOk(paper, e.name) ? undefined : t("Rate not available — upload rate card")} className={cn(!edOk(paper, e.name) && "pointer-events-none cursor-not-allowed opacity-50", "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-600", on ? "border-teal-600 bg-teal-600 text-white shadow-[0_2px_8px_-2px_rgba(13,148,136,0.55)]" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50")}>
                                   <input type="checkbox" className="sr-only" checked={on} disabled={!edOk(paper, e.name)} onChange={() => setEditions(paper.id, on ? selected.filter((id) => id !== e.id) : [...selected, e.id])} />
                                   {place(e.name)}
                                 </label>

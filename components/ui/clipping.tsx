@@ -15,10 +15,10 @@ export function Clipping({ tag, headline, children, rotate = 0, className }: { t
       style={{ transform: `rotate(${rotate}deg)` }}
       className={cn("paper-grain relative border-2 border-dashed border-zinc-400 px-5 pt-5 pb-4 text-zinc-900 shadow-sm", className)}
     >
-      <Scissors className="absolute -top-3 left-6 h-5 w-5 rotate-90 rounded-full bg-[#F8FAFC] text-[#0F172A]" aria-hidden="true" />
+      <Scissors className="absolute -top-3 left-6 h-5 w-5 rotate-90 rounded-full bg-[#F2F5F4] text-[#0B1215]" aria-hidden="true" />
       <div className="font-clipping">
-        <p className="border-y border-[#0F172A] py-0.5 text-center font-mono text-[11px] font-bold tracking-wide text-[#0F172A]">{tag}</p>
-        {headline && <h4 className="mt-2 mb-1 font-clipping text-xl leading-snug font-bold text-[#0F172A]">{headline}</h4>}
+        <p className="border-y border-[#0B1215] py-0.5 text-center font-mono text-[11px] font-bold tracking-wide text-[#0B1215]">{tag}</p>
+        {headline && <h4 className="mt-2 mb-1 font-clipping text-xl leading-snug font-bold text-[#0B1215]">{headline}</h4>}
         <div className="mt-1 border-t border-zinc-400 pt-2 text-[14px] leading-[1.75] ">{children}</div>
       </div>
     </figure>
