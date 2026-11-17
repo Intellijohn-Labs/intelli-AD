@@ -2,6 +2,20 @@
 
 import { CheckCircle2, ClipboardPaste, FileUp, X } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+
+/** Any image URL (blob: or https:) → PNG blob via an offscreen canvas, so JPEG / WebP / PNG all work with the async clipboard. */
+async function toPngBlob(url: string): Promise<Blob | null> {
+  const img = new Image();
+  if (/^https?:/i.test(url)) img.crossOrigin = "anonymous";
+  img.src = url;
+  await img.decode();
+  const scale = Math.min(1, 4096 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((res) => c.toBlob((b) => res(b), "image/png"));
+}
 import { buttonStyles } from "@/components/ui/button";
 import { useI18n } from "@/context/language-context";
 import { cn } from "@/lib/utils";
@@ -35,7 +49,7 @@ export function canvaUrl(widthCm: number, heightCm: number) {
  * No Canva account link or API is involved: the designer comes back with a copied image (Paste Copied Design or Ctrl/Cmd+V)
  * or a downloaded PNG / JPG / PDF (drag and drop or file picker), and `onAttach` makes it the ad artwork.
  */
-export function CanvaReturn({ widthCm, heightCm, onAttach, disabled = false }: { widthCm: number; heightCm: number; onAttach: (file: File) => void; /** True until a photo / artwork has been uploaded. */ disabled?: boolean }) {
+export function CanvaReturn({ widthCm, heightCm, onAttach, disabled = false, imageUrl }: { widthCm: number; heightCm: number; onAttach: (file: File) => void; /** True until a photo / artwork has been uploaded. */ disabled?: boolean; /** The uploaded photo / artwork (blob: or https: URL). It is copied to the clipboard when Canva is launched. */ imageUrl?: string | null }) {
   const { t } = useI18n();
   const w = Number.isFinite(widthCm) && widthCm > 0 ? widthCm : 8;
   const h = Number.isFinite(heightCm) && heightCm > 0 ? heightCm : 10;
@@ -44,6 +58,27 @@ export function CanvaReturn({ widthCm, heightCm, onAttach, disabled = false }: {
   const [dragging, setDragging] = useState(false);
   const fileId = useId();
   const panel = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState<"idle" | "ok" | "fail">("idle");
+  const ready = useRef<Blob | null>(null);
+  const pending = useRef<Promise<Blob | null> | null>(null);
+
+  // Convert the uploaded image to PNG ahead of time: the clipboard write on click then happens inside the click gesture, before the Canva tab takes focus.
+  useEffect(() => {
+    ready.current = null; pending.current = null;
+    if (!imageUrl || disabled) return;
+    let live = true;
+    const p = toPngBlob(imageUrl).catch(() => null);
+    pending.current = p;
+    void p.then((b) => { if (live) ready.current = b; });
+    return () => { live = false; };
+  }, [imageUrl, disabled]);
+
+  function copyUploadedImage() {
+    if (!imageUrl) return setCopied("idle"); // e.g. a PDF: nothing to put on the clipboard
+    if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) return setCopied("fail");
+    const data: Blob | Promise<Blob> = ready.current ?? Promise.resolve(pending.current).then((b) => { if (!b) throw new Error("no image"); return b; });
+    navigator.clipboard.write([new ClipboardItem({ "image/png": data })]).then(() => setCopied("ok"), () => setCopied("fail"));
+  }
 
   const attach = useCallback((file: File | null | undefined) => {
     if (!file) return;
@@ -93,7 +128,7 @@ export function CanvaReturn({ widthCm, heightCm, onAttach, disabled = false }: {
           <CanvaMark size={28} /> {t("Edit in Canva")}
         </button>
       ) : (
-        <a href={canvaUrl(w, h)} target="_blank" rel="noopener noreferrer" onClick={() => { setMsg(null); setOpen(true); }} className={cn(btn, "hover:-translate-y-px hover:border-[#7D2AE8]/50 hover:shadow-[0_6px_16px_-8px_rgba(125,42,232,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7D2AE8]")}>
+        <a href={canvaUrl(w, h)} target="_blank" rel="noopener noreferrer" onClick={() => { setMsg(null); setOpen(true); copyUploadedImage(); }} className={cn(btn, "hover:-translate-y-px hover:border-[#7D2AE8]/50 hover:shadow-[0_6px_16px_-8px_rgba(125,42,232,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7D2AE8]")}>
           <CanvaMark size={28} /> {t("Edit in Canva")}
         </a>
       )}
@@ -111,6 +146,15 @@ export function CanvaReturn({ widthCm, heightCm, onAttach, disabled = false }: {
               <button type="button" onClick={() => setOpen(false)} aria-label={t("Close")} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
 
+            {copied === "ok" && (
+              <p role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-[#D12014]/30 bg-[#D12014]/10 px-3 py-2.5 text-sm font-semibold text-slate-900">
+                <ClipboardPaste className="mt-0.5 h-4 w-4 shrink-0 text-[#D12014]" aria-hidden="true" />
+                <span>{t("Your uploaded image has been copied!")} {t("Press")} <kbd className="whitespace-nowrap rounded border border-slate-300 bg-white px-1.5 py-0.5 font-sans text-xs font-bold">Ctrl + V</kbd> (<kbd className="whitespace-nowrap rounded border border-slate-300 bg-white px-1.5 py-0.5 font-sans text-xs font-bold">Cmd + V</kbd> {t("on Mac")}) {t("inside Canva to drop it onto the canvas.")}</span>
+              </p>
+            )}
+            {copied === "fail" && (
+              <p role="status" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{t("We couldn't copy your image automatically. Download it from the upload area and drag it into Canva.")}</p>
+            )}
             <button type="button" onClick={() => void pasteButton()} className={cn(buttonStyles({ variant: "primary" }), "mt-4 w-full bg-[#D12014] hover:bg-[#A91400] dark:bg-[#D12014]")}>
               <ClipboardPaste className="h-4 w-4" aria-hidden="true" /> {t("Paste Copied Design")}
             </button>

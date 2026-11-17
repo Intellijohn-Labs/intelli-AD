@@ -98,7 +98,7 @@ export function Step2Compose() {
     setValue("artwork", meta, { shouldValidate: true, shouldDirty: true });
     void uploadArtwork(file).then((r) => { if (r.url) setValue("artwork", { ...meta, url: r.url }, { shouldValidate: true, shouldDirty: true }); });
   };
-  const canvaGated = (disabled: boolean) => <CanvaReturn widthCm={v.widthCm} heightCm={v.heightCm} onAttach={attachFromCanva} disabled={disabled} />;
+  const canvaGated = (disabled: boolean) => <CanvaReturn widthCm={v.widthCm} heightCm={v.heightCm} onAttach={attachFromCanva} disabled={disabled} imageUrl={/^image\//.test(v.artwork?.type ?? "") || v.artwork?.previewUrl ? (v.artwork?.previewUrl ?? v.artwork?.url ?? null) : null} />;
   /** Canva row for non-obituary ads: sits right under the artwork upload and unlocks once a file is uploaded. */
   const canvaRow = (
     <div className="space-y-1.5">
