@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header";
 import { NewspaperMastheadBar } from "@/components/layout/newspaper-masthead-bar";
 import { Providers } from "@/components/providers";
 import { THEME_INIT_SCRIPT } from "@/components/theme-provider";
+import { SplashLoader } from "@/components/brand/splash-loader";
 import { WhatsAppWidget } from "@/components/whatsapp-widget";
 import { T } from "@/context/language-context";
 import { COMPANY } from "@/lib/company";
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="min-h-screen w-full max-w-full overflow-x-hidden antialiased">
+        <SplashLoader />
         <Providers>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
             <T k="Skip to content" />
