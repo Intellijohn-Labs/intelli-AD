@@ -27,7 +27,8 @@ import { TenderComposer } from "./templates/tender-template";
 import { StepNav } from "./step-nav";
 import { InteractiveMatterComposer } from "./interactive-matter-composer";
 import { NewspaperPreviewModal } from "./newspaper-preview-modal";
-import { Eye } from "lucide-react";
+import { Eye, Printer } from "lucide-react";
+import { PrintAdGenerator } from "./print-ad-generator";
 import { Button } from "@/components/ui/button";
 import { TemplateComposer } from "./template-composer";
 import { applySpacing } from "@/lib/paragraphs";
@@ -124,6 +125,7 @@ export function Step2Compose() {
   // A failed "Continue" must always say why, never fail silently.
   const [issues, setIssues] = useState<string[]>([]);
   const [previewing, setPreviewing] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [tried, setTried] = useState(false); // has the user pressed Continue yet?
   const toast = useToast();
   // Leftover [placeholders] are a normal part of editing a template: the amber chips guide the user, and the red
@@ -176,8 +178,31 @@ export function Step2Compose() {
 
   return (
     <form onSubmit={handleSubmit(() => { setIssues([]); update(next); }, onInvalid)} noValidate>
+      <PrintAdGenerator
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        categoryId={state.categoryId}
+        initialText={v.text ?? ""}
+        colorMode={v.colorMode ?? "bw"}
+        widthCm={Math.round((displayOnly ? v.widthCm : colW) * 10) / 10 || colW}
+        heightCm={Math.round((displayOnly ? v.heightCm : 10) * 10) / 10 || 10}
+        photo={v.artwork ?? null}
+        onUse={(file, meta) => {
+          update({ creativeMode: "upload" });
+          setValue("artwork", meta, { shouldValidate: true, shouldDirty: true });
+          void uploadArtwork(file).then((r) => { if (r.url) setValue("artwork", { ...meta, url: r.url }, { shouldValidate: true, shouldDirty: true }); });
+        }}
+      />
       <div>
         <div className="space-y-6">
+          {(displayOnly || (isObituary && !isText)) && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
+              <button type="button" onClick={() => setPrintOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#A91400]">
+                <Printer className="h-3.5 w-3.5" aria-hidden="true" /> Print-Ready Ad Generator
+              </button>
+              <span className="flex-1 text-xs text-zinc-700 dark:text-slate-200">Turn rough details into an authentic Kerala newspaper layout (reverse header, double-rule box or obituary frame) as a 300 dpi PNG for your ad artwork.</span>
+            </div>
+          )}
           {displayOnly && <PathPicker mode={mode} onMode={setMode} />}
           {displayOnly && (
             <DisplaySizer
