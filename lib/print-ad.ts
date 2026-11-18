@@ -53,3 +53,19 @@ export function normalizeCopy(raw: unknown): PrintAdCopy {
     footerBox: str(o.footerBox, 400),
   };
 }
+
+/** Everything the generator dialog remembers between openings (never includes the exported creative). */
+export interface PrintAdSession {
+  category: PrintCategory;
+  language: "ml" | "en";
+  details: string;
+  copy: PrintAdCopy;
+  template: PrintTemplateId;
+  frame: MemorialFrame;
+  shape: PhotoShape;
+  /** The user's ORIGINAL portrait as a downscaled data URL. undefined = not chosen yet, null = removed on purpose. */
+  originalPortraitDataUrl?: string | null;
+}
+
+/** File names produced by the generator / poster designer: finished creatives, never a portrait. */
+export const isExportedCreative = (name?: string | null) => !!name && /^(print-ad-|obituary-poster-)/.test(name);

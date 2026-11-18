@@ -6,6 +6,7 @@ import type { Selection } from "./pricing";
 import { DEFAULT_DISPLAY, DEFAULT_ENHANCEMENTS } from "./pricing";
 import type { ReceiptData } from "./receipt";
 import type { ObituaryFields } from "@/data/obituary";
+import type { PrintAdSession } from "@/lib/print-ad";
 import type { TenderFields } from "@/data/tender";
 import type { CreativeMode } from "./display";
 import type { ParagraphSpacing } from "./paragraphs";
@@ -30,6 +31,8 @@ export interface BookingState {
   receipt: ReceiptData | null;
   /** Obituary / death-anniversary composer fields (only used by the obituary category). */
   obituary: ObituaryFields | null;
+  /** Print-Ready Ad Generator session: kept so reopening the dialog restores the copy, template, frame and the ORIGINAL portrait. */
+  printAd: PrintAdSession | null;
   /** Tender notice composer fields (only used by the tender category). */
   tender: TenderFields | null;
   /** Display flow for obituary/tender: upload a finished creative, or build one from a template. */
@@ -67,6 +70,7 @@ export const initialBookingState: BookingState = {
   templateTitle: null,
   receipt: null,
   obituary: null,
+  printAd: null,
   tender: null,
   creativeMode: "builder",
   returnToCheckout: false,

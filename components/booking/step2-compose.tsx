@@ -184,8 +184,10 @@ export function Step2Compose() {
         categoryId={state.categoryId}
         initialText={v.text ?? ""}
         colorMode={v.colorMode ?? "bw"}
-        widthCm={Math.round((displayOnly ? v.widthCm : colW) * 10) / 10 || colW}
-        heightCm={Math.round((displayOnly ? v.heightCm : 10) * 10) / 10 || 10}
+        widthCm={Math.round((displayOnly && v.widthCm > 0 ? v.widthCm : displayWidth(state.display, colW)) * 10) / 10 || colW}
+        heightCm={Math.round((displayOnly && v.heightCm > 0 ? v.heightCm : state.display.heightCm) * 10) / 10 || 10}
+        session={state.printAd}
+        onSession={(sess) => update({ printAd: sess })}
         photo={v.artwork ?? null}
         onUse={(file, meta) => {
           update({ creativeMode: "upload" });
@@ -195,7 +197,7 @@ export function Step2Compose() {
       />
       <div>
         <div className="space-y-6">
-          {(displayOnly || (isObituary && !isText)) && (
+          {!isText && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
               <button type="button" onClick={() => setPrintOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#A91400]">
                 <Printer className="h-3.5 w-3.5" aria-hidden="true" /> Print-Ready Ad Generator

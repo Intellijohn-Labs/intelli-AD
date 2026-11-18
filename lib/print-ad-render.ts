@@ -52,7 +52,12 @@ function wrap(ctx: Ctx, text: string, maxW: number): string[] {
   return out;
 }
 
-export async function renderPrintAd(o: RenderOpts): Promise<{ canvas: HTMLCanvasElement; overflow: boolean; dpi: number }> {
+/** Smallest body type we will print: ~6.5 pt. Text that cannot fit at this size is reported as overflow instead of being shrunk further. */
+export const MIN_BODY_PT = 6.5;
+/** Smallest body-type multiplier (of the 5%-of-width base) used by any template, to convert the minimum point size into a scale. */
+const MIN_MUL: Record<PrintTemplateId, number> = { reverse: 0.85, double: 0.82, memorial: 0.8 };
+
+export async function renderPrintAd(o: RenderOpts): Promise<{ canvas: HTMLCanvasElement; overflow: boolean; trimmed: string[]; dpi: number }> {
   const all = [o.copy.topBadge, o.copy.headline, o.copy.subheadline, ...o.copy.bulletPoints, o.copy.bodyParagraph, o.copy.footerBox].join(" ");
   await loadPrintFonts(all);
 
@@ -66,7 +71,7 @@ export async function renderPrintAd(o: RenderOpts): Promise<{ canvas: HTMLCanvas
   ctx.imageSmoothingQuality = "high";
   const ink = "#0a0a0a";
   const accent = o.color ? "#9f1239" : "#000000";
-  const c = o.copy;
+  let c = o.copy;
   const ml = hasMl(all);
   const LH = ml ? 1.5 : 1.28;
 
@@ -244,13 +249,24 @@ export async function renderPrintAd(o: RenderOpts): Promise<{ canvas: HTMLCanvas
     return y;
   };
 
-  // largest type scale that fits the box
-  let k = 1.7;
+  // Largest type scale that fits the box, but never below the legible print minimum (~6.5 pt body).
+  const minBodyPx = (MIN_BODY_PT / 72) * dpi;
+  const kMin = minBodyPx / (0.05 * W * MIN_MUL[o.template]);
+  let k = Math.max(1.7, kMin);
   let used = paint(k, false, 0);
-  while (used > H && k > 0.28) { k *= 0.95; used = paint(k, false, 0); }
-  const overflow = used > H;
+  while (used > H && k > kMin) { k = Math.max(kMin, k * 0.95); used = paint(k, false, 0); }
+  let overflow = false;
+  const trimmed: string[] = [];
+  if (used > H) {
+    // Even the minimum size cannot hold it: report it, and leave out lower-priority text so the footer / contact box is never pushed off.
+    overflow = true;
+    if (c.bodyParagraph.trim()) { c = { ...c, bodyParagraph: "" }; trimmed.push("body paragraph"); used = paint(k, false, 0); }
+    let dropped = 0;
+    while (used > H && c.bulletPoints.length > 0) { c = { ...c, bulletPoints: c.bulletPoints.slice(0, -1) }; dropped++; used = paint(k, false, 0); }
+    if (dropped) trimmed.push(`${dropped} bullet point${dropped > 1 ? "s" : ""}`);
+  }
   paint(k, true, Math.max(0, H - used));
-  return { canvas, overflow, dpi };
+  return { canvas, overflow, trimmed, dpi };
 }
 
 // ── PNG with a 300 dpi tag (pHYs chunk) ──
