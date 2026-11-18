@@ -52,6 +52,9 @@ export function WeddingStudio() {
   useEffect(() => () => { if (videoPreview) URL.revokeObjectURL(videoPreview); }, [videoPreview]);
 
 
+  // The details every render uses (preview, guest PNGs, ZIP): the couple's own, with sample text only where a field is empty.
+  const rd = useMemo(() => ({ ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) }) as WeddingDetails, [d]);
+
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
     if (!hydrated) return;
@@ -59,11 +62,11 @@ export function WeddingStudio() {
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: { ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) } as WeddingDetails, photo: img, photo2: img2, width: 560, onZones: (z) => { if (live) setZones(z); } });
+      const c = await renderWeddingCard({ template: tpl, details: rd, photo: img, photo2: img2, width: 560, onZones: (z) => { if (live) setZones(z); } });
       if (live) setPreview(c.toDataURL("image/png"));
     }, 180);
     return () => { live = false; clearTimeout(t); };
-  }, [hydrated, tpl, d]);
+  }, [hydrated, tpl, rd, d.photos]);
 
   // Gallery thumbnails (only while the gallery is open).
   const thumbKey = JSON.stringify([d.bride, d.groom, d.lang, d.eventType, d.photos[0]?.length, d.photos[1]?.length]);
@@ -91,11 +94,11 @@ export function WeddingStudio() {
     void (async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: d, guest: guestPreview, photo: img, photo2: img2, width: 1080 });
+      const c = await renderWeddingCard({ template: tpl, details: rd, guest: guestPreview, photo: img, photo2: img2, width: 1080 });
       if (live) setGuestImg(c.toDataURL("image/png"));
     })();
     return () => { live = false; };
-  }, [guestPreview, tpl, d]);
+  }, [guestPreview, tpl, rd, d.photos]);
 
   const addPhotos = async (files: FileList | null) => {
     if (!files) return;
@@ -124,26 +127,28 @@ export function WeddingStudio() {
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [zip, setZip] = useState<{ done: number; total: number } | null>(null);
+  const isMobile = () => typeof navigator !== "undefined" && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
   const safe = (n: string, fb: string) => n.trim().replace(/[^\p{L}\p{N}\p{M}]+/gu, "-").replace(/^-+|-+$/g, "") || fb;
   const loadPhotos = useCallback(async () => [d.photos[0] ? await loadImage(d.photos[0]) : null, d.photos[1] ? await loadImage(d.photos[1]) : null] as const, [d.photos]);
   const guestBlob = async (g: Guest, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]) => {
-    const c = await renderWeddingCard({ template: tpl, details: d, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: 1080 });
+    const c = await renderWeddingCard({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: 1080 });
     return await new Promise<Blob>((res, rej) => c.toBlob((bl) => (bl ? res(bl) : rej(new Error("render failed"))), "image/png"));
   };
-  const markSent = (g: Guest) => { setGuests((cur) => cur.map((x) => (x.id === g.id ? { ...x, status: "sent" } : x))); setLastSent(g.name || g.phone); };
+  const markSent = (g: Guest) => setGuests((cur) => cur.map((x) => (x.id === g.id ? { ...x, status: "sent" } : x)));
   const saveBlob = (blob: Blob, name: string) => { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); };
 
   /** Shares the guest's personalised PNG (Web Share where files are supported; otherwise download + copy text + open the chat). */
   const sendOne = async (g: Guest) => {
     if (busyId) return;
     setBusyId(g.id);
+    setLastSent(g.name.trim() || g.phone);
     try {
       const blob = await guestBlob(g, await loadPhotos());
       const fileName = `${safe(g.name, "Guest")}-Invitation.png`;
       const file = new File([blob], fileName, { type: "image/png" });
-      const text = whatsappMessage(d, g);
-      if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], text }); markSent(g); }
+      const text = whatsappMessage(rd, g);
+      if (isMobile() && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], text }); markSent(g); toast(`Shared ${g.name.trim()}'s card.`); }
         catch (e) { if ((e as Error)?.name !== "AbortError") toast("Sharing didn't work. Use the Preview button to download the card."); }
         return;
       }
@@ -177,7 +182,7 @@ export function WeddingStudio() {
     finally { setZip(null); }
   };
 
-  const pending = guests.filter((g) => g.status === "pending" && g.name.trim());
+  const pending = guests.filter((g) => g.status === "pending" && g.name.trim() && validPhone(g.phone));
   const sendNext = () => {
     const n = pending[0];
     if (!n) { setBulk(false); toast("Every guest has been shared."); return; }
@@ -190,7 +195,7 @@ export function WeddingStudio() {
     if (!guestImg || !guestPreview) return;
     const blob = await (await fetch(guestImg)).blob();
     const file = new File([blob], `${safe(guestPreview.name, "Guest")}-Invitation.png`, { type: "image/png" });
-    if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: whatsappMessage(d, guestPreview) }); } catch { /* cancelled */ } }
+    if (isMobile() && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: whatsappMessage(rd, guestPreview) }); } catch { /* cancelled */ } }
     else downloadGuest();
   };
 
@@ -315,7 +320,7 @@ export function WeddingStudio() {
                     <button type="button" onClick={() => setBulk(false)} className="text-xs font-semibold underline">Stop</button>
                   </div>
                 )}
-                <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">On phones the share sheet sends the card image with the invitation text. On desktop the PNG is downloaded, the message is copied and the guest&apos;s chat opens — attach the image there. “Shared” means the share or chat was opened; confirm the send inside WhatsApp.</p>
+                <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Guests without a valid WhatsApp number are skipped here (they are still in the ZIP). On phones the share sheet sends the card image with the invitation text. On desktop the PNG is downloaded, the message is copied and the guest&apos;s chat opens — attach the image there. “Shared” means the share or chat was opened; confirm the send inside WhatsApp.</p>
               </div>
             </section>
           )}

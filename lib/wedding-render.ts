@@ -278,7 +278,9 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     return blocks;
   };
 
-  const top = M * 0.8, avail = CARD_H - 2 * top;
+  // The botanical eucalyptus corner reaches further down, so its content starts lower.
+  const topOff = t.motif === "botanical" ? 45 : 0;
+  const top = M * 0.8 + topOff, avail = CARD_H - 2 * M * 0.8 - topOff;
   let k = 1.1, blocks = build(k);
   const gapOf = (kk: number) => 24 * kk;
   const total = (bs: Block[], kk: number) => bs.reduce((a, b) => a + b.h, 0) + Math.max(0, bs.length - 1) * gapOf(kk);
