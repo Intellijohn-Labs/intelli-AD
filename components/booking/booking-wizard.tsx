@@ -171,8 +171,8 @@ function MiniSummary({ state }: { state: BookingState }) {
   const row = state.categoryId && edition ? matchRateAliased(getActiveRates(), paper.name, edition.name, state.categoryId, state.adType) : null;
   const perWord = state.adType === "classified-text" && (row?.word_rate ?? 0) > 0;
   const unitRate = row ? (perWord ? row.word_rate! : state.adType === "classified-text" ? row.extra_line_rate : row.sq_cm_rate) : 0;
-  // No category yet → no rate line (never a stale paper-level "floor" rate such as ₹95/cm²).
-  const rate = !state.categoryId ? null : unitRate > 0 && edition ? { amount: unitRate, unit: perWord ? ("word" as const) : state.adType === "classified-text" ? ("line" as const) : ("cm²" as const), edition } : floor;
+  // No category yet → no rate line; an unpriced category → none either (never a stale paper-level "floor" rate such as ₹55/cm²).
+  const rate = !state.categoryId ? null : unitRate > 0 && edition ? { amount: unitRate, unit: perWord ? ("word" as const) : state.adType === "classified-text" ? ("line" as const) : ("cm²" as const), edition } : null; // strictly this (ad type, category): never the paper-level floor of another category
   const rule = cutoffRuleFor(paper, state.adType);
   // When a combo / slab prices the selection ("Any 2 Editions"), the footer names that package, its rate and the real edition count.
   const paperLines = quote.lines.filter((l) => l.newspaperId === paper.id);
@@ -213,7 +213,7 @@ function MiniSummary({ state }: { state: BookingState }) {
       )}
       <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300 tabular-nums">
         <p className="font-bold text-zinc-950">{pn(paper)}</p>
-        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName! + (pkg.capsApplied ? ` (${t("All Caps")})` : ""), price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name) + capsTag, price: formatINR(capsLine ? capsLine.rate : rate.amount), unit: capsLine ? unitWord("words") : t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available — upload rate card")}</p>}
+        {!loaded ? <span aria-label="Loading rates" className="mt-1 block h-3.5 w-40 animate-pulse rounded bg-zinc-200 dark:bg-white/15" /> : pkg ? <p>{t("{edition}: {price} / {unit}", { edition: pkg.packageName! + (pkg.capsApplied ? ` (${t("All Caps")})` : ""), price: formatINR(pkg.appliedRate ?? pkg.rate), unit: unitWord(pkg.unitLabel) })} · {t("{n} editions", { n: covered })}</p> : rate ? <p>{t("{edition}: {price} / {unit}", { edition: place(rate.edition.name) + capsTag, price: formatINR(capsLine ? capsLine.rate : rate.amount), unit: capsLine ? unitWord("words") : t(rate.unit) })}{covered > 1 ? ` · ${t("{n} editions", { n: covered })}` : ""}</p> : !state.categoryId ? <p>{t("Select a category to see the rate")}</p> : <p>{t("Rate not available for this category")}</p>}
         <p>{t("Cut-off: {n} day(s) before, {time}", { n: rule.daysBefore, time: formatClock(rule.time) })}</p>
       </div>
       {state.step < 4 && (
