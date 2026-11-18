@@ -33,7 +33,7 @@ export function HomeTopBanner() {
 
   if (!slides.length) {
     return loading ? (
-      <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8" aria-hidden="true">
+      <div className="mx-auto max-w-[1500px] px-4 pt-4 sm:px-6 lg:px-8" aria-hidden="true">
         <div className="h-[120px] w-full animate-pulse rounded-xl bg-slate-200/70 sm:h-[160px] lg:h-[220px] lg:rounded-2xl dark:bg-white/5" />
       </div>
     ) : null;
@@ -44,23 +44,23 @@ export function HomeTopBanner() {
   const item = (s: Slide, key: string, hidden: boolean) => {
     const img = (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={s.image_url} alt={hidden ? "" : s.title || "Promotion"} draggable={false} className="h-full w-auto max-w-none rounded-xl object-cover object-center lg:rounded-2xl" />
+      <img src={s.image_url} alt={hidden ? "" : s.title || "Promotion"} draggable={false} className="h-full w-full max-w-none rounded-xl object-cover object-center lg:rounded-2xl" />
     );
     return s.link_url ? (
-      <a key={key} href={s.link_url} aria-hidden={hidden || undefined} tabIndex={hidden ? -1 : undefined} {...(/^https?:/i.test(s.link_url) ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="mr-4 block h-full shrink-0">{img}</a>
+      <a key={key} href={s.link_url} aria-hidden={hidden || undefined} tabIndex={hidden ? -1 : undefined} {...(/^https?:/i.test(s.link_url) ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="block h-full w-[100cqw] shrink-0">{img}</a>
     ) : (
-      <div key={key} aria-hidden={hidden || undefined} className="mr-4 h-full shrink-0">{img}</div>
+      <div key={key} aria-hidden={hidden || undefined} className="h-full w-[100cqw] shrink-0">{img}</div>
     );
   };
 
   return (
-    <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1500px] px-4 pt-4 sm:px-6 lg:px-8">
       <div
         role="region"
         aria-label="Promotions"
         data-paused={paused}
         onPointerDown={(e) => { if (e.pointerType === "touch") setPaused((p) => !p); }} // tap to pause / resume on phones; hover pauses on desktop
-        className="home-marquee h-[120px] w-full overflow-hidden rounded-xl shadow-sm sm:h-[160px] lg:h-[220px] lg:rounded-2xl"
+        className="home-marquee h-[120px] w-full overflow-hidden [container-type:inline-size] rounded-xl shadow-sm sm:h-[160px] lg:h-[220px] lg:rounded-2xl"
       >
         <div className="home-marquee-track flex h-full w-max" style={{ ["--marquee-dur" as string]: `${slides.length * 3 * 9}s` }}>
           {[0, 1].map((g) => (

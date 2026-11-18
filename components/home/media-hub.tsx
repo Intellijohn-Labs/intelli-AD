@@ -83,7 +83,7 @@ export function MediaHub() {
   const [soon, setSoon] = useState<Media | null>(null);
 
   return (
-    <section aria-labelledby="media-h" className="mx-auto max-w-[1280px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+    <section aria-labelledby="media-h" className="mx-auto max-w-[1500px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
       <div className="mx-auto mb-12 max-w-3xl text-center">
         <p className="kicker mb-3">{t("Beyond the printed page")}</p>
         <h2 id="media-h" className={cn(DISPLAY, "text-3xl leading-[1.05] font-black tracking-tight text-slate-900 md:text-5xl dark:text-white")}>

@@ -35,7 +35,7 @@ export function Hero() {
     <div className="relative isolate overflow-hidden bg-[#F9FBFE] dark:bg-transparent">
       {/* ambient mesh glow: blue top-left, rose behind the calculator */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 dark:opacity-60" style={{ backgroundImage: "radial-gradient(ellipse 600px 400px at 15% 15%, rgba(37, 99, 235, 0.08), transparent 70%), radial-gradient(ellipse 500px 450px at 85% 20%, rgba(244, 63, 94, 0.07), transparent 70%)" }} />
-    <motion.section variants={container} initial="hidden" animate="show" className="mx-auto grid max-w-[1280px] items-start gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:px-8">
+    <motion.section variants={container} initial="hidden" animate="show" className="mx-auto grid max-w-[1500px] items-start gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:px-8">
       <div className="min-w-0">
         <motion.p variants={item} className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50 px-3 py-1 text-xs font-bold tracking-wider text-blue-700 uppercase shadow-sm shadow-blue-500/10 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-200">
           <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-300" aria-hidden="true" /> {t("Advertising made simple")}
