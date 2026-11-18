@@ -1,18 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Bus, Clapperboard, Mail, Megaphone, Newspaper, Radio, Tv, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, Bus, Clapperboard, Heart, Mail, Megaphone, Newspaper, Radio, Tv, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useI18n } from "@/context/language-context";
 import { cn } from "@/lib/utils";
-import { CinemaArt, DigitalArt, NewspaperArt, OutdoorArt, RadioArt, TvArt } from "./media-art";
+import { CinemaArt, DigitalArt, NewspaperArt, OutdoorArt, RadioArt, TvArt, WeddingArt } from "./media-art";
 
 /*
  * Home screen, BookMyAd-style: bright slate canvas, solid white cards, deep black headlines and
  * actions, with red (#E11D48) reserved for the live badge.
  */
-type MediaId = "newspaper" | "digital" | "radio" | "cinema" | "tv" | "outdoor";
+type MediaId = "newspaper" | "wedding" | "digital" | "radio" | "cinema" | "tv" | "outdoor";
 
 interface Media {
   id: MediaId;
@@ -29,6 +29,7 @@ interface Media {
 
 const MEDIA: Media[] = [
   { id: "newspaper", icon: Newspaper, art: <NewspaperArt />, title: "Newspaper Advertising", ml: "പത്രപ്പരസ്യങ്ങൾ", description: "Classifieds, display, tender, obituary and jacket ads in Kerala's leading dailies.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
+  { id: "wedding", icon: Heart, art: <WeddingArt />, title: "Wedding & Event Invitations", ml: "വിവാഹ ക്ഷണക്കത്തുകൾ", description: "AI-crafted digital wedding cards, video invites & personalized WhatsApp guest delivery.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(209,32,20,0.22)" },
   { id: "digital", icon: Megaphone, art: <DigitalArt />, title: "Digital Marketing", ml: "ഡിജിറ്റൽ പരസ്യങ്ങൾ", description: "Search, social and display campaigns that reach customers online.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
   { id: "radio", icon: Radio, art: <RadioArt />, title: "Radio Advertising", ml: "റേഡിയോ പരസ്യങ്ങൾ", description: "FM spots and sponsorships across Kerala's popular stations.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
   { id: "cinema", icon: Clapperboard, art: <CinemaArt />, title: "Cinema Advertising", ml: "തിയേറ്റർ പരസ്യങ്ങൾ", description: "On-screen slides and trailers before the film starts.", frame: "bg-[#F1F5F9] border border-[#E2E8F0]", glow: "rgba(24,24,27,0.18)" },
@@ -98,9 +99,10 @@ export function MediaHub() {
         <p className="mt-4 text-sm text-slate-600 md:text-base dark:text-[#FAFAFA]">{t("The right place for your business: Book online across leading advertising options.")}</p>
       </div>
 
-      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {MEDIA.map((m, i) => {
-          const live = m.id === "newspaper";
+          const live = m.id === "newspaper" || m.id === "wedding";
+          const href = m.id === "wedding" ? "/wedding-cards" : "/newspaper";
           return (
             <motion.li
               key={m.id}
@@ -115,7 +117,7 @@ export function MediaHub() {
                 <div aria-hidden="true" className={cn("relative flex h-40 items-center justify-center rounded-2xl p-5", m.frame)}>
                   <div className="h-full w-full transition-transform duration-200 ease-out group-hover:scale-105">{m.art}</div>
                   {live ? (
-                    <span className="absolute top-3 left-3 rounded-full bg-[#059669] px-2.5 py-0.5 font-mono text-[11px] font-bold text-white">{t("Book online")}</span>
+                    <span className="absolute top-3 left-3 rounded-full bg-[#059669] px-2.5 py-0.5 font-mono text-[11px] font-bold text-white">{m.id === "wedding" ? t("Create Online") : t("Book online")}</span>
                   ) : (
                     <span className="absolute top-3 left-3 rounded-full border border-slate-200 bg-white/90 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-slate-600 backdrop-blur-md dark:border-white/40 dark:bg-[#131416]/90 dark:text-white">{t("Coming soon")}</span>
                   )}
@@ -128,7 +130,7 @@ export function MediaHub() {
 
               {live ? (
                 <Link
-                  href="/newspaper"
+                  href={href}
                   className="mt-5 flex items-center justify-between rounded-lg bg-[#0A0B0D] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#17181C] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D12014] active:scale-[0.98] dark:bg-[#FFFFFF] dark:text-slate-950 dark:hover:bg-[#D12014] dark:hover:text-white"
                 >
                   {t("Explore")}

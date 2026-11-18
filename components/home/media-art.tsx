@@ -136,3 +136,24 @@ export function OutdoorArt() {
     </Svg>
   );
 }
+
+/** Wedding & Event Invitations: a gold-bordered card with a monogram, a lotus and falling petals. */
+export function WeddingArt() {
+  return (
+    <Svg>
+      <g transform="rotate(-4 100 60)">
+        <g className="art-anim" style={{ animationName: "art-float", animationDuration: "6s" }}>
+          <rect x="52" y="8" width="96" height="106" rx="3" fill="#fff8ea" stroke="#b8860b" strokeWidth="2.2" />
+          <rect x="58" y="14" width="84" height="94" rx="2" fill="none" stroke="#9f1239" strokeWidth="0.8" />
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => <path key={i} d={`M${64 + i * 12} 14 l4 5 l4 -5`} fill="none" stroke="#b8860b" strokeWidth="1" />)}
+          <text x="100" y="40" textAnchor="middle" fontSize="9" fontWeight="700" fill="#9f1239" fontFamily='"Noto Serif Malayalam", serif'>വിവാഹം</text>
+          <circle cx="100" cy="64" r="16" fill="#fde7ec" stroke="#b8860b" strokeWidth="1.4" />
+          <path d="M100 74c-8-5-11-10-8-14 3-3 7-2 8 2 1-4 5-5 8-2 3 4 0 9-8 14z" fill="#d12014" />
+          <text x="100" y="94" textAnchor="middle" fontSize="11" fontStyle="italic" fontWeight="700" fill="#1c1917" fontFamily="Georgia, serif">A &amp; R</text>
+          {bars(76, 99, 48, 2, "#b8860b")}
+        </g>
+      </g>
+      {[[34, 22], [166, 30], [28, 92], [172, 84]].map(([x, y], i) => <ellipse key={i} className="art-anim" cx={x} cy={y} rx="4" ry="2.4" fill={i % 2 ? "#f9a8b8" : "#fcd34d"} transform={`rotate(${i * 40} ${x} ${y})`} style={{ animationName: "art-tile", animationDelay: `${i * 0.4}s` }} />)}
+    </Svg>
+  );
+}

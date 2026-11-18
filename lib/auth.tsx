@@ -36,7 +36,8 @@ export const homeFor = (u: Pick<AuthUser, "is_agency"> | null | undefined) => (u
 export const SESSION_COOKIE = "intelliad_session";
 const REMEMBER_DAYS = 30;
 
-export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/") || p.startsWith("/auth/");
+/** Pages that need no session: sign-in, the email callback, and shared wedding invitations (guests are not signed in). */
+export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/") || p.startsWith("/auth/") || p.startsWith("/wedding-cards/invite/");
 
 function readSession(): AuthUser | null {
   try {

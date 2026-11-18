@@ -16,5 +16,5 @@ export function ChromeOnly({ children }: { children: ReactNode }) {
 /** Hides its children on the home page, which stays a clean media picker (no publication tabs). */
 export function HideOnHome({ children }: { children: ReactNode }) {
   const p = usePathname();
-  return p === "/" || p.startsWith("/agency") ? null : <>{children}</>; // also hidden in the partner portal
+  return p === "/" || p.startsWith("/agency") || p.startsWith("/wedding-cards") ? null : <>{children}</>; // also hidden in the partner portal
 }

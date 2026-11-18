@@ -201,7 +201,6 @@ create policy "admins delete extras" on public.publication_extras for delete to 
 
 -- Exact printed colour rate (₹/cm²) so a colour ad is priced at precisely what the card prints, not a rounded percentage over B/W.
 alter table public.publication_rates add column if not exists color_sq_cm_rate numeric(12,2) check (color_sq_cm_rate is null or color_sq_cm_rate >= 0);
-NOTIFY pgrst, 'reload schema';
 
 -- Per-word classified text (cards like Malayala Manorama's): word rates, caps rate, heading rate per line, minimum words.
 alter table public.publication_rates add column if not exists word_rate numeric(12,2) check (word_rate is null or word_rate >= 0);
@@ -209,4 +208,51 @@ alter table public.publication_rates add column if not exists eng_word_rate nume
 alter table public.publication_rates add column if not exists caps_word_rate numeric(12,2) check (caps_word_rate is null or caps_word_rate >= 0);
 alter table public.publication_rates add column if not exists heading_line_rate numeric(12,2) check (heading_line_rate is null or heading_line_rate >= 0);
 alter table public.publication_rates add column if not exists min_words integer check (min_words is null or min_words >= 0);
+
+-- ── Wedding & Event Invitations (/wedding-cards) ───────────────────────────────
+-- Run once. The studio works without these tables (it falls back to this browser's storage), but guests on other
+-- devices can only open the shared invite link once the tables, function and bucket below exist.
+create table if not exists public.wedding_invitations (
+  id           uuid primary key default gen_random_uuid(),
+  created_at   timestamptz not null default now(),
+  owner_id     uuid default auth.uid(),
+  template_id  text not null,
+  data         jsonb not null default '{}'::jsonb   -- couple details, copy, photo + video URLs (no guest list)
+);
+create table if not exists public.wedding_guests (
+  id             uuid primary key default gen_random_uuid(),
+  invitation_id  uuid references public.wedding_invitations(id) on delete cascade,
+  owner_id       uuid default auth.uid(),
+  name           text not null,
+  place          text,
+  phone          text,
+  status         text not null default 'pending' check (status in ('pending', 'sent')),
+  sent_at        timestamptz,
+  created_at     timestamptz not null default now()
+);
+alter table public.wedding_invitations enable row level security;
+alter table public.wedding_guests enable row level security;
+
+drop policy if exists "anyone can create invitations" on public.wedding_invitations;
+create policy "anyone can create invitations" on public.wedding_invitations for insert to anon, authenticated with check (true);
+drop policy if exists "owners read invitations" on public.wedding_invitations;
+create policy "owners read invitations" on public.wedding_invitations for select to authenticated using (owner_id = auth.uid());
+drop policy if exists "owners manage guests" on public.wedding_guests;
+create policy "owners manage guests" on public.wedding_guests for all to authenticated using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+-- Guests open /wedding-cards/invite/<id>: one invitation by its unguessable id, never a listing.
+create or replace function public.get_wedding_invitation(p_id uuid) returns jsonb
+language sql security definer set search_path = public as $$
+  select jsonb_build_object('template_id', template_id, 'data', data) from public.wedding_invitations where id = p_id
+$$;
+revoke all on function public.get_wedding_invitation(uuid) from public;
+grant execute on function public.get_wedding_invitation(uuid) to anon, authenticated;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('wedding-media', 'wedding-media', true, 52428800,
+        array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'])
+on conflict (id) do update
+  set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists "anon can upload wedding media" on storage.objects;
+create policy "anon can upload wedding media" on storage.objects for insert to anon, authenticated with check (bucket_id = 'wedding-media');
 NOTIFY pgrst, 'reload schema';
