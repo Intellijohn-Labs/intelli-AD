@@ -134,7 +134,11 @@ function backdrop(ctx: Ctx, t: WeddingTemplate, p: Palette) {
 
 const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, nikah: 170, botanical: 175, banarasi: 170, polaroid: 90, velvet: 150, marigold: 160, minimal: 130 };
 
-export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number }): Promise<HTMLCanvasElement> {
+/** A clickable region of the card in the 1080 x 1500 logical space (used only by the interactive studio preview). */
+type ZoneId = CardZone["id"];
+export interface CardZone { id: "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
+
+export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void }): Promise<HTMLCanvasElement> {
   const { template: t, details: d } = o;
   const p: Palette = { ...t.pal, ...(HEX.test(d.accent) ? { accent: d.accent } : {}) };
   const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, t.blessing[1]].join(" ");
@@ -156,10 +160,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
-  type Block = { h: number; draw: (y: number) => void };
+  type Block = { h: number; draw: (y: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
   const build = (k: number): Block[] => {
     const blocks: Block[] = [];
-    const text = (s: string, size: number, weight: number, opt: { color?: string; italic?: boolean; caps?: boolean; ls?: number; fam?: string; lh?: number } = {}) => {
+    const text = (s: string, size: number, weight: number, opt: { id?: ZoneId; color?: string; italic?: boolean; caps?: boolean; ls?: number; fam?: string; lh?: number } = {}) => {
       const str = s.trim();
       if (!str) return;
       const fs = size * k, lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
@@ -168,6 +172,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const lines = wrap(ctx, opt.caps && !hasMl(str) ? str.toUpperCase() : str, cw);
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
       blocks.push({
+        id: opt.id,
         h: lines.length * fs * lh,
         draw: (y) => {
           ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
@@ -190,10 +195,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (g.place) text(g.place, 28, 500, { color: p.sub, fam: SANS });
     }
     const bless = d.blessing.trim();
-    if (bless) text(bless, 30, 500, { color: p.sub, italic: true });
-    else both(t.blessing[1], t.blessing[0], 30, 500, { color: p.sub, italic: true });
+    if (bless) text(bless, 30, 500, { id: "blessing", color: p.sub, italic: true });
+    else both(t.blessing[1], t.blessing[0], 30, 500, { id: "blessing", color: p.sub, italic: true });
     if (t.layout === "minimal") rule(120);
-    both(title.ml, title.en, 34, 700, { color: p.accent, caps: true, ls: 0.16 });
+    both(title.ml, title.en, 34, 700, { id: "title", color: p.accent, caps: true, ls: 0.16 });
 
     // couple + photo
     const photo = o.photo ?? null;
@@ -202,6 +207,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (t.layout === "polaroid") {
         const pw = 640 * k, ph = 560 * k, pad = 26 * k, cap = 120 * k;
         blocks.push({
+          id: "photo", dual: !!photo2, sub: [{ id: "names", dy: ph + pad, h: cap }],
           h: ph + pad + cap + 24 * k,
           draw: (y) => {
             const x = CARD_W / 2 - pw / 2;
@@ -238,6 +244,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
         ctx.strokeStyle = p.accent2; ctx.lineWidth = 2; shapePath(ctx, t.shape, x - 12 * k, y - 12 * k, pw + 24 * k, ph + 24 * k); ctx.stroke();
       };
       blocks.push({
+        id: "photo", dual,
         h: ph + 16 * k,
         draw: (y) => {
           if (photo2) { const x0 = CARD_W / 2 - (2 * pw + gapP) / 2; one(photo, x0, y); one(photo2, x0 + pw + gapP, y); }
@@ -251,23 +258,23 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     } else {
       const nm = (s: string) => (t.layout === "minimal" ? s.toUpperCase() : s);
       const groom = d.groom.trim() || "Groom", bride = d.bride.trim() || "Bride";
-      text(nm(groom), 104, 800, { ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(groom) ? 1.45 : 1.1 });
-      text(wantMl && !wantEn ? "&" : "&", 56, 400, { color: p.accent, italic: true, lh: 1 });
-      text(nm(bride), 104, 800, { ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(bride) ? 1.45 : 1.1 });
+      text(nm(groom), 104, 800, { id: "names", ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(groom) ? 1.45 : 1.1 });
+      text(wantMl && !wantEn ? "&" : "&", 56, 400, { id: "names", color: p.accent, italic: true, lh: 1 });
+      text(nm(bride), 104, 800, { id: "names", ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(bride) ? 1.45 : 1.1 });
       photoBlock();
     }
     const sonOf = wantMl && !wantEn ? (n: string, par: string, son: boolean) => `${n}, ${par} ദമ്പതികളുടെ ${son ? "പുത്രൻ" : "പുത്രി"}` : (n: string, par: string, son: boolean) => `${n} ${son ? "S/o" : "D/o"} ${par}`;
     const parents = [d.groomParents.trim() && sonOf(d.groom.trim() || "Groom", d.groomParents.trim(), true), d.brideParents.trim() && sonOf(d.bride.trim() || "Bride", d.brideParents.trim(), false)].filter(Boolean).join("\n");
-    if (parents) text(parents, 30, 500, { color: p.sub, fam: SANS });
+    if (parents) text(parents, 30, 500, { id: "parents", color: p.sub, fam: SANS });
     const msg = d.message.trim();
-    if (msg) text(msg, 32, 500, { italic: true, color: p.ink });
-    else if (t.layout !== "polaroid") both("നിങ്ങളുടെ സാന്നിധ്യവും അനുഗ്രഹവും ഉണ്ടാകണമെന്ന് സവിനയം ക്ഷണിക്കുന്നു.", "We joyfully invite you to bless us with your presence.", 32, 500, { italic: true });
+    if (msg) text(msg, 32, 500, { id: "message", italic: true, color: p.ink });
+    else if (t.layout !== "polaroid") both("നിങ്ങളുടെ സാന്നിധ്യവും അനുഗ്രഹവും ഉണ്ടാകണമെന്ന് സവിനയം ക്ഷണിക്കുന്നു.", "We joyfully invite you to bless us with your presence.", 32, 500, { id: "message", italic: true });
     if (t.layout === "minimal") rule(120);
     const dt = d.date;
-    if (dt) { text(formatDate(dt, wantEn ? "en" : "ml"), 48, 800, { color: p.accent === p.ink ? p.ink : p.ink }); if (lang === "both") text(formatDate(dt, "ml"), 34, 600, { color: p.sub }); }
-    if (d.time.trim()) text(`${lang === "ml" ? "സമയം" : lang === "both" ? "സമയം / Time" : "Time"}: ${d.time.trim()}`, 34, 600, { color: p.accent, fam: SANS });
-    if (d.venue.trim()) { text(lang === "ml" ? "വേദി" : lang === "both" ? "വേദി / Venue" : "Venue", 26, 700, { color: p.sub, caps: true, ls: 0.18, fam: SANS }); text(d.venue.trim(), 36, 700); }
-    if (d.verse.trim()) text(d.verse.trim(), 26, 500, { italic: true, color: p.sub });
+    if (dt) { text(formatDate(dt, wantEn ? "en" : "ml"), 48, 800, { id: "datetime", color: p.accent === p.ink ? p.ink : p.ink }); if (lang === "both") text(formatDate(dt, "ml"), 34, 600, { id: "datetime", color: p.sub }); }
+    if (d.time.trim()) text(`${lang === "ml" ? "സമയം" : lang === "both" ? "സമയം / Time" : "Time"}: ${d.time.trim()}`, 34, 600, { id: "datetime", color: p.accent, fam: SANS });
+    if (d.venue.trim()) { text(lang === "ml" ? "വേദി" : lang === "both" ? "വേദി / Venue" : "Venue", 26, 700, { id: "venue", color: p.sub, caps: true, ls: 0.18, fam: SANS }); text(d.venue.trim(), 36, 700, { id: "venue" }); }
+    if (d.verse.trim()) text(d.verse.trim(), 26, 500, { id: "verse", italic: true, color: p.sub });
     return blocks;
   };
 
@@ -280,7 +287,19 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const gap = gapOf(k) + (blocks.length > 1 ? Math.min(extra / (blocks.length - 1), 46) : 0);
   const used = blocks.reduce((a, b) => a + b.h, 0) + (blocks.length - 1) * gap;
   let y = top + Math.max(0, (avail - used) / 2);
-  for (const b of blocks) { b.draw(y); y += b.h + gap; }
+  const zones: CardZone[] = [];
+  const add = (id: ZoneId, y0: number, h: number, dual?: boolean) => {
+    const last = zones[zones.length - 1];
+    if (last && last.id === id && last.h >= 0 && y0 - (last.y + last.h) < gap * 1.5) { last.h = y0 + h - last.y; return; }
+    zones.push({ id, x: M * 0.7, y: y0, w: CARD_W - 2 * M * 0.7, h, dual });
+  };
+  for (const b of blocks) {
+    b.draw(y);
+    if (b.id) add(b.id, y - 6, b.h + 12, b.dual);
+    for (const s of b.sub ?? []) zones.push({ id: s.id, x: M * 0.7, y: y + s.dy - 6, w: CARD_W - 2 * M * 0.7, h: s.h + 12 });
+    y += b.h + gap;
+  }
+  o.onZones?.(zones);
   return canvas;
 }
 

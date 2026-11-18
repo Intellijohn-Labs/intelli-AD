@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
-import { loadImage, photoToDataUrl, renderWeddingCard } from "@/lib/wedding-render";
+import { CardEditOverlay } from "./card-editor";
+import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone } from "@/lib/wedding-render";
 import { publishInvitation, recordGuest } from "@/lib/wedding-publish";
 import { EMPTY_DETAILS, EVENT_TYPES, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, SAMPLE_DETAILS, TEMPLATES, validPhone, whatsappLink, whatsappMessage, type EventType, type Guest, type WLang, type WeddingDetails } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,9 @@ export function WeddingStudio() {
   const [bulk, setBulk] = useState(false);
   const [lastSent, setLastSent] = useState("");
   const [preview, setPreview] = useState("");
+  const [zones, setZones] = useState<CardZone[]>([]);
+  const cardPhotoRef = useRef<HTMLInputElement>(null);
+  const cardPhotoIdx = useRef(0);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [guestPreview, setGuestPreview] = useState<Guest | null>(null);
   const [guestImg, setGuestImg] = useState("");
@@ -64,7 +68,7 @@ export function WeddingStudio() {
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: { ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) } as WeddingDetails, photo: img, photo2: img2, width: 560 });
+      const c = await renderWeddingCard({ template: tpl, details: { ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) } as WeddingDetails, photo: img, photo2: img2, width: 560, onZones: (z) => { if (live) setZones(z); } });
       if (live) setPreview(c.toDataURL("image/png"));
     }, 180);
     return () => { live = false; clearTimeout(t); };
@@ -301,9 +305,21 @@ export function WeddingStudio() {
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
               {d.mapsUrl || d.venue ? <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300"><MapPin className="h-3 w-3" aria-hidden="true" /> Maps button on invite</span> : null}
             </div>
-            <div className="mx-auto w-full max-w-[420px] overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {preview ? <img src={preview} alt="Wedding card preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
+            <p className="text-center text-[11px] text-slate-600 dark:text-slate-300">Click any text on the card to edit directly</p>
+            <div className="relative mx-auto w-full max-w-[420px]">
+              <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {preview ? <img src={preview} alt="Wedding card preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
+                {preview && <CardEditOverlay zones={zones} details={d} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} />}
+              </div>
+              <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
+                const f = e.target.files?.[0]; e.target.value = "";
+                if (!f) return;
+                const u = await photoToDataUrl(f);
+                if (!u) return;
+                const i = Math.min(cardPhotoIdx.current, d.photos.length);
+                const next = [...d.photos]; next[i] = u; set({ photos: next.slice(0, 4) });
+              }} />
             </div>
             {videoPreview && <video src={videoPreview} controls playsInline className="mx-auto w-full max-w-[420px] rounded-lg bg-black" aria-label="Invitation video preview" />}
             {mapsLink(d) && <a href={mapsLink(d)} target="_blank" rel="noopener noreferrer" className="mx-auto flex max-w-[420px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><MapPin className="h-4 w-4" aria-hidden="true" /> Open venue in Google Maps</a>}
