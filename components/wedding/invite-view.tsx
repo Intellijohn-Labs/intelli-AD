@@ -26,7 +26,8 @@ export function InviteView({ id }: { id: string }) {
     let live = true;
     void (async () => {
       const photo = inv.data.details.photos[0] ? await loadImage(inv.data.details.photos[0]) : null;
-      const c = await renderWeddingCard({ template: getTemplate(inv.template_id), details: inv.data.details, guest: guest ? { name: guest, place: addr } : null, photo, width: 1080 });
+      const photo2 = inv.data.details.photos[1] ? await loadImage(inv.data.details.photos[1]) : null;
+      const c = await renderWeddingCard({ template: getTemplate(inv.template_id), details: inv.data.details, guest: guest ? { name: guest, place: addr } : null, photo, photo2, width: 1080 });
       if (live) setImg(c.toDataURL("image/png"));
     })();
     return () => { live = false; };

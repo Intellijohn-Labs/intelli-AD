@@ -63,22 +63,24 @@ export function WeddingStudio() {
     let live = true;
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: { ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) } as WeddingDetails, photo: img, width: 560 });
+      const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
+      const c = await renderWeddingCard({ template: tpl, details: { ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) } as WeddingDetails, photo: img, photo2: img2, width: 560 });
       if (live) setPreview(c.toDataURL("image/png"));
     }, 180);
     return () => { live = false; clearTimeout(t); };
   }, [hydrated, tpl, d]);
 
   // Gallery thumbnails (only while the gallery is open).
-  const thumbKey = JSON.stringify([d.bride, d.groom, d.lang, d.eventType, d.photos[0]?.length]);
+  const thumbKey = JSON.stringify([d.bride, d.groom, d.lang, d.eventType, d.photos[0]?.length, d.photos[1]?.length]);
   useEffect(() => {
     if (!hydrated || tab !== "Template") return;
     let live = true;
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
+      const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
       const base = { ...SAMPLE_DETAILS, eventType: d.eventType, lang: d.lang, ...(d.bride ? { bride: d.bride } : {}), ...(d.groom ? { groom: d.groom } : {}) };
       for (const x of TEMPLATES) {
-        const c = await renderWeddingCard({ template: x, details: base, photo: img, width: 240 });
+        const c = await renderWeddingCard({ template: x, details: base, photo: img, photo2: img2, width: 240 });
         if (!live) return;
         setThumbs((cur) => ({ ...cur, [x.id]: c.toDataURL("image/jpeg", 0.8) }));
       }
@@ -93,7 +95,8 @@ export function WeddingStudio() {
     let live = true;
     void (async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: d, guest: guestPreview, photo: img, width: 1080 });
+      const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
+      const c = await renderWeddingCard({ template: tpl, details: d, guest: guestPreview, photo: img, photo2: img2, width: 1080 });
       if (live) setGuestImg(c.toDataURL("image/png"));
     })();
     return () => { live = false; };
@@ -231,7 +234,7 @@ export function WeddingStudio() {
             <section className={cn(panel, "space-y-5")} aria-label="Photos and video">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Couple photos</h2>
-                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">The first photo sits in the card&apos;s photo frame; all of them appear on the guest&apos;s invitation page. Up to 4.</p>
+                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">Upload 1 combined couple photo or 2 individual portraits (both appear side-by-side on the card; up to 4 appear on the guest invite page).</p>
                 <div className="flex flex-wrap gap-3">
                   {d.photos.map((p, i) => (
                     <div key={i} className="relative h-28 w-24 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">

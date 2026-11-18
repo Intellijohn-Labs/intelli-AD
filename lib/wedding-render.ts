@@ -134,7 +134,7 @@ function backdrop(ctx: Ctx, t: WeddingTemplate, p: Palette) {
 
 const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, nikah: 170, botanical: 175, banarasi: 170, polaroid: 90, velvet: 150, marigold: 160, minimal: 130 };
 
-export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; width: number }): Promise<HTMLCanvasElement> {
+export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number }): Promise<HTMLCanvasElement> {
   const { template: t, details: d } = o;
   const p: Palette = { ...t.pal, ...(HEX.test(d.accent) ? { accent: d.accent } : {}) };
   const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, t.blessing[1]].join(" ");
@@ -197,6 +197,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
 
     // couple + photo
     const photo = o.photo ?? null;
+    const photo2 = photo && o.photo2 ? o.photo2 : null;
     const photoBlock = () => {
       if (t.layout === "polaroid") {
         const pw = 640 * k, ph = 560 * k, pad = 26 * k, cap = 120 * k;
@@ -207,7 +208,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
             ctx.save(); ctx.translate(CARD_W / 2, y + (ph + pad + cap) / 2); ctx.rotate(-0.04); ctx.translate(-CARD_W / 2, -(y + (ph + pad + cap) / 2));
             ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 28 * k; ctx.shadowOffsetY = 12 * k; ctx.fillStyle = "#fff"; ctx.fillRect(x, y, pw, ph + pad + cap); ctx.shadowColor = "transparent";
             ctx.save(); ctx.beginPath(); ctx.rect(x + pad, y + pad, pw - 2 * pad, ph - pad); ctx.clip();
-            if (photo) { const sc = Math.max((pw - 2 * pad) / photo.width, (ph - pad) / photo.height); ctx.drawImage(photo, x + pad + (pw - 2 * pad - photo.width * sc) / 2, y + pad + (ph - pad - photo.height * sc) / 2, photo.width * sc, photo.height * sc); }
+            if (photo) {
+              const cover = (im: HTMLImageElement, bx: number, bw: number) => { ctx.save(); ctx.beginPath(); ctx.rect(bx, y + pad, bw, ph - pad); ctx.clip(); const sc = Math.max(bw / im.width, (ph - pad) / im.height); ctx.drawImage(im, bx + (bw - im.width * sc) / 2, y + pad + (ph - pad - im.height * sc) / 2, im.width * sc, im.height * sc); ctx.restore(); };
+              if (photo2) { const gp = 10 * k, hw = (pw - 2 * pad - gp) / 2; cover(photo, x + pad, hw); cover(photo2, x + pad + hw + gp, hw); }
+              else cover(photo, x + pad, pw - 2 * pad);
+            }
             else { const g = ctx.createLinearGradient(x, y, x + pw, y + ph); g.addColorStop(0, p.accent2 + "88"); g.addColorStop(1, p.accent + "55"); ctx.fillStyle = g; ctx.fillRect(x + pad, y + pad, pw - 2 * pad, ph - pad); ctx.fillStyle = "#fff"; ctx.font = `700 ${120 * k}px ${SERIF}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("♥", CARD_W / 2, y + pad + (ph - pad) / 2); }
             ctx.restore();
             ctx.fillStyle = p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `italic 700 ${50 * k}px ${SERIF}`;
@@ -219,17 +224,24 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       }
       if (!photo) return;
       const small = t.layout === "minimal";
-      const pw = (t.shape === "arch" ? 330 : small ? 300 : 340) * k, ph = (t.shape === "circle" ? 340 : t.shape === "arch" ? 420 : t.shape === "oval" ? 400 : small ? 380 : 340) * k;
+      const dual = !!photo2;
+      const gapP = 40 * k, ring = 24 * k;
+      const baseW = (t.shape === "arch" ? 330 : small ? 300 : 340) * k;
+      const pw = dual ? Math.min(baseW * 0.82, (cw - gapP - ring) / 2) : baseW;
+      const ph = dual ? (t.shape === "circle" ? pw : t.shape === "arch" ? pw * 1.28 : t.shape === "oval" ? pw * 1.18 : pw * 1.1) : (t.shape === "circle" ? 340 : t.shape === "arch" ? 420 : t.shape === "oval" ? 400 : small ? 380 : 340) * k;
+      const one = (im: HTMLImageElement, x: number, y: number) => {
+        ctx.save(); shapePath(ctx, t.shape, x, y, pw, ph); ctx.clip();
+        const sc = Math.max(pw / im.width, ph / im.height);
+        ctx.drawImage(im, x + (pw - im.width * sc) / 2, y + (ph - im.height * sc) / 2, im.width * sc, im.height * sc);
+        ctx.restore();
+        ctx.strokeStyle = p.accent; ctx.lineWidth = 7 * k; shapePath(ctx, t.shape, x, y, pw, ph); ctx.stroke();
+        ctx.strokeStyle = p.accent2; ctx.lineWidth = 2; shapePath(ctx, t.shape, x - 12 * k, y - 12 * k, pw + 24 * k, ph + 24 * k); ctx.stroke();
+      };
       blocks.push({
         h: ph + 16 * k,
         draw: (y) => {
-          const x = CARD_W / 2 - pw / 2;
-          ctx.save(); shapePath(ctx, t.shape, x, y, pw, ph); ctx.clip();
-          const sc = Math.max(pw / photo.width, ph / photo.height);
-          ctx.drawImage(photo, x + (pw - photo.width * sc) / 2, y + (ph - photo.height * sc) / 2, photo.width * sc, photo.height * sc);
-          ctx.restore();
-          ctx.strokeStyle = p.accent; ctx.lineWidth = 7 * k; shapePath(ctx, t.shape, x, y, pw, ph); ctx.stroke();
-          ctx.strokeStyle = p.accent2; ctx.lineWidth = 2; shapePath(ctx, t.shape, x - 12 * k, y - 12 * k, pw + 24 * k, ph + 24 * k); ctx.stroke();
+          if (photo2) { const x0 = CARD_W / 2 - (2 * pw + gapP) / 2; one(photo, x0, y); one(photo2, x0 + pw + gapP, y); }
+          else one(photo, CARD_W / 2 - pw / 2, y);
         },
       });
     };
