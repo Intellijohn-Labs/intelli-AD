@@ -39,6 +39,9 @@ const REMEMBER_DAYS = 30;
 /** Pages that need no session: sign-in, the email callback, and shared wedding invitations (guests are not signed in). */
 export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/") || p.startsWith("/auth/") || p.startsWith("/wedding-cards/invite/");
 
+/** Open to signed-out visitors but still shown with the normal site header and footer. */
+export const isOpenPath = (p: string) => p === "/wedding-cards" || p === "/wedding-cards/";
+
 function readSession(): AuthUser | null {
   try {
     const m = document.cookie.split("; ").find((c) => c.startsWith(`${SESSION_COOKIE}=`));
@@ -104,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Client-side guard (backs up proxy.ts, e.g. when the session expires mid-visit).
   useEffect(() => {
-    if (ready && !user && !isPublicPath(pathname)) {
+    if (ready && !user && !isPublicPath(pathname) && !isOpenPath(pathname)) {
       router.replace(pathname.startsWith("/agency") ? "/login?tab=agency&auth=required" : "/login?auth=required");
     }
   }, [ready, user, pathname, router]);
@@ -129,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const value = useMemo(() => ({ user, ready, signIn, celebrate, signOut }), [user, ready, signIn, celebrate, signOut]);
-  const blocked = ready && !user && !isPublicPath(pathname);
+  const blocked = ready && !user && !isPublicPath(pathname) && !isOpenPath(pathname);
   return (
     <AuthContext.Provider value={value}>
       {blocked ? null : children}
