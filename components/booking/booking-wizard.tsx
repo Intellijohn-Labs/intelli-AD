@@ -15,7 +15,7 @@ import { BookingProvider, useBooking, type BookingState, type Step } from "@/lib
 import { useI18n } from "@/context/language-context";
 import { flagshipEdition, flagshipRate, GST_RATE } from "@/lib/pricing";
 import { useRateAvailability, useRatesVersion } from "@/lib/use-rates";
-import { getActiveExtras, getActiveRates, matchRate } from "@/lib/rates";
+import { getActiveExtras, getActiveRates, matchRateAliased } from "@/lib/rates";
 import { cutoffRuleFor, formatClock } from "@/lib/cutoff";
 import { useBookingQuote } from "@/lib/use-quote";
 import { cn, formatINR } from "@/lib/utils";
@@ -168,7 +168,7 @@ function MiniSummary({ state }: { state: BookingState }) {
   // Once a category is picked, show the resolved rate row's per-unit rate (extra line / cm²) for the chosen edition
   // (or the flagship one); before that, the paper-level floor rate.
   const edition = paper.editions.find((e) => state.selection[paper.id]?.includes(e.id)) ?? floor?.edition;
-  const row = state.categoryId && edition ? matchRate(getActiveRates(), paper.name, edition.name, state.categoryId, state.adType) : null;
+  const row = state.categoryId && edition ? matchRateAliased(getActiveRates(), paper.name, edition.name, state.categoryId, state.adType) : null;
   const perWord = state.adType === "classified-text" && (row?.word_rate ?? 0) > 0;
   const unitRate = row ? (perWord ? row.word_rate! : state.adType === "classified-text" ? row.extra_line_rate : row.sq_cm_rate) : 0;
   // No category yet → no rate line (never a stale paper-level "floor" rate such as ₹95/cm²).

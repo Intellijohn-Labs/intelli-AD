@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { getActiveRates, getRatesVersion, headlineRate, matchRate, paperHasRates, setActiveExtras, setActiveRates, setActiveSettings, subscribeRates, type PaperSettings, type RateExtra, type RateRow } from "./rates";
+import { getActiveRates, getRatesVersion, headlineRate, matchRateAliased, paperHasRates, setActiveExtras, setActiveRates, setActiveSettings, subscribeRates, type PaperSettings, type RateExtra, type RateRow } from "./rates";
 import { createClient } from "./supabase/client";
 
 /** Re-renders the caller whenever the active rate book changes; include the value in useMemo deps of quote calculations. */
@@ -76,7 +76,7 @@ export function useRateAvailability() {
     loaded: book !== null,
     hasRates: (paperName: string, adType?: Parameters<typeof paperHasRates>[2]) => book !== null && paperHasRates(book, paperName, adType),
     /** True when this exact edition has a published rate for the ad type and category (what the calculator needs). */
-    canPrice: (paperName: string, editionName: string, categoryId: string | null | undefined, adType: Parameters<typeof matchRate>[4]) => matchRate(book, paperName, editionName, categoryId, adType) !== null,
-    headline: (paperName: string, adType: Parameters<typeof headlineRate>[2], minLines: number) => headlineRate(book, paperName, adType, minLines),
+    canPrice: (paperName: string, editionName: string, categoryId: string | null | undefined, adType: Parameters<typeof matchRateAliased>[4]) => matchRateAliased(book, paperName, editionName, categoryId, adType) !== null,
+    headline: (paperName: string, adType: Parameters<typeof headlineRate>[2], minLines: number, categoryId?: string | null) => headlineRate(book, paperName, adType, minLines, categoryId),
   };
 }

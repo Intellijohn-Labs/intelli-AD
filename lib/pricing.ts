@@ -428,8 +428,8 @@ export function estimateQuote(adType: AdType, selection: Selection, size?: { lin
 }
 
 /** Lowest published per-unit rate for a publication, or null when the admin hasn't published rates for it. */
-export function startingRate(paper: Newspaper, adType: AdType) {
-  return headlineRate(getActiveRates(), paper.name, adType, paperConfig(paper, adType).minLines);
+export function startingRate(paper: Newspaper, adType: AdType, categoryId?: string | null) {
+  return headlineRate(getActiveRates(), paper.name, adType, paperConfig(paper, adType).minLines, categoryId);
 }
 
 /** The headline edition of a publication (first listed, weight-leading). */

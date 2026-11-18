@@ -180,7 +180,7 @@ export function Step1Selection() {
           {visible.map((paper) => {
             const selected = state.selection[paper.id] ?? [];
             const isOpen = open === paper.id;
-            const rate = startingRate(paper, state.adType);
+            const rate = startingRate(paper, state.adType, state.categoryId);
             const suggestions = comboSuggestions(paper.id, selected);
             const locked = !availableFor(paper);
             return (
@@ -194,7 +194,7 @@ export function Step1Selection() {
                       {locked && <Badge tone="amber">{t(loaded ? "Rate card pending" : "Checking rates…")}</Badge>}
                     </span>
                     <span className="block text-xs text-zinc-500">
-                      {t("{n}M readers", { n: parseFloat(paper.readership) })} · {rate ? t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) }) : t(loaded ? "Rate not available — upload rate card" : "Checking rates…")}
+                      {t("{n}M readers", { n: parseFloat(paper.readership) })} · {rate ? t("from {price}/{unit}", { price: formatINR(rate.amount), unit: t(rate.unit) }) : t(loaded ? (state.categoryId ? "Rate not available for this category" : "Rate not available — upload rate card") : "Checking rates…")}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">

@@ -315,11 +315,17 @@ export function matchRate(rates: RateBook | null, paperName: string, editionName
   return best;
 }
 
-/** Same as matchRate, but logs (once) when nothing is published: the calculator then prices nothing for that edition. */
-export function findRate(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
+/** matchRate plus the edition aliases (Idukki → Kottayam, …): the one lookup both pricing and availability use. */
+export function matchRateAliased(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
   let hit = matchRate(rates, paperName, editionName, categoryId, adType);
   const alias = EDITION_ALIASES[norm(editionName)];
-  if (!hit && alias) hit = matchRate(rates, paperName, alias, categoryId, adType); // e.g. Idukki → Kottayam
+  if (!hit && alias) hit = matchRate(rates, paperName, alias, categoryId, adType);
+  return hit;
+}
+
+/** Same as matchRateAliased, but logs (once) when nothing is published: the calculator then prices nothing for that edition. */
+export function findRate(rates: RateBook | null, paperName: string, editionName: string, categoryId: string | null | undefined, adType: AdType): RateRow | null {
+  const hit = matchRateAliased(rates, paperName, editionName, categoryId, adType);
   if (!hit) warnOnce(`${paperName}|${editionName}|${categoryId}|${adType}`, rates ? `No published rate for ${paperName} / ${editionName} / ${categoryId ?? "any category"} / ${adType}: not priced.` : "Rates not loaded: nothing is priced.");
   return hit;
 }
@@ -329,9 +335,10 @@ export const paperHasRates = (rates: RateBook, paperName: string, adType?: AdTyp
   rates.some((r) => norm(r.newspaper_name) === norm(paperName) && (!adType || r.ad_type === adType) && hasPrice(r));
 
 /** Lowest published per-unit rate (per line for text, per cm² for display), or null when none is published. */
-export function headlineRate(rates: RateBook | null, paperName: string, adType: AdType, minLines: number): { amount: number; unit: "line" | "cm²" | "word" } | null {
+export function headlineRate(rates: RateBook | null, paperName: string, adType: AdType, minLines: number, categoryId?: string | null): { amount: number; unit: "line" | "cm²" | "word" } | null {
   if (!rates) return null;
-  const mine = rates.filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paperName));
+  // With a category, only rows for that category (or "all") count, so the headline never borrows another category's price.
+  const mine = rates.filter((r) => r.ad_type === adType && norm(r.newspaper_name) === norm(paperName) && (!categoryId || isAll(r.category) || norm(r.category) === norm(categoryId)));
   if (adType === "classified-text") {
     const words = mine.map((r) => r.word_rate ?? 0).filter((v) => v > 0);
     if (words.length) return { amount: Math.round(Math.min(...words)), unit: "word" };

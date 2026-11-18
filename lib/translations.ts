@@ -367,6 +367,7 @@ export const dict: Record<string, Entry> = {
   "Minimum {n} cm² · {gst}": ["കുറഞ്ഞത് {n} cm² · {gst}"],
   "excl. GST": ["GST ഒഴികെ"],
   "Rate not available — upload rate card": ["നിരക്കുകൾ ഇതുവരെ പ്രസിദ്ധീകരിച്ചിട്ടില്ല"],
+  "Rate not available for this category": ["ഈ വിഭാഗത്തിന് നിരക്ക് ലഭ്യമല്ല"],
   "Rates Updating / Unavailable": ["നിരക്കുകൾ പുതുക്കുന്നു / ലഭ്യമല്ല"],
   "Rates updating": ["നിരക്കുകൾ പുതുക്കുന്നു"],
   "Checking rates…": ["നിരക്കുകൾ പരിശോധിക്കുന്നു…"],

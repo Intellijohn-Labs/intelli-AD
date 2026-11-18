@@ -32,7 +32,7 @@ import { PrintAdGenerator } from "./print-ad-generator";
 import { Button } from "@/components/ui/button";
 import { TemplateComposer } from "./template-composer";
 import { applySpacing } from "@/lib/paragraphs";
-import { getActiveRates, matchRate, paperConfig } from "@/lib/rates";
+import { getActiveRates, matchRateAliased, paperConfig } from "@/lib/rates";
 import { useRatesVersion } from "@/lib/use-rates";
 import { addonsFor, commonPositions, getActiveExtras } from "@/lib/rates";
 
@@ -56,7 +56,7 @@ export function Step2Compose() {
   useRatesVersion();
   // Published rule for the first chosen edition: the only source of colour surcharge and per-line prices.
   const firstEdition = paper?.editions.find((e) => state.selection[paper.id]?.includes(e.id));
-  const rule = paper && firstEdition ? matchRate(getActiveRates(), paper.name, firstEdition.name, state.categoryId, state.adType) : null;
+  const rule = paper && firstEdition ? matchRateAliased(getActiveRates(), paper.name, firstEdition.name, state.categoryId, state.adType) : null;
   const colourPct = rule?.color_surcharge_percent ?? 0;
   // Page positions and add-on percentages exist only when the selected publications' rate cards print them.
   const extras = getActiveExtras();
