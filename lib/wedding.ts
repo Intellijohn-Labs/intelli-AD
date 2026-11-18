@@ -130,13 +130,14 @@ export const inviteUrl = (origin: string, id: string, g?: { name?: string; place
 };
 
 /** The WhatsApp text for one guest (language follows the card). */
-export function whatsappMessage(d: WeddingDetails, g: { name: string; place: string }, link: string): string {
+export function whatsappMessage(d: WeddingDetails, g: { name: string; place: string }): string {
   const title = EVENT_TITLE[d.eventType];
   const names = [d.groom, d.bride].filter(Boolean).join(" & ");
   const date = formatDate(d.date, d.lang);
   const who = g.name || "Friend";
-  const en = `Dear ${who}${g.place ? ` (${g.place})` : ""},\n\n${names ? `${names} ` : ""}warmly invite${names ? "" : "s"} you to their ${title.en}.${date ? `\n📅 ${date}${d.time ? `, ${d.time}` : ""}` : ""}${d.venue ? `\n📍 ${d.venue}` : ""}\n\nYour personal invitation:\n${link}`;
-  const ml = `പ്രിയപ്പെട്ട ${who}${g.place ? ` (${g.place})` : ""},\n\n${names ? `${names} ` : ""}ഞങ്ങളുടെ ${title.ml}ലേക്ക് നിങ്ങളെ സ്നേഹപൂർവം ക്ഷണിക്കുന്നു.${date ? `\n📅 ${formatDate(d.date, "ml")}${d.time ? `, ${d.time}` : ""}` : ""}${d.venue ? `\n📍 ${d.venue}` : ""}\n\nനിങ്ങളുടെ ക്ഷണക്കത്ത്:\n${link}`;
+  const maps = mapsLink(d);
+  const en = `Dear ${who}${g.place ? ` (${g.place})` : ""},\n\n${names ? `${names} ` : ""}warmly invite${names ? "" : "s"} you to their ${title.en}.${date ? `\n📅 ${date}${d.time ? `, ${d.time}` : ""}` : ""}${d.venue ? `\n📍 ${d.venue}` : ""}${maps ? `\n🗺️ ${maps}` : ""}`;
+  const ml = `പ്രിയപ്പെട്ട ${who}${g.place ? ` (${g.place})` : ""},\n\n${names ? `${names} ` : ""}ഞങ്ങളുടെ ${title.ml}ലേക്ക് നിങ്ങളെ സ്നേഹപൂർവം ക്ഷണിക്കുന്നു.${date ? `\n📅 ${formatDate(d.date, "ml")}${d.time ? `, ${d.time}` : ""}` : ""}${d.venue ? `\n📍 ${d.venue}` : ""}${maps ? `\n🗺️ ${maps}` : ""}`;
   return d.lang === "ml" ? ml : d.lang === "both" ? `${ml}\n\n———\n\n${en}` : en;
 }
 

@@ -1,16 +1,17 @@
 "use client";
 
-import { Eye, Plus, Send, Trash2, Upload } from "lucide-react";
+import { Eye, Loader2, Plus, Send, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { Input, Textarea } from "@/components/ui/field";
 import { newId, parseGuests, validPhone, type Guest } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 
 /** Editable guest list: add / paste-import / edit / delete rows, per-row WhatsApp + preview, and Sent / Pending status. */
-export function GuestTable({ guests, onChange, canShare, onSend, onPreview }: {
+export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   guests: Guest[];
   onChange: (g: Guest[]) => void;
-  canShare: boolean;
+  /** Id of the guest whose card is being rendered right now. */
+  busyId: string | null;
   onSend: (g: Guest) => void;
   onPreview: (g: Guest) => void;
 }) {
@@ -60,7 +61,7 @@ export function GuestTable({ guests, onChange, canShare, onSend, onPreview }: {
                     <td className="px-2 py-1.5">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => onPreview(g)} title="Preview / download this guest's card" aria-label={`Preview card for ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"><Eye className="h-4 w-4" /></button>
-                        <button type="button" onClick={() => onSend(g)} disabled={!canShare || !validPhone(g.phone)} title={!canShare ? "Publish the invitation first" : !validPhone(g.phone) ? "Enter a valid WhatsApp number" : "Send on WhatsApp"} aria-label={`Send to ${g.name || `guest ${i + 1}`} on WhatsApp`} className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-2 py-1 text-xs font-bold text-[#06371a] hover:brightness-95 disabled:opacity-40"><Send className="h-3.5 w-3.5" aria-hidden="true" /> {g.status === "sent" ? "Resend" : "Send"}</button>
+                        <button type="button" onClick={() => onSend(g)} disabled={busyId !== null || !g.name.trim()} title={!g.name.trim() ? "Enter the guest's name first" : "Share this guest's personalised card image"} aria-label={`Share card for ${g.name || `guest ${i + 1}`}`} className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-2 py-1 text-xs font-bold text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />} {g.status === "sent" ? "Share again" : "Share"}</button>
                         <button type="button" onClick={() => onChange(guests.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
