@@ -6,7 +6,7 @@ import { Input, Textarea } from "@/components/ui/field";
 import { newId, parseGuests, validPhone, type Guest } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 
-/** Editable guest list: add / paste-import / edit / delete rows, per-row WhatsApp + preview, and Sent / Pending status. */
+/** Editable guest list: add / paste-import / edit / delete rows, per-row preview + Send via Waau Panel, and Pending / Queued / Sent status. */
 export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   guests: Guest[];
   onChange: (g: Guest[]) => void;
@@ -56,12 +56,12 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
                     <td className="px-1 py-1"><Input aria-label={`Guest ${i + 1} place`} className="py-1.5" value={g.place} onChange={(e) => patch(g.id, { place: e.target.value })} /></td>
                     <td className="px-1 py-1"><Input aria-label={`Guest ${i + 1} WhatsApp number`} inputMode="tel" className={cn("py-1.5", bad && "border-red-500")} value={g.phone} onChange={(e) => patch(g.id, { phone: e.target.value, status: "pending" })} placeholder="98470 12345" aria-invalid={bad || undefined} /></td>
                     <td className="px-2 py-1.5">
-                      <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold", g.status === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200")}>{g.status === "sent" ? "Sent" : "Pending"}</span>
+                      <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap", g.status === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : g.status === "queued" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" : g.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200")}>{g.status === "sent" ? "Sent via Waau Panel" : g.status === "queued" ? "Queued in Waau Panel" : g.status === "failed" ? "Failed" : "Pending"}</span>
                     </td>
                     <td className="px-2 py-1.5">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => onPreview(g)} title="Preview / download this guest's card" aria-label={`Preview card for ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"><Eye className="h-4 w-4" /></button>
-                        <button type="button" onClick={() => onSend(g)} disabled={busyId !== null || !g.name.trim()} title={!g.name.trim() ? "Enter the guest's name first" : "Share this guest's personalised card image"} aria-label={`Share card for ${g.name || `guest ${i + 1}`}`} className="inline-flex items-center gap-1 rounded-md whitespace-nowrap bg-[#25D366] px-2 py-1 text-xs font-bold text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />} {g.status === "sent" ? "Share again" : "Share"}</button>
+                        <button type="button" onClick={() => onSend(g)} disabled={busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued"} title={!g.name.trim() ? "Enter the guest's name first" : !validPhone(g.phone) ? "Enter a valid WhatsApp number" : g.status === "sent" || g.status === "queued" ? "Already handed to Waau Panel" : "Send this guest's personalised card via Waau Panel"} aria-label={`Send via Waau Panel to ${g.name || `guest ${i + 1}`}`} className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-2 py-1 text-xs font-bold whitespace-nowrap text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />} {g.status === "failed" ? "Retry" : "Send via Waau Panel"}</button>
                         <button type="button" onClick={() => onChange(guests.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>

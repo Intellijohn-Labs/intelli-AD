@@ -1,14 +1,16 @@
 "use client";
 
-import { Download, ImagePlus, Loader2, MapPin, Send, Sparkles, Video, X } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, Send, Sparkles, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone } from "@/lib/wedding-render";
-import { drawEffect, renderGif, warmPetals } from "@/lib/wedding-motion";
-import { normalizePhone, EMPTY_DETAILS, EFFECTS, EVENTS, eventConfig, getTemplate, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, TEMPLATES, validPhone, whatsappLink, whatsappMessage, type CardEffect, type EventType, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { renderGif, warmPetals } from "@/lib/wedding-motion";
+import { publishInvitation } from "@/lib/wedding-publish";
+import { MotionCanvas } from "./motion-canvas";
+import { EMPTY_DETAILS, EFFECTS, EVENTS, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -16,28 +18,6 @@ const TABS = ["Template", "Details", "Media", "Guests & share"] as const;
 const MAX_VIDEO = 50 * 1024 * 1024;
 
 const panel = "rounded-xl border border-[#E2E8F0] bg-white p-4 sm:p-5 dark:border-[#26272B] dark:bg-[#131416]";
-
-/** Plays the chosen motion over the still preview image (static when the visitor prefers reduced motion). */
-function MotionCanvas({ src, effect, pal, warm }: { src: string; effect: CardEffect; pal: Palette; warm: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const c = ref.current;
-    if (!c || !src) return;
-    let live = true, raf = 0;
-    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const img = new Image();
-    img.onload = () => {
-      if (!live) return;
-      c.width = img.width; c.height = img.height;
-      const ctx = c.getContext("2d")!;
-      const draw = (t: number) => { ctx.clearRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0); drawEffect(ctx, effect, (t / 3200) % 1, c.width, c.height, pal, warm); if (live && !reduce) raf = requestAnimationFrame(draw); };
-      draw(0);
-    };
-    img.src = src;
-    return () => { live = false; cancelAnimationFrame(raf); };
-  }, [src, effect, pal, warm]);
-  return <canvas ref={ref} role="img" aria-label="Animated card preview" className="h-full w-full object-cover" />;
-}
 
 /** Invitation cards studio: pick one of 10 templates, enter the couple's details and media, let AI write the wording, then personalise and share on WhatsApp. */
 export function WeddingStudio() {
@@ -51,8 +31,8 @@ export function WeddingStudio() {
   const [hydrated, setHydrated] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
-  const [bulk, setBulk] = useState(false);
-  const [lastSent, setLastSent] = useState("");
+  const [inviteId, setInviteId] = useState<string | null>(null);
+  const [publishedHash, setPublishedHash] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
   const [zones, setZones] = useState<CardZone[]>([]);
   const cardPhotoRef = useRef<HTMLInputElement>(null);
@@ -60,8 +40,6 @@ export function WeddingStudio() {
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<TemplateFilter>("all");
   const [effect, setEffect] = useState<CardEffect>("none");
-  const [gifBusy, setGifBusy] = useState<string | null>(null);
-  const [zipGif, setZipGif] = useState<{ done: number; total: number } | null>(null);
   const [guestPreview, setGuestPreview] = useState<Guest | null>(null);
   const [guestImg, setGuestImg] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
@@ -73,10 +51,10 @@ export function WeddingStudio() {
   useEffect(() => {
     const s = loadStudio();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (s) { setEffect(s.effect ?? "none"); setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
+    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setEffect(s.effect ?? "none"); setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
     setHydrated(true);
   }, []);
-  useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId: null, publishedHash: null, effect }); }, [hydrated, templateId, d, guests, effect]);
+  useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId, publishedHash, effect }); }, [hydrated, templateId, d, guests, effect, inviteId, publishedHash]);
   useEffect(() => () => { if (videoPreview) URL.revokeObjectURL(videoPreview); }, [videoPreview]);
 
 
@@ -85,11 +63,11 @@ export function WeddingStudio() {
   const rd = useMemo(() => ({ ...sampleFor(d.eventType), ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) }) as WeddingDetails, [d]);
 
   // A template suits an event when it is in the event's group (wedding events also use the shared "events" designs).
-  const suits = (t: WeddingTemplate, ev: EventType) => { const g = eventConfig(ev).group; return t.category === g || (g === "wedding" && t.category === "events" && eventConfig(t.defaultEvent).group === "wedding") || (g === "events" && t.category === "events"); };
+  const suits = (t: WeddingTemplate, ev: EventType) => templateSuits(t, ev);
   const pickEvent = (ev: EventType) => {
     const g = eventConfig(ev).group;
     set({ eventType: ev }); setFilter(g === "events" ? "events" : g);
-    if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) setTemplateId(next.id); }
+    if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set({ eventType: t.defaultEvent }); };
   const shown = TEMPLATES.filter((t) => filter === "all" || (filter === "animated" ? t.animated : t.category === filter));
@@ -171,118 +149,74 @@ export function WeddingStudio() {
   };
 
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [zip, setZip] = useState<{ done: number; total: number } | null>(null);
-  const isMobile = () => typeof navigator !== "undefined" && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1);
+  const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
   const safe = (n: string, fb: string) => n.trim().replace(/[^\p{L}\p{N}\p{M}]+/gu, "-").replace(/^-+|-+$/g, "") || fb;
   const loadPhotos = useCallback(async () => [d.photos[0] ? await loadImage(d.photos[0]) : null, d.photos[1] ? await loadImage(d.photos[1]) : null] as const, [d.photos]);
-  const guestBlob = async (g: Guest, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]) => {
-    const c = await renderWeddingCard({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: 1080 });
-    return await new Promise<Blob>((res, rej) => c.toBlob((bl) => (bl ? res(bl) : rej(new Error("render failed"))), "image/png"));
-  };
-  const markSent = (g: Guest) => setGuests((cur) => cur.map((x) => (x.id === g.id ? { ...x, status: "sent" } : x)));
-  const saveBlob = (blob: Blob, name: string) => { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); };
-
-  /** Shares the guest's personalised PNG (Web Share where files are supported; otherwise download + copy text + open the chat). */
-  const sendOne = async (g: Guest) => {
-    if (busyId) return;
-    setBusyId(g.id);
-    setLastSent(g.name.trim() || g.phone);
-    try {
-      const blob = await guestBlob(g, await loadPhotos());
-      const fileName = `${safe(g.name, "Guest")}-Invitation.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-      const text = whatsappMessage(rd, g);
-      if (isMobile() && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], text }); markSent(g); toast(`Shared ${g.name.trim()}'s card.`); }
-        catch (e) { if ((e as Error)?.name !== "AbortError") toast("Sharing didn't work. Use the Preview button to download the card."); }
-        return;
-      }
-      saveBlob(blob, fileName);
-      try { await navigator.clipboard.writeText(text); } catch { /* clipboard blocked */ }
-      if (validPhone(g.phone)) window.open(`https://wa.me/${normalizePhone(g.phone)}`, "_blank", "noopener,noreferrer");
-      markSent(g);
-      toast(validPhone(g.phone) ? "Card PNG downloaded & message copied — paste/attach the image in WhatsApp." : "Card PNG downloaded & message copied. Add a WhatsApp number to open the chat.");
-    } catch { toast("Couldn't create this card. Please try again."); }
-    finally { setBusyId(null); }
-  };
-
-  const downloadZip = async () => {
-    if (zip || guests.length === 0) return;
-    setZip({ done: 0, total: guests.length });
-    try {
-      const { default: JSZip } = await import("jszip");
-      const z = new JSZip();
-      const photos = await loadPhotos();
-      const pad = String(guests.length).length < 2 ? 2 : String(guests.length).length;
-      for (let i = 0; i < guests.length; i++) {
-        setZip({ done: i, total: guests.length });
-        await new Promise((r) => setTimeout(r, 0));
-        const g = guests[i];
-        z.file(`${String(i + 1).padStart(pad, "0")}-${safe(g.name, `Guest-${i + 1}`)}.png`, await guestBlob(g, photos));
-      }
-      setZip({ done: guests.length, total: guests.length });
-      saveBlob(await z.generateAsync({ type: "blob" }), "Wedding-Invitation-Cards.zip");
-      toast(`${guests.length} guest cards downloaded as a ZIP.`);
-    } catch { toast("Couldn't build the ZIP. Please try again."); }
-    finally { setZip(null); }
-  };
-
   const HEXRE = /^#[0-9a-fA-F]{6}$/;
   const pal: Palette = useMemo(() => ({ ...tpl.pal, ...(HEXRE.test(d.accent) ? { accent: d.accent } : {}) }), [tpl, d.accent]);
   const warm = warmPetals(tpl.motif);
-  const gifEffect: CardEffect = effect === "none" ? "sparkle" : effect;
-  const gifBlob = async (g: { name: string; place: string } | null, photos: readonly [HTMLImageElement | null, HTMLImageElement | null], width: number, frames: number, onProgress?: (n: number, t: number) => void) => {
-    const base = await renderWeddingCard({ template: tpl, details: rd, guest: g, photo: photos[0], photo2: photos[1], width });
-    return renderGif({ base, effect: gifEffect, pal, warm, frames, onProgress });
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  const cardHash = useMemo(() => JSON.stringify([templateId, rd, effect, video?.name, video?.size]), [templateId, rd, effect, video]);
+
+  /** The personalised card as an in-memory image (PNG, or a looping GIF when a motion is chosen). It is uploaded, never saved to this device. */
+  const cardBlob = async (g: Guest, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<Blob> => {
+    const base = await renderWeddingCard({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: effect === "none" ? 1080 : 540 });
+    if (effect !== "none") return renderGif({ base, effect, pal, warm, frames: 24 });
+    return await new Promise<Blob>((res, rej) => base.toBlob((bl) => (bl ? res(bl) : rej(new Error("render failed"))), "image/png"));
   };
-  const downloadGif = async (g: Guest | null) => {
-    if (gifBusy) return;
-    setGifBusy(g?.id ?? "card");
+
+  /** Makes sure this card exists as an online invitation page (the personalised link guests get); null when online storage isn't available. */
+  const ensurePublished = async (): Promise<string | null> => {
+    if (inviteId && !inviteId.startsWith("local-") && publishedHash === cardHash) return inviteId;
+    const r = await publishInvitation(templateId, rd, video, effect);
+    if (r.local) { toast("The invitation page couldn't be saved online, so cards are sent without a personal link."); return null; }
+    setInviteId(r.id); setPublishedHash(cardHash);
+    return r.id;
+  };
+
+  const setStatus = (id: string, status: Guest["status"]) => setGuests((cur) => cur.map((x) => (x.id === id ? { ...x, status } : x)));
+
+  /** Renders one guest's card, uploads it and hands it to Waau Panel (or queues it). Returns false to stop a batch (not signed in, etc.). */
+  const dispatchOne = async (g: Guest, invId: string | null, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<boolean> => {
     try {
-      const blob = await gifBlob(g ? { name: g.name, place: g.place } : null, await loadPhotos(), 540, 24);
-      saveBlob(blob, g ? `${safe(g.name, "Guest")}-Invitation.gif` : "Invitation-Card.gif");
-      toast(effect === "none" ? "GIF downloaded with twinkling sparkles. Pick a motion on the Template tab to change it." : "Animated GIF downloaded.");
-    } catch { toast("Couldn't create the GIF. Please try again."); }
-    finally { setGifBusy(null); }
+      const blob = await cardBlob(g, photos);
+      const fd = new FormData();
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: g.phone, message: whatsappMessage(rd, g), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("card", blob, effect === "none" ? "card.png" : "card.gif");
+      const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
+      const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string };
+      if (j.status) { setStatus(g.id, j.status); if (j.status === "failed") toast(`${g.name}: ${j.error ?? "Waau Panel couldn't send this invitation."}`); return true; }
+      setStatus(g.id, "failed");
+      toast(j.error ?? "Couldn't send this invitation.");
+      return res.status !== 401 && res.status !== 429 && res.status !== 503;
+    } catch {
+      setStatus(g.id, "failed");
+      toast("Couldn't reach the server. Please try again.");
+      return false;
+    }
   };
-  const downloadCardPng = async () => {
-    const c = await renderWeddingCard({ template: tpl, details: rd, photo: d.photos[0] ? await loadImage(d.photos[0]) : null, photo2: d.photos[1] ? await loadImage(d.photos[1]) : null, width: 1080 });
-    await new Promise<void>((res) => c.toBlob((b) => { if (b) saveBlob(b, "Invitation-Card.png"); res(); }, "image/png"));
+
+  const sendOne = async (g: Guest) => {
+    if (busyId || batch || !g.name.trim() || !validPhone(g.phone)) return;
+    setBusyId(g.id);
+    try { await dispatchOne(g, await ensurePublished(), await loadPhotos()); } finally { setBusyId(null); }
   };
-  const downloadZipGifs = async () => {
-    if (zipGif || guests.length === 0) return;
-    setZipGif({ done: 0, total: guests.length });
+
+  const sendable = guests.filter((g) => (g.status === "pending" || g.status === "failed") && g.name.trim() && validPhone(g.phone));
+  const sendAll = async () => {
+    if (busyId || batch || sendable.length === 0) return;
+    const list = sendable;
+    setBatch({ done: 0, total: list.length });
     try {
-      const { default: JSZip } = await import("jszip");
-      const z = new JSZip(), photos = await loadPhotos();
-      const pad = String(guests.length).length < 2 ? 2 : String(guests.length).length;
-      for (let i = 0; i < guests.length; i++) {
-        setZipGif({ done: i, total: guests.length });
-        const g = guests[i];
-        z.file(`${String(i + 1).padStart(pad, "0")}-${safe(g.name, `Guest-${i + 1}`)}.gif`, await gifBlob({ name: g.name, place: g.place }, photos, 400, 16));
+      const invId = await ensurePublished(), photos = await loadPhotos();
+      for (let i = 0; i < list.length; i++) {
+        setBatch({ done: i, total: list.length });
+        setBusyId(list[i].id);
+        if (!(await dispatchOne(list[i], invId, photos))) break;
       }
-      saveBlob(await z.generateAsync({ type: "blob" }), "Invitation-GIF-Cards.zip");
-      toast(`${guests.length} animated cards downloaded as a ZIP.`);
-    } catch { toast("Couldn't build the GIF ZIP. Please try again."); }
-    finally { setZipGif(null); }
+    } finally { setBusyId(null); setBatch(null); }
   };
-
-  const pending = guests.filter((g) => g.status === "pending" && g.name.trim() && validPhone(g.phone));
-  const sendNext = () => {
-    const n = pending[0];
-    if (!n) { setBulk(false); toast("Every guest has been shared."); return; }
-    void sendOne(n);
-    if (pending.length <= 1) setBulk(false);
-  };
-
-  const downloadGuest = () => { if (!guestImg || !guestPreview) return; const a = document.createElement("a"); a.href = guestImg; a.download = `${safe(guestPreview.name, "Guest")}-Invitation.png`; a.click(); };
-  const shareGuestImage = async () => {
-    if (!guestImg || !guestPreview) return;
-    const blob = await (await fetch(guestImg)).blob();
-    const file = new File([blob], `${safe(guestPreview.name, "Guest")}-Invitation.png`, { type: "image/png" });
-    if (isMobile() && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: whatsappMessage(rd, guestPreview) }); } catch { /* cancelled */ } }
-    else downloadGuest();
-  };
+  const counts = { queued: guests.filter((g) => g.status === "queued").length, sent: guests.filter((g) => g.status === "sent").length, failed: guests.filter((g) => g.status === "failed").length };
 
   const bar = (i: number) => (
     <button key={TABS[i]} type="button" role="tab" aria-selected={tab === TABS[i]} onClick={() => setTab(TABS[i])} className={cn("flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors", tab === TABS[i] ? "bg-[#0A0B0D] text-white dark:bg-[#D12014]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10")}>
@@ -294,7 +228,7 @@ export function WeddingStudio() {
     <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <p className="kicker mb-2">Invitation cards · ക്ഷണക്കത്തുകൾ</p>
       <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">Design an invitation card and send it to every guest on WhatsApp</h1>
-      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Weddings, birthdays, housewarming, baby ceremonies and more: choose a template, add your details and photos, let AI write the wording, then share a personalised card (PNG or animated GIF) with each guest&apos;s name on it.</p>
+      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Weddings, birthdays, housewarming, baby ceremonies and more: choose a template, add your details and photos, let AI write the wording, then send a personalised card (still or animated) to each guest on WhatsApp through Waau Panel.</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 space-y-4">
@@ -323,7 +257,7 @@ export function WeddingStudio() {
                       {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
                       {x.animated && <span className="absolute top-2.5 right-2.5 z-10 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white">GIF</span>}
                       <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
-                        {thumbs[x.id] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={thumbs[x.id]} alt={`${x.name} template`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" /></div>}
+                        {thumbs[x.id] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={thumbs[x.id]} alt={`${x.name} template`} draggable={false} onContextMenu={(e) => e.preventDefault()} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" /></div>}
                       </div>
                       <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{x.name}</p>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300">{x.tagline}</p>
@@ -399,31 +333,22 @@ export function WeddingStudio() {
           )}
 
           {tab === "Guests & share" && (
-            <section className={cn(panel, "space-y-5")} aria-label="Guests and sharing">
+            <section className={cn(panel, "space-y-5")} aria-label="Guests and Waau Panel dispatch">
               <div>
-                <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">1. Guest list</h2>
-                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">Each guest gets their own card with “Dear Name, Place” printed on it.</p>
-                <div className="mb-3 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void downloadZip()} disabled={guests.length === 0 || !!zip} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-4 py-2 text-sm font-bold text-white hover:bg-[#17181C] disabled:opacity-50 dark:bg-[#D12014] dark:hover:bg-[#E83E32]">{zip ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} Download All Cards (.ZIP)</button>
-                  {zip && <span role="status" className="text-xs font-semibold text-slate-800 dark:text-slate-100">Generating {Math.min(zip.done + 1, zip.total)} of {zip.total} cards…</span>}
-                  <button type="button" onClick={() => void downloadZipGifs()} disabled={guests.length === 0 || !!zipGif} className="inline-flex items-center gap-1.5 rounded-lg border border-[#B8860B] bg-[#B8860B]/10 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-[#B8860B]/20 disabled:opacity-50 dark:text-white">{zipGif ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} ✨ Download All GIFs (.ZIP)</button>
-                  {zipGif && <span role="status" className="text-xs font-semibold text-slate-800 dark:text-slate-100">Generating GIF {Math.min(zipGif.done + 1, zipGif.total)} of {zipGif.total}…</span>}
-                </div>
+                <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">1. Add your guests</h2>
+                <p className="mb-3 text-xs text-slate-600 dark:text-slate-300">Add each recipient&apos;s name, place and WhatsApp number (one by one, or paste many from Excel / Sheets). Every guest gets their own card with “Dear Name, Place” on it, prepared automatically. Cards are never downloaded to your device.</p>
                 <GuestTable guests={guests} busyId={busyId} onChange={setGuests} onSend={(g) => void sendOne(g)} onPreview={setGuestPreview} />
               </div>
               <div className="rounded-lg border border-[#25D366]/50 bg-[#25D366]/10 p-3">
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">2. Share on WhatsApp</h2>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">2. Dispatch via Waau Panel</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => { setBulk(true); sendNext(); }} disabled={pending.length === 0 || busyId !== null} className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40"><Send className="h-4 w-4" aria-hidden="true" /> Share to all guests on WhatsApp ({pending.length})</button>
+                  <button type="button" onClick={() => void sendAll()} disabled={sendable.length === 0 || !!batch || busyId !== null} className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({sendable.length} {sendable.length === 1 ? "guest" : "guests"})</button>
+                  {batch && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Preparing and sending {Math.min(batch.done + 1, batch.total)} of {batch.total}…</span>}
                 </div>
-                {bulk && (
-                  <div role="status" className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-slate-300 bg-white p-3 text-sm dark:border-slate-600 dark:bg-[#1A1B1E]">
-                    <span className="text-slate-900 dark:text-white">Shared <b>{lastSent}</b>'s card. Send it in WhatsApp, come back and continue: <b>{pending.length}</b> left.</span>
-                    <button type="button" onClick={sendNext} disabled={pending.length === 0} className="rounded-lg bg-[#0A0B0D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#17181C] disabled:opacity-50 dark:bg-[#D12014]">Send to next: {pending[0]?.name || pending[0]?.phone || "—"}</button>
-                    <button type="button" onClick={() => setBulk(false)} className="text-xs font-semibold underline">Stop</button>
-                  </div>
+                {(counts.queued > 0 || counts.sent > 0 || counts.failed > 0) && (
+                  <p role="status" className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{counts.sent > 0 && <span className="mr-3">Sent via Waau Panel: {counts.sent}</span>}{counts.queued > 0 && <span className="mr-3">Queued in Waau Panel: {counts.queued}</span>}{counts.failed > 0 && <span className="text-red-700 dark:text-red-300">Failed: {counts.failed} (use Send to retry)</span>}</p>
                 )}
-                <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Guests without a valid WhatsApp number are skipped here (they are still in the ZIP). On phones the share sheet sends the card image with the invitation text. On desktop the PNG is downloaded, the message is copied and the guest&apos;s chat opens — attach the image there. “Shared” means the share or chat was opened; confirm the send inside WhatsApp.</p>
+                <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Each personalised card{effect !== "none" ? " (animated GIF)" : ""} is generated, stored securely and handed to Waau Panel for WhatsApp delivery. Until Waau Panel is connected, invitations wait as “Queued in Waau Panel”. Guests without a valid WhatsApp number are skipped. You need to be signed in to send.</p>
               </div>
             </section>
           )}
@@ -437,9 +362,9 @@ export function WeddingStudio() {
             </div>
             <p className="text-center text-[11px] text-slate-600 dark:text-slate-300">Click any text on the card to edit directly</p>
             <div className="relative mx-auto w-full max-w-[420px]">
-              <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
+              <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {preview ? (effect !== "none" ? <MotionCanvas src={preview} effect={effect} pal={pal} warm={warm} /> : <img src={preview} alt="Invitation card preview" className="h-full w-full object-cover" />) : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
+                {preview ? (effect !== "none" ? <MotionCanvas src={preview} effect={effect} pal={pal} warm={warm} /> : <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" />) : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
                 {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} />}
               </div>
               <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
@@ -451,10 +376,6 @@ export function WeddingStudio() {
                 const next = [...d.photos]; next[i] = u; set({ photos: next.slice(0, 4) });
               }} />
             </div>
-            <div className="mx-auto flex max-w-[420px] flex-wrap gap-2">
-              <button type="button" onClick={() => void downloadCardPng()} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><Download className="h-4 w-4" aria-hidden="true" /> PNG</button>
-              <button type="button" onClick={() => void downloadGif(null)} disabled={!!gifBusy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#B8860B] bg-[#B8860B]/10 px-3 py-2 text-xs font-bold text-slate-900 hover:bg-[#B8860B]/20 disabled:opacity-50 dark:text-white">{gifBusy === "card" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} ✨ Animated GIF</button>
-            </div>
             {videoPreview && <video src={videoPreview} controls playsInline className="mx-auto w-full max-w-[420px] rounded-lg bg-black" aria-label="Invitation video preview" />}
             {mapsLink(d) && <a href={mapsLink(d)} target="_blank" rel="noopener noreferrer" className="mx-auto flex max-w-[420px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><MapPin className="h-4 w-4" aria-hidden="true" /> Open venue in Google Maps</a>}
           </div>
@@ -465,8 +386,8 @@ export function WeddingStudio() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-stone-950/75 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setGuestPreview(null); }}>
           <div role="dialog" aria-modal="true" aria-label="Personalised card" className="flex max-h-[94vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between"><h2 className="text-sm font-bold text-slate-900 dark:text-white">Card for {guestPreview.name || "this guest"}</h2><button type="button" aria-label="Close" onClick={() => setGuestPreview(null)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></div>
-            <div className="w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>
-            <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadGuest} disabled={!guestImg} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100"><Download className="h-4 w-4" aria-hidden="true" /> Download PNG</button><button type="button" onClick={() => void shareGuestImage()} disabled={!guestImg} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-bold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Share image</button><button type="button" onClick={() => guestPreview && void downloadGif(guestPreview)} disabled={!guestImg || !!gifBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#B8860B] bg-[#B8860B]/10 px-3 py-2 text-sm font-bold text-slate-900 hover:bg-[#B8860B]/20 disabled:opacity-50 dark:text-white">{gifBusy && gifBusy === guestPreview?.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} ✨ Download animated GIF</button></div>
+            <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>
+            <button type="button" onClick={() => { void sendOne(guestPreview); }} disabled={!!busyId || !!batch || !guestPreview.name.trim() || !validPhone(guestPreview.phone)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-extrabold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Send via Waau Panel</button>
           </div>
         </div>
       )}

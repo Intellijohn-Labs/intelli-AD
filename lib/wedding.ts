@@ -52,13 +52,15 @@ export interface WeddingTemplate {
   faith?: Faith;
   /** Event type selected when this template is chosen from another event group. */
   defaultEvent: EventType;
+  /** Events this design is written for (omit for wedding-type designs that fit every wedding event). */
+  events?: EventType[];
   /** Luxury designs get the gold PREMIUM badge. */
   premium?: boolean;
   /** Shown under the Animated (GIF) filter (every template can still export a GIF). */
   animated?: boolean;
 }
 
-type RawTemplate = Omit<WeddingTemplate, "category" | "faith" | "defaultEvent" | "premium" | "animated">;
+type RawTemplate = Omit<WeddingTemplate, "category" | "faith" | "defaultEvent" | "events" | "premium" | "animated">;
 const RAW_TEMPLATES: RawTemplate[] = [
   { id: "kasavu", name: "Royal Kerala Kasavu & Gold", ml: "കസവ് & സ്വർണ്ണം", tagline: "Traditional Malayalam / English", layout: "classic", motif: "kasavu", shape: "arch", pal: { bg1: "#FFFBF0", bg2: "#F8EDD2", ink: "#3B0A12", sub: "#6B4A2B", accent: "#B8860B", accent2: "#8C1C2B" }, blessing: ["With the blessings of the Almighty", "ദൈവാനുഗ്രഹത്താൽ"] },
   { id: "temple", name: "Guruvayoor Temple Floral", ml: "ഗുരുവായൂർ പുഷ്പാലങ്കാരം", tagline: "Sacred Hindu temple theme", layout: "classic", motif: "temple", shape: "oval", pal: { bg1: "#FFF6E3", bg2: "#FDE4B8", ink: "#4A1507", sub: "#7A3E1B", accent: "#D9480F", accent2: "#B8860B" }, blessing: ["Sri Ganapathaye Namah", "ശ്രീ ഗണപതയേ നമഃ"] },
@@ -101,22 +103,25 @@ const NEW_TEMPLATES: RawTemplate[] = [
   { id: "anniversary", name: "Ruby & Gold Anniversary Crest", ml: "വാർഷികാഘോഷം", tagline: "Ruby, gold crest & hearts", layout: "classic", motif: "anniversary", shape: "oval", pal: P("#7A0A2E", "#3F0518", "#FFF0D2", "#F0D6A8", "#E3B85C", "#F6DE98"), blessing: ["Celebrating years of love", "സ്നേഹത്തിന്റെ വർഷങ്ങൾ ആഘോഷിക്കാൻ"] },
 ];
 
-type Meta = { category: TemplateCategory; faith?: Faith; defaultEvent: EventType; premium?: boolean; animated?: boolean };
+type Meta = { category: TemplateCategory; faith?: Faith; defaultEvent: EventType; /** Events this design fits; wedding-group designs fit every wedding-type event. */ events?: EventType[]; premium?: boolean; animated?: boolean };
 const wd = (faith: Faith, extra: Partial<Meta> = {}, defaultEvent: EventType = "wedding"): Meta => ({ category: "wedding", faith, defaultEvent, ...extra });
 const META: Record<string, Meta> = {
   kasavu: wd("hindu", { animated: true }), temple: wd("hindu"), church: wd("christian"), nikah: wd("muslim", {}, "nikah"), botanical: wd("modern"), banarasi: wd("hindu", { animated: true }), minimal: wd("modern"),
-  polaroid: { category: "events", defaultEvent: "save-the-date" }, velvet: { category: "events", defaultEvent: "reception", animated: true }, marigold: { category: "events", defaultEvent: "haldi", animated: true },
+  polaroid: { category: "events", defaultEvent: "save-the-date", events: ["save-the-date"] }, velvet: { category: "events", defaultEvent: "reception", events: ["reception"], animated: true }, marigold: { category: "events", defaultEvent: "haldi", events: ["haldi"], animated: true },
   peacock: wd("hindu", { premium: true, animated: true }), nilavilakku: wd("hindu", { premium: true, animated: true }), kanchipuram: wd("hindu", { premium: true, animated: true }),
   cathedral: wd("christian", { premium: true, animated: true }), victorian: wd("christian", { premium: true, animated: true }),
   mughal: wd("muslim", { premium: true, animated: true }, "nikah"), sapphire: wd("muslim", { premium: true, animated: true }, "nikah"), walima: wd("muslim", { premium: true, animated: true }, "reception"),
   emeraldfoil: wd("modern", { premium: true, animated: true }), marble: wd("modern", { premium: true, animated: true }), burgundy: wd("modern", { premium: true, animated: true }),
-  betrothal: { category: "events", faith: "christian", defaultEvent: "engagement", premium: true, animated: true }, rosegold: { category: "events", defaultEvent: "engagement", premium: true, animated: true }, starlight: { category: "events", defaultEvent: "reception", premium: true, animated: true },
-  goldconfetti: { category: "birthday", defaultEvent: "birthday", premium: true, animated: true }, pastelballoon: { category: "birthday", defaultEvent: "birthday", premium: true, animated: true }, rosegoldbday: { category: "birthday", defaultEvent: "birthday", premium: true, animated: true },
-  gruhapravesham: { category: "housewarming", faith: "hindu", defaultEvent: "housewarming", premium: true, animated: true }, emeraldhome: { category: "housewarming", defaultEvent: "housewarming", premium: true, animated: true }, christianhome: { category: "housewarming", faith: "christian", defaultEvent: "housewarming", premium: true, animated: true },
-  choroonu: { category: "baby", faith: "hindu", defaultEvent: "choroonu", premium: true, animated: true }, baptism: { category: "baby", faith: "christian", defaultEvent: "baptism", premium: true, animated: true }, babyshower: { category: "baby", defaultEvent: "babyshower", premium: true, animated: true }, aqiqah: { category: "baby", faith: "muslim", defaultEvent: "aqiqah", premium: true, animated: true },
-  ribbon: { category: "events", defaultEvent: "inauguration", premium: true, animated: true }, anniversary: { category: "events", defaultEvent: "anniversary", premium: true, animated: true },
+  betrothal: { category: "events", faith: "christian", defaultEvent: "engagement", events: ["engagement"], premium: true, animated: true }, rosegold: { category: "events", defaultEvent: "engagement", events: ["engagement"], premium: true, animated: true }, starlight: { category: "events", defaultEvent: "reception", events: ["reception"], premium: true, animated: true },
+  goldconfetti: { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true, animated: true }, pastelballoon: { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true, animated: true }, rosegoldbday: { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true, animated: true },
+  gruhapravesham: { category: "housewarming", faith: "hindu", defaultEvent: "housewarming", events: ["housewarming"], premium: true, animated: true }, emeraldhome: { category: "housewarming", defaultEvent: "housewarming", events: ["housewarming"], premium: true, animated: true }, christianhome: { category: "housewarming", faith: "christian", defaultEvent: "housewarming", events: ["housewarming"], premium: true, animated: true },
+  choroonu: { category: "baby", faith: "hindu", defaultEvent: "choroonu", events: ["choroonu", "noolukettu"], premium: true, animated: true }, baptism: { category: "baby", faith: "christian", defaultEvent: "baptism", events: ["baptism"], premium: true, animated: true }, babyshower: { category: "baby", defaultEvent: "babyshower", events: ["babyshower"], premium: true, animated: true }, aqiqah: { category: "baby", faith: "muslim", defaultEvent: "aqiqah", events: ["aqiqah"], premium: true, animated: true },
+  ribbon: { category: "events", defaultEvent: "inauguration", events: ["inauguration"], premium: true, animated: true }, anniversary: { category: "events", defaultEvent: "anniversary", events: ["anniversary"], premium: true, animated: true },
 };
 export const TEMPLATES: WeddingTemplate[] = [...RAW_TEMPLATES, ...NEW_TEMPLATES].map((t) => ({ ...t, ...META[t.id] }));
+
+/** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
+export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);
 
 export const TEMPLATE_FILTERS = [
   { id: "all", label: "All" }, { id: "wedding", label: "Wedding (Hindu / Christian / Muslim)" }, { id: "birthday", label: "Birthday" }, { id: "housewarming", label: "Housewarming (ഗൃഹപ്രവേശം)" },
@@ -165,7 +170,7 @@ export const EVENTS: EventConfig[] = [
   baby("noolukettu", "Noolukettu (Naming Ceremony)", "നൂലുകെട്ട്", { title: { en: "Noolukettu Ceremony", ml: "നൂലുകെട്ട്" }, invite: { en: "the", ml: "ഞങ്ങളുടെ കുഞ്ഞിന്റെ" } }),
   baby("baptism", "Holy Baptism", "മാമോദീസ", { title: { en: "Holy Baptism", ml: "മാമോദീസ" }, labels: { name1: "Baby's name", name2: "Godparents (optional)", host1: "Parents' names", host2: "", time: "Time", venue: "Church / venue" }, message: { en: "Please join us as our little one is welcomed into God's family.", ml: "ഞങ്ങളുടെ കുഞ്ഞ് ദൈവകുടുംബത്തിലേക്ക് സ്വീകരിക്കപ്പെടുന്ന ഈ ധന്യ നിമിഷത്തിൽ പങ്കുചേരാൻ ക്ഷണിക്കുന്നു." }, sample: { groom: "Ethan", bride: "", groomParents: "Jose & Mary", date: "2027-03-20", time: "10:00 AM", venue: "St. Mary's Church, Kottayam", message: "" } }),
   baby("babyshower", "Baby Shower / Seemantham", "സീമന്തം", { title: { en: "Baby Shower", ml: "സീമന്തം" }, labels: { name1: "Mother-to-be's name", name2: "Father / family (optional)", host1: "Hosted by", host2: "", time: "Time", venue: "Venue" }, hostPrefix: { en: "Hosted by ", ml: "ആതിഥേയർ: " }, invite: { en: "the", ml: "" }, message: { en: "Join us to shower the mum-to-be with love and blessings.", ml: "വരാനിരിക്കുന്ന കുഞ്ഞിനും അമ്മയ്ക്കും അനുഗ്രഹവും സ്നേഹവും ചൊരിയാൻ എല്ലാവരെയും ക്ഷണിക്കുന്നു." }, sample: { groom: "Anjali", bride: "", groomParents: "Her loving family", date: "2027-02-27", time: "11:00 AM", venue: "Rose Residency, Thrissur", message: "" } }),
-  baby("aqiqah", "Aqiqah", "അഖീഖ", { title: { en: "Aqiqah", ml: "അഖീഖ" }, labels: { name1: "Baby's name", name2: "", host1: "Parents' names", host2: "", time: "Time", venue: "Venue" }, useName2: false, message: { en: "Join us to celebrate and make dua for our little blessing.", ml: "ഞങ്ങളുടെ കുഞ്ഞിനു വേണ്ടി ദുആ ചെയ്യാനും സന്തോഷം പങ്കിടാനും സ്നേഹപൂർവം ക്ഷണിക്കുന്നു." }, sample: { groom: "Muhammad Ayaan", bride: "", groomParents: "Faisal & Shahana", date: "2027-03-14", time: "11:00 AM", venue: "Al-Noor Hall, Kozhikode", message: "" } }),
+  baby("aqiqah", "Aqiqah", "അഖീഖ", { title: { en: "Aqiqah Ceremony", ml: "അഖീഖ ക്ഷണക്കത്ത്" }, labels: { name1: "Baby's name", name2: "", host1: "Parents' names", host2: "", time: "Time", venue: "Venue" }, useName2: false, message: { en: "Join us to celebrate and make dua for our little blessing.", ml: "ഞങ്ങളുടെ കുഞ്ഞിനു വേണ്ടി ദുആ ചെയ്യാനും സന്തോഷം പങ്കിടാനും സ്നേഹപൂർവം ക്ഷണിക്കുന്നു." }, sample: { groom: "Muhammad Ayaan", bride: "", groomParents: "Faisal & Shahana", date: "2027-03-14", time: "11:00 AM", venue: "Al-Noor Hall, Kozhikode", message: "" } }),
   EV({ id: "inauguration", group: "events", en: "Inauguration", ml: "ഉദ്ഘാടനം", title: { en: "Grand Inauguration", ml: "ഉദ്ഘാടന ചടങ്ങ്" }, couple: false, labels: { name1: "Business / brand name", name2: "Chief guest (optional)", host1: "Proprietor / hosted by", host2: "", time: "Inauguration time", venue: "Venue / address" }, useName2: true, useHost2: false, hostPrefix: { en: "Proprietor: ", ml: "ഉടമ: " }, invite: { en: "the", ml: "ഞങ്ങളുടെ" }, message: { en: "We cordially invite you to the opening of our new venture.", ml: "ഞങ്ങളുടെ പുതിയ സംരംഭത്തിന്റെ ഉദ്ഘാടന ചടങ്ങിലേക്ക് സ്നേഹപൂർവം ക്ഷണിക്കുന്നു." }, sample: { groom: "Sree Lakshmi Textiles", bride: "Chief Guest: Hon. Minister", groomParents: "R. Gopalan", date: "2027-06-05", time: "10:00 AM", venue: "MG Road, Thrissur", message: "" } }),
   EV({ id: "anniversary", group: "events", en: "Anniversary", ml: "വാർഷികം", title: { en: "Wedding Anniversary", ml: "വിവാഹ വാർഷികം" }, couple: true, labels: { name1: "Husband's name", name2: "Wife's name", host1: "Milestone (e.g. 25th Anniversary)", host2: "", time: "Time", venue: "Venue" }, useName2: true, useHost2: false, hostPrefix: { en: "", ml: "" }, invite: { en: "their", ml: "ഞങ്ങളുടെ" }, message: { en: "Celebrate years of love and togetherness with us.", ml: "സ്നേഹത്തിന്റെയും ഒരുമയുടെയും വർഷങ്ങൾ ഞങ്ങളോടൊപ്പം ആഘോഷിക്കാൻ ക്ഷണിക്കുന്നു." }, sample: { groom: "Suresh", bride: "Latha", groomParents: "25th Anniversary", date: "2027-01-23", time: "6:30 PM", venue: "The Residency Towers, Kochi", message: "" } }),
 ];
@@ -179,7 +184,8 @@ export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
 export const SAMPLE_DETAILS: WeddingDetails = sampleFor("wedding");
 
-export interface Guest { id: string; name: string; place: string; phone: string; status: "pending" | "sent" }
+export type GuestStatus = "pending" | "queued" | "sent" | "failed";
+export interface Guest { id: string; name: string; place: string; phone: string; status: GuestStatus }
 
 export const newId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
@@ -258,4 +264,4 @@ export function saveStudio(s: StudioSave) {
 export const localInviteKey = (id: string) => `intelliad.wedding.invite.${id}`;
 
 /** What a guest's invite page needs (no guest list). */
-export interface InvitePayload { template_id: string; data: { details: WeddingDetails; videoUrl: string | null } }
+export interface InvitePayload { template_id: string; data: { details: WeddingDetails; videoUrl: string | null; effect?: CardEffect } }

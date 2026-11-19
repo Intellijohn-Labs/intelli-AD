@@ -255,4 +255,31 @@ on conflict (id) do update
   set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 drop policy if exists "anon can upload wedding media" on storage.objects;
 create policy "anon can upload wedding media" on storage.objects for insert to anon, authenticated with check (bucket_id = 'wedding-media');
+-- ── Invitation dispatch queue (Waau Panel WhatsApp) ─────────────────────────────
+-- Written only by /api/invitations/waau-dispatch with the service-role key. RLS is on with NO policies, so browsers can never read or write it.
+create table if not exists public.invitation_dispatches (
+  id             uuid primary key default gen_random_uuid(),
+  invitation_id  uuid references public.wedding_invitations(id) on delete set null,
+  created_by     uuid,
+  guest_name     text not null,
+  guest_place    text not null default '',
+  phone          text not null,
+  message        text not null,
+  invite_url     text not null default '',
+  asset_url      text,
+  asset_type     text,
+  status         text not null default 'queued' check (status in ('queued', 'sent', 'failed')),
+  provider_ref   text,
+  error          text,
+  created_at     timestamptz not null default now(),
+  sent_at        timestamptz,
+  updated_at     timestamptz not null default now()
+);
+alter table public.invitation_dispatches enable row level security;
+create index if not exists invitation_dispatches_status_idx on public.invitation_dispatches (status, created_at);
+-- Personalised card images / GIFs (uploaded by the server only; public so the WhatsApp provider can fetch the media URL).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('invitation-cards', 'invitation-cards', true, 5242880, array['image/png', 'image/gif'])
+on conflict (id) do update
+  set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 NOTIFY pgrst, 'reload schema';
