@@ -316,6 +316,8 @@ const allNewspapers: Newspaper[] = [
       ["Kollam", "kl", 0.55],
       ["Kottayam", "kl", 0.6],
       ["Palakkad", "kl", 0.45],
+      ["Malappuram", "kl", 0.5],
+      ["Alappuzha", "kl", 0.5],
     ]),
     rates: {
       textPerLine: 225,
