@@ -214,7 +214,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
               <p className="text-xs text-slate-600 dark:text-slate-300">
                 <span className="inline-block h-2.5 w-2.5 rounded-sm border border-red-500 bg-red-100 align-middle" /> missing &nbsp; <span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-500 bg-amber-100 align-middle" /> uncertain / derived (check against the PDF). Editing a cell marks it as checked. {flagged > 0 && <b className="text-amber-800 dark:text-amber-300">{flagged} cell{flagged === 1 ? "" : "s"} to verify.</b>}
               </p>
-              <div className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="max-h-[28rem] overflow-auto overscroll-x-contain rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="w-full min-w-[1400px] text-left text-xs">
                   <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>
                     <th className="px-2 py-2">Use</th><th className="px-2 py-2">Edition</th><th className="px-2 py-2">Category</th><th className="px-2 py-2">Ad type</th>
@@ -257,7 +257,7 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
           {extras.length > 0 && (
             <div>
               <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Page premiums, combo packages &amp; add-ons</h3>
-              <div className="max-h-96 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="max-h-96 overflow-auto overscroll-x-contain rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="w-full min-w-[640px] text-left text-xs">
                   <thead className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr><th className="px-2 py-2">Use</th><th className="px-2 py-2">Item</th><th className="px-2 py-2">Type</th><th className="px-2 py-2">Printed values (editable)</th></tr></thead>
                   <tbody>
@@ -302,9 +302,9 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
                       <label className="flex cursor-pointer items-start gap-2"><input type="radio" name="import-mode" className="mt-1 accent-[#059669]" checked={mode === "replace"} onChange={() => setMode("replace")} />
                         <span><b>Replace all rates for this publication</b><span className="block text-xs opacity-80">Deletes every other existing {paper.name} rate (old, seed and dummy ones included) and its page premiums, combos and add-ons.</span></span></label>
                     </fieldset>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => void apply()} className="rounded-md bg-[#059669] px-3 py-1 text-xs font-bold text-white hover:bg-[#047857]">{mode === "merge" ? "Yes, merge & save" : "Yes, replace & save"}</button>
-                      <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-amber-500 px-3 py-1 text-xs font-bold">Cancel</button>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => void apply()} className="rounded-md bg-[#059669] px-3 py-2 text-xs font-bold text-white hover:bg-[#047857]">{mode === "merge" ? "Yes, merge & save" : "Yes, replace & save"}</button>
+                      <button type="button" onClick={() => setConfirming(false)} className="rounded-md border border-amber-500 px-3 py-2 text-xs font-bold">Cancel</button>
                     </div>
                   </div>
                 )}

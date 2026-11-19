@@ -33,12 +33,12 @@ export function AdminHeader({ email }: { email: string }) {
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <LogOut className="h-3.5 w-3.5" aria-hidden="true" />}Sign Out
           </button>
         </div>
-        <nav aria-label="Admin sections" className="-mb-2 flex w-full gap-1 overflow-x-auto">
+        <nav aria-label="Admin sections" className="-mb-2 flex w-full snap-x gap-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {LINKS.map((l) => {
             const on = l.exact ? path === l.href : path.startsWith(l.href);
             return (
               <Link key={l.href} href={l.href} prefetch aria-current={on ? "page" : undefined}
-                className={cn("shrink-0 border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap", on ? "border-[#E83E32] text-[#E83E32]" : "border-transparent text-slate-300 hover:text-white")}>
+                className={cn("shrink-0 snap-start border-b-2 px-3 py-2.5 text-sm font-semibold whitespace-nowrap", on ? "border-[#E83E32] text-[#E83E32]" : "border-transparent text-slate-300 hover:text-white")}>
                 {l.label}
               </Link>
             );

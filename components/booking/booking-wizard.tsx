@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePublication } from "@/lib/publication";
 import { useToast } from "@/components/ui/toast";
-import { Check, Eye, Save, X } from "lucide-react";
+import { Check, ChevronUp, Eye, Save, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { saveDraft } from "@/lib/drafts";
 import { FullScreenProofEditorModal } from "./full-screen-proof-editor";
@@ -99,9 +99,11 @@ function LivePreview({ state }: { state: BookingState }) {
  * Phones: the proof box sits at the bottom of the page, so a sticky bar keeps the line count and live total in view
  * and opens the proof in a slide-up sheet. The estimate pulses whenever the ad or its price changes.
  */
-function MobileProofBar({ state }: { state: BookingState }) {
+function MobileProofBar({ state, hasProof }: { state: BookingState; hasProof: boolean }) {
   const quote = useBookingQuote(state);
-  const [open, setOpen] = useState(false);
+  const [sheet, setSheet] = useState<"proof" | "estimate" | null>(null);
+  const open = sheet !== null;
+  const setOpen = (v: boolean) => { if (!v) setSheet(null); };
   const controls = useAnimationControls();
   const first = useRef(true);
   const isText = state.adType === "classified-text";
@@ -129,9 +131,14 @@ function MobileProofBar({ state }: { state: BookingState }) {
           <motion.p animate={controls} className="min-w-0 truncate text-sm font-semibold text-slate-300 tabular-nums" aria-live="polite">
             {size} · <span className="text-base font-extrabold text-[#E83E32]"><AnimatedNumber value={quote.totals.total} format={(n) => formatINR(n)} /></span>
           </motion.p>
-          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#D12014] px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-[#A91400] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+<div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => setSheet("estimate")} aria-haspopup="dialog" className="inline-flex items-center gap-1 rounded-xl border border-white/20 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              <ChevronUp className="h-4 w-4" aria-hidden="true" /> Estimate
+            </button>
+            {hasProof && (          <button type="button" onClick={() => setSheet("proof")} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#D12014] px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-[#A91400] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             <Eye className="h-4 w-4" aria-hidden="true" /> Preview Ad
-          </button>
+          </button>)}
+          </div>
         </div>
       </div>
 
@@ -140,13 +147,13 @@ function MobileProofBar({ state }: { state: BookingState }) {
         {open && (
           <motion.div className="fixed inset-0 z-[999] flex items-end bg-slate-900/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
             <motion.div
-              role="dialog" aria-modal="true" aria-label="Live newspaper proof"
+              role="dialog" aria-modal="true" aria-label={sheet === "estimate" ? "Live estimate" : "Live newspaper proof"}
               className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-3xl bg-[#F6F8FA] p-4 pb-8 shadow-2xl dark:bg-[#0A0B0D]"
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 38 }}
             >
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden="true" />
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close preview" className="absolute top-4 right-4 rounded-full p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
-              <LivePreview state={state} />
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="absolute top-4 right-4 rounded-full p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
+              {sheet === "estimate" ? <MiniSummary state={state} /> : <LivePreview state={state} />}
             </motion.div>
           </motion.div>
         )}
@@ -270,7 +277,7 @@ function Shell() {
   const showMini = state.step < 4;
 
   return (
-    <div className={cn("space-y-6", showMini && (state.step >= 2 || state.text) && "pb-20 lg:pb-0")}>
+    <div className={cn("space-y-6", showMini && "pb-20 lg:pb-0")}>
       <Card className="p-3">
         <Stepper current={state.step} onGo={(s) => update({ step: s, returnToCheckout: false })} />
       </Card>
@@ -286,11 +293,11 @@ function Shell() {
         {showMini && (
           <div className="space-y-6 lg:sticky lg:top-[152px] lg:col-span-4 lg:self-start">
             {(state.step >= 2 || state.text) && <LivePreview state={state} />}
-            <MiniSummary state={state} />
+            <div className="hidden lg:block"><MiniSummary state={state} /></div>
           </div>
         )}
       </div>
-      {showMini && (state.step >= 2 || state.text) && <MobileProofBar state={state} />}
+      {showMini && <MobileProofBar state={state} hasProof={state.step >= 2 || !!state.text} />}
     </div>
   );
 }

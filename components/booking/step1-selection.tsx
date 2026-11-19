@@ -108,7 +108,7 @@ export function Step1Selection() {
 
       <fieldset>
         <legend className="mb-2.5 text-sm font-semibold text-slate-900">{t("Ad type")}</legend>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           {AD_TYPES.map((a) => (
             <motion.label key={a.id} {...cardMotion} className={cn(cardBase, state.adType === a.id && cardOn)}>
               <input type="radio" name="adType" className="sr-only" checked={state.adType === a.id} onChange={() => update({ adType: a.id })} />
