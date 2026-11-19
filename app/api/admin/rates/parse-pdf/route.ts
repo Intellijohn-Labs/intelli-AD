@@ -28,13 +28,24 @@ async function providerError(name: string, res: Response) {
 
 type Reply = { text: string; truncated: boolean };
 
-async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<Reply> {
+type Upload = { mime: "application/pdf" | "image/jpeg" | "image/png" | "image/webp"; b64: string };
+
+/** Identifies the upload from its first bytes (never trusts the client's file name or type). */
+function sniff(b: Buffer): Upload["mime"] | null {
+  if (b.subarray(0, 5).toString("latin1") === "%PDF-") return "application/pdf";
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
+  return null;
+}
+
+async function callGemini(cfg: AiConfig, key: string, up: Upload, text: string): Promise<Reply> {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model)}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: EXTRACTION_SYSTEM }] },
-      contents: [{ role: "user", parts: [{ inline_data: { mime_type: "application/pdf", data: pdfB64 } }, { text }] }],
+      contents: [{ role: "user", parts: [{ inline_data: { mime_type: up.mime, data: up.b64 } }, { text }] }],
       generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }, // JSON mode; no hidden "thinking" tokens eating the output budget
     }),
     signal: AbortSignal.timeout(55_000),
@@ -45,7 +56,7 @@ async function callGemini(cfg: AiConfig, key: string, pdfB64: string, text: stri
   return { text: (cand?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join(""), truncated: cand?.finishReason === "MAX_TOKENS" };
 }
 
-async function callClaude(cfg: AiConfig, key: string, pdfB64: string, text: string): Promise<Reply> {
+async function callClaude(cfg: AiConfig, key: string, up: Upload, text: string): Promise<Reply> {
   const send = (withTemperature: boolean) => fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
@@ -54,7 +65,7 @@ async function callClaude(cfg: AiConfig, key: string, pdfB64: string, text: stri
       max_tokens: 8192,
       ...(withTemperature ? { temperature: 0 } : {}), // deterministic transcription
       system: EXTRACTION_SYSTEM,
-      messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfB64 } }, { type: "text", text }] }],
+      messages: [{ role: "user", content: [up.mime === "application/pdf" ? { type: "document", source: { type: "base64", media_type: up.mime, data: up.b64 } } : { type: "image", source: { type: "base64", media_type: up.mime, data: up.b64 } }, { type: "text", text }] }],
     }),
     signal: AbortSignal.timeout(55_000),
   });
@@ -91,15 +102,16 @@ export async function POST(req: Request) {
   if (throttled(user?.id ?? "admin")) return NextResponse.json({ error: "Too many imports. Please wait a few minutes.", status: 429 }, { status: 429 });
 
   let form: FormData;
-  try { form = await req.formData(); } catch { return NextResponse.json({ error: "Upload the PDF as multipart form data.", status: 400 }, { status: 400 }); }
+  try { form = await req.formData(); } catch { return NextResponse.json({ error: "Upload the rate card as multipart form data.", status: 400 }, { status: 400 }); }
   const file = form.get("file");
   const pubRaw = String(form.get("publicationId") ?? "").trim().toLowerCase();
   const paper = newspapers.find((n) => n.id === (PUBLICATION_ALIASES[pubRaw] ?? pubRaw));
   if (!paper) return NextResponse.json({ error: "Choose a valid publication.", status: 400 }, { status: 400 });
-  if (!(file instanceof Blob) || file.size === 0) return NextResponse.json({ error: "Choose a PDF file to upload.", status: 400 }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: `That PDF is ${(file.size / 1048576).toFixed(1)} MB. The limit is 4 MB; compress it or upload the rate pages only.`, status: 413 }, { status: 413 });
+  if (!(file instanceof Blob) || file.size === 0) return NextResponse.json({ error: "Choose a PDF or image (JPG, PNG, WebP) to upload.", status: 400 }, { status: 400 });
+  if (file.size > MAX_BYTES) return NextResponse.json({ error: `That file is ${(file.size / 1048576).toFixed(1)} MB. The limit is 4 MB; compress it or upload the rate pages only.`, status: 413 }, { status: 413 });
   const bytes = Buffer.from(await file.arrayBuffer());
-  if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") return NextResponse.json({ error: "That file isn't a PDF.", status: 400 }, { status: 400 });
+  const mime = sniff(bytes);
+  if (!mime) return NextResponse.json({ error: "That file isn't a PDF, JPG, PNG or WebP.", status: 400 }, { status: 400 });
 
   const admin = createAdminClient();
   const { keys } = await resolveAiKeys(admin);
@@ -118,13 +130,13 @@ export async function POST(req: Request) {
 
   try {
     const names = paper.editions.map((e) => e.name);
-    const b64 = bytes.toString("base64");
-    // Two PARALLEL passes over the whole PDF so no page or table is skipped:
+    const up: Upload = { mime, b64: bytes.toString("base64") };
+    // Two PARALLEL passes over the whole PDF or image so no page or table is skipped:
     //   A = display / classified display / editions / page positions / combo packages
     //   B = classified text (per word and per line), multi-edition slabs and add-on rules
     const run = async (pass: ExtractionPass) => {
       const text = buildExtractionPrompt(paper.name, names, pass);
-      const reply = cfg.provider === "claude" ? await callClaude(cfg, key, b64, text) : await callGemini(cfg, key, b64, text);
+      const reply = cfg.provider === "claude" ? await callClaude(cfg, key, up, text) : await callGemini(cfg, key, up, text);
       try {
         const loose = parseJsonLoose(reply.text);
         return { extraction: expandCompact(loose.value), cut: reply.truncated || loose.repaired };
@@ -147,6 +159,6 @@ export async function POST(req: Request) {
     const err = e instanceof Error ? e : new Error(String(e));
     console.error("[admin/rates/parse-pdf] failed:", err.message);
     const status = err instanceof ProviderError ? (err.status >= 400 && err.status < 600 ? err.status : 502) : err.name === "TimeoutError" ? 504 : 500;
-    return NextResponse.json({ error: err.name === "TimeoutError" ? "The AI took too long to read this PDF. Try a smaller file." : err.message, status }, { status });
+    return NextResponse.json({ error: err.name === "TimeoutError" ? "The AI took too long to read this file. Try a smaller file." : err.message, status }, { status });
   }
 }

@@ -70,7 +70,7 @@ const COMPACT_A = `{
  "n": ["short note", ...],      // at most 8 notes: ambiguity, illegible values, things not captured by the tables
  "e": [ ["Edition / package name as printed", "s|c|n", count, ["included edition", ...]] ],   // s = single edition, c = combination package (list its included editions ONLY if printed), n = "any N editions" slab
  "t": [ { "ti": "table title as printed", "h": ["column header EXACTLY as printed, including B&W / CLR", ...], "r": [ ["row label as printed", value1, value2, ...] ] } ],
- "d": [ ["Edition / package as printed, or ALL", "normal|personal|financial|recruitment|tender|matrimonial|realestate|education|other", bw, colour, minSqCm, uncertain] ],   // per-sq-cm rates printed OUTSIDE tables (sentences); never repeat a table
+ "d": [ ["Edition / package as printed, or ALL", "normal|classified|personal|financial|recruitment|tender|matrimonial|realestate|education|other", bw, colour, minSqCm, uncertain] ],   // per-sq-cm rates printed OUTSIDE tables (sentences); never repeat a table
  "p": [ ["Position as printed", "Edition / package as printed, or null", percent, bwPerSqCm, colourPerSqCm] ]   // page positions printed OUTSIDE tables, e.g. "Front page +50%" or "Solus Rs 900 per sq cm"; never repeat a table column
 }
 "t" is a VERBATIM copy of each per-sq-cm table: "h" lists every value column header left to right (NOT the row-label column); each row in "r" starts with its label and then has exactly one entry per header, in the same order, with null where the cell is blank. Section rows ("Inside Kerala Editions") have all-null values.`;
@@ -83,14 +83,15 @@ const COMPACT_B = `{
 "t" is a VERBATIM copy of each classified-text tariff table (including the "Combinations" / slab tables): "h" lists every value column header left to right (NOT the row-label column); each row in "r" starts with its label and then has exactly one entry per header, in order, null where blank.`;
 
 /** System prompt: strict grounding. The model must never produce a number that is not printed in the PDF. */
-export const EXTRACTION_SYSTEM = `You are a meticulous data-entry clerk transcribing a newspaper advertising tariff (rate card) PDF into JSON.
+export const EXTRACTION_SYSTEM = `You are a meticulous data-entry clerk transcribing a newspaper advertising tariff (rate card) PDF or photographed / scanned image into JSON.
 GROUNDING RULES (absolute):
-1. Extract ONLY exact numbers that are explicitly printed in the PDF. Never guess, estimate, round, average, interpolate, extrapolate, convert or invent any number, and never use general knowledge of what newspapers usually charge.
+1. Extract ONLY exact numbers that are explicitly printed in the PDF or image. Never guess, estimate, round, average, interpolate, extrapolate, convert or invent any number, and never use general knowledge of what newspapers usually charge.
 2. If a rate, percentage, edition, date or minimum is not explicitly printed in the PDF, output null for it (or omit the row). A blank cell in the PDF is null, not 0.
 3. Copy edition names and labels exactly as printed. Do not add editions or packages that are not printed.
 4. If a figure is hard to read or two readings are possible, output null and add a short note; use the uncertain flag when you are not sure.
 5. Do not compute totals, differences or percentages yourself; transcribe what is printed (rupee rates as printed, percentages as printed).
-6. Read EVERY page, table, box and footnote of the PDF. Wide tables have many columns: capture every column. Never stop after the first table.
+6. Read EVERY page, table, box and footnote of the PDF or image. Wide tables have many columns: capture every column. Never stop after the first table.
+7. Many cards print a two-level header (a group title over sub-columns, e.g. INNER PAGE, CLASSIFIED over DISPLAY and PER WORD). Write each column header in full so it is self-describing, e.g. "INNER PAGE", "CLASSIFIED DISPLAY", "CLASSIFIED PER WORD", "BW"/"COLOUR" kept where printed. Put a column's colour variant only where a separate colour figure is printed; never copy the black-and-white figure into a colour column.
 Return ONLY the JSON requested, with no commentary.`;
 
 /** User prompt for one extraction pass (shared by the API route and offline checks). */
@@ -123,7 +124,7 @@ const cs = (v: Cell): string => (v == null ? "" : String(v));
 
 type Tbl = { title: string; h: string[]; r: Cell[][] };
 const DISPLAY_CATS: [RegExp, string][] = [
-  [/commercial|normal|general|\bdisplay\b/, "normal"], [/financial|finance/, "financial"], [/personal|obituar|remembrance|condolence/, "personal"],
+  [/classified/, "classified"], [/commercial|normal|general|inner|\bdisplay\b/, "normal"], [/financial|finance/, "financial"], [/personal|obituar|remembrance|condolence/, "personal"],
   [/avasarang|padavukal|recruit|appointment|situation|career|\bjobs?\b/, "recruitment"], [/tender|notice|public/, "tender"],
   [/matrimon/, "matrimonial"], [/real estate|property|realty/, "realestate"], [/educat/, "education"],
 ];
@@ -325,6 +326,7 @@ function resolveLabel(paper: Newspaper, raw: string): Target {
 
 const DISPLAY_TARGETS: Record<string, { adType: AdType; categories: string[]; uncertain?: string }> = {
   normal: { adType: "commercial-display", categories: [ALL] },
+  classified: { adType: "classified-display", categories: [ALL] },
   commercial: { adType: "commercial-display", categories: [ALL] },
   personal: { adType: "classified-display", categories: ["obituary", "remembrance"], uncertain: "Personal rate applied to obituary and remembrance" },
   obituary: { adType: "classified-display", categories: ["obituary", "remembrance"] },

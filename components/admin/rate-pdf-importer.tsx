@@ -32,7 +32,7 @@ const NUMS: { key: ImportField; label: string; types: ImportRow["ad_type"][]; st
 const card = "rounded-xl border border-[#E2E8F0] bg-[#F3F3F4] p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 const fmtSize = (b: number) => (b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-/** Admin: upload a newspaper's tariff PDF, review the extracted rates in an editable table, then save them to the live rate book. */
+/** Admin: upload a newspaper's tariff PDF or image, review the extracted rates in an editable table, then save them to the live rate book. */
 export function RatePdfImporter({ paperId }: { paperId: string }) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -88,12 +88,12 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
       xhr.upload.onload = () => { prog.current.uploadFrac = 1; prog.current.uploadedAt = Date.now(); };
       xhr.onload = () => { let body: Record<string, unknown> = {}; try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ } resolve({ ok: xhr.status >= 200 && xhr.status < 300, body: { ...body, _status: xhr.status } }); };
       xhr.onerror = () => resolve({ ok: false, body: { error: "Couldn't reach the server. Check your connection and try again." } });
-      xhr.ontimeout = () => resolve({ ok: false, body: { error: "The request timed out. Try a smaller PDF." } });
+      xhr.ontimeout = () => resolve({ ok: false, body: { error: "The request timed out. Try a smaller file." } });
       xhr.timeout = 70_000;
       xhr.send(fd);
     });
     const j = result.body as { extraction?: RateExtraction; truncated?: boolean; provider?: string; model?: string; error?: string; _status?: number };
-    if (!result.ok || !j.extraction) { prog.current.done = true; setError(j.error ?? `Couldn't read the PDF (${j._status ?? "error"}).`); setBusy(""); return; }
+    if (!result.ok || !j.extraction) { prog.current.done = true; setError(j.error ?? `Couldn't read the rate card (${j._status ?? "error"}).`); setBusy(""); return; }
     prog.current.done = true;
     setPct(100); setFinishing(true); // snap to 100% with a checkmark, then reveal the table
     await new Promise((r) => setTimeout(r, 700));
@@ -172,21 +172,21 @@ export function RatePdfImporter({ paperId }: { paperId: string }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-stretch">
         <div className={cn("flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3", file ? "border-[#D12014]/60 bg-white dark:bg-slate-800" : "border-slate-300 bg-[#F1F5F9] dark:border-slate-600 dark:bg-slate-800/60")}>
-          <input ref={fileRef} id="rate-pdf-file" type="file" accept="application/pdf,.pdf" disabled={!!busy} className="sr-only"
+          <input ref={fileRef} id="rate-pdf-file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" disabled={!!busy} className="sr-only"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               setError("");
-              if (f && !/\.pdf$/i.test(f.name) && f.type !== "application/pdf") { setError("That doesn\u2019t look like a PDF."); setFile(null); return; }
-              if (f && f.size > MAX_BYTES) { setError(`That PDF is ${(f.size / 1048576).toFixed(1)} MB; the limit is 4 MB. Compress it or upload only the rate pages.`); setFile(null); return; }
+              if (f && !/\.(pdf|jpe?g|png|webp)$/i.test(f.name) && !/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)) { setError("Choose a PDF or a JPG, PNG or WebP image."); setFile(null); return; }
+              if (f && f.size > MAX_BYTES) { setError(`That file is ${(f.size / 1048576).toFixed(1)} MB; the limit is 4 MB. Compress it or upload only the rate pages.`); setFile(null); return; }
               setFile(f);
             }} />
           {file ? (
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="grid h-10 w-9 shrink-0 place-items-center rounded-sm border border-[#E2E8F0] bg-[#F3F3F4] text-[9px] font-black tracking-wider text-[#D12014] shadow-[1px_1px_0_#E2E8F0] dark:border-slate-600 dark:bg-slate-900">PDF</span>
+              <span className="grid h-10 w-9 shrink-0 place-items-center rounded-sm border border-[#E2E8F0] bg-[#F3F3F4] text-[9px] font-black tracking-wider text-[#D12014] shadow-[1px_1px_0_#E2E8F0] dark:border-slate-600 dark:bg-slate-900">{/\.pdf$/i.test(file.name) ? "PDF" : "IMG"}</span>
               <span className="min-w-0"><span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-50">{file.name}</span><span className="block text-xs text-slate-500">{fmtSize(file.size)} · ready to extract</span></span>
             </div>
           ) : (
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-800 dark:text-slate-100">No sheet in the tray yet</p><p className="text-xs text-slate-500">PDF only, up to 4 MB.</p></div>
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-800 dark:text-slate-100">No sheet in the tray yet</p><p className="text-xs text-slate-500">PDF or image (JPG, PNG, WebP), up to 4 MB.</p></div>
           )}
           <label htmlFor="rate-pdf-file" className={cn("cursor-pointer rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-800 shadow-[0_1px_0_#D6D3D1] hover:bg-slate-50 focus-within:outline-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-50", !!busy && "pointer-events-none opacity-50")}>{file ? "Change PDF" : "Browse PDF"}</label>
         </div>
