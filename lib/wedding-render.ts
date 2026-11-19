@@ -4,7 +4,8 @@
  * invite page and in the downloadable personalised PNG. Logical size is 1080 x 1500; `width` scales it.
  */
 import { loadPrintFonts } from "./print-ad-render";
-import { EVENT_TITLE, formatDate, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
+import { eventConfig, EVENT_TITLE, formatDate, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -149,11 +150,13 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const ctx = canvas.getContext("2d")!;
   ctx.scale(scale, scale);
   ctx.imageSmoothingQuality = "high";
-  backdrop(ctx, t, p);
+  const initial = (n: string) => (Array.from(n.trim())[0] ?? "").toUpperCase();
+  if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
+  const cfg = eventConfig(d.eventType);
 
   const lang = d.lang;
   const wantMl = lang !== "en", wantEn = lang !== "ml";
-  const M = MARGIN[t.motif] ?? 150;
+  const M = MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
   const cw = CARD_W - 2 * M;
   const family = t.layout === "minimal" ? SANS : SERIF;
   const title = EVENT_TITLE[d.eventType];
@@ -222,7 +225,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
             else { const g = ctx.createLinearGradient(x, y, x + pw, y + ph); g.addColorStop(0, p.accent2 + "88"); g.addColorStop(1, p.accent + "55"); ctx.fillStyle = g; ctx.fillRect(x + pad, y + pad, pw - 2 * pad, ph - pad); ctx.fillStyle = "#fff"; ctx.font = `700 ${120 * k}px ${SERIF}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("♥", CARD_W / 2, y + pad + (ph - pad) / 2); }
             ctx.restore();
             ctx.fillStyle = p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `italic 700 ${50 * k}px ${SERIF}`;
-            ctx.fillText([d.groom, d.bride].filter(Boolean).join(" & ") || "Bride & Groom", CARD_W / 2, y + ph + pad + cap / 2 - 4 * k);
+            ctx.fillText((cfg.couple ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ") || "Bride & Groom", CARD_W / 2, y + ph + pad + cap / 2 - 4 * k);
             ctx.restore();
           },
         });
@@ -257,18 +260,24 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       photoBlock();
     } else {
       const nm = (s: string) => (t.layout === "minimal" ? s.toUpperCase() : s);
-      const groom = d.groom.trim() || "Groom", bride = d.bride.trim() || "Bride";
+      const groom = d.groom.trim() || (cfg.couple ? "Groom" : "Name"), bride = d.bride.trim() || "Bride";
       text(nm(groom), 104, 800, { id: "names", ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(groom) ? 1.45 : 1.1 });
-      text(wantMl && !wantEn ? "&" : "&", 56, 400, { id: "names", color: p.accent, italic: true, lh: 1 });
-      text(nm(bride), 104, 800, { id: "names", ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(bride) ? 1.45 : 1.1 });
+      if (cfg.couple) {
+        text("&", 56, 400, { id: "names", color: p.accent, italic: true, lh: 1 });
+        text(nm(bride), 104, 800, { id: "names", ls: t.layout === "minimal" ? 0.04 : 0, lh: hasMl(bride) ? 1.45 : 1.1 });
+      } else if (d.bride.trim()) text(d.bride.trim(), 50, 600, { id: "names", color: p.accent, italic: true });
       photoBlock();
     }
     const sonOf = wantMl && !wantEn ? (n: string, par: string, son: boolean) => `${n}, ${par} ദമ്പതികളുടെ ${son ? "പുത്രൻ" : "പുത്രി"}` : (n: string, par: string, son: boolean) => `${n} ${son ? "S/o" : "D/o"} ${par}`;
-    const parents = [d.groomParents.trim() && sonOf(d.groom.trim() || "Groom", d.groomParents.trim(), true), d.brideParents.trim() && sonOf(d.bride.trim() || "Bride", d.brideParents.trim(), false)].filter(Boolean).join("\n");
+    const host = d.groomParents.trim();
+    const hostLine = host ? `${wantMl && !wantEn ? cfg.hostPrefix.ml : cfg.hostPrefix.en}${host}` : "";
+    const parents = cfg.group === "wedding"
+      ? [d.groomParents.trim() && sonOf(d.groom.trim() || "Groom", d.groomParents.trim(), true), d.brideParents.trim() && sonOf(d.bride.trim() || "Bride", d.brideParents.trim(), false)].filter(Boolean).join("\n")
+      : hostLine;
     if (parents) text(parents, 30, 500, { id: "parents", color: p.sub, fam: SANS });
     const msg = d.message.trim();
     if (msg) text(msg, 32, 500, { id: "message", italic: true, color: p.ink });
-    else if (t.layout !== "polaroid") both("നിങ്ങളുടെ സാന്നിധ്യവും അനുഗ്രഹവും ഉണ്ടാകണമെന്ന് സവിനയം ക്ഷണിക്കുന്നു.", "We joyfully invite you to bless us with your presence.", 32, 500, { id: "message", italic: true });
+    else if (t.layout !== "polaroid") both(cfg.message.ml, cfg.message.en, 32, 500, { id: "message", italic: true });
     if (t.layout === "minimal") rule(120);
     const dt = d.date;
     if (dt) { text(formatDate(dt, wantEn ? "en" : "ml"), 48, 800, { id: "datetime", color: p.accent === p.ink ? p.ink : p.ink }); if (lang === "both") text(formatDate(dt, "ml"), 34, 600, { id: "datetime", color: p.sub }); }
@@ -279,8 +288,9 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   };
 
   // The botanical eucalyptus corner reaches further down, so its content starts lower.
-  const topOff = t.motif === "botanical" ? 45 : 0;
-  const top = M * 0.8 + topOff, avail = CARD_H - 2 * M * 0.8 - topOff;
+  const topOff = (t.motif === "botanical" ? 45 : 0) + (MOTIF_LAYOUT[t.motif]?.top ?? 0);
+  const botOff = MOTIF_LAYOUT[t.motif]?.bot ?? 0;
+  const top = M * 0.8 + topOff, avail = CARD_H - 2 * M * 0.8 - topOff - botOff;
   let k = 1.1, blocks = build(k);
   const gapOf = (kk: number) => 24 * kk;
   const total = (bs: Block[], kk: number) => bs.reduce((a, b) => a + b.h, 0) + Math.max(0, bs.length - 1) * gapOf(kk);

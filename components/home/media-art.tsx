@@ -137,7 +137,7 @@ export function OutdoorArt() {
   );
 }
 
-/** Wedding & Event Invitations: a gold-bordered card with a monogram, a lotus and falling petals. */
+/** Invitation Cards: a gold-bordered card with a monogram, a lotus and falling petals. */
 export function WeddingArt() {
   return (
     <Svg>

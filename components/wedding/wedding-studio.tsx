@@ -7,15 +7,39 @@ import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone } from "@/lib/wedding-render";
-import { normalizePhone, EMPTY_DETAILS, EVENT_TYPES, getTemplate, loadStudio, mapsLink, saveStudio, SAMPLE_DETAILS, TEMPLATES, validPhone, whatsappLink, whatsappMessage, type EventType, type Guest, type WLang, type WeddingDetails } from "@/lib/wedding";
+import { drawEffect, renderGif, warmPetals } from "@/lib/wedding-motion";
+import { normalizePhone, EMPTY_DETAILS, EFFECTS, EVENTS, eventConfig, getTemplate, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, TEMPLATES, validPhone, whatsappLink, whatsappMessage, type CardEffect, type EventType, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
+import type { Palette } from "@/lib/wedding";
 
 const TABS = ["Template", "Details", "Media", "Guests & share"] as const;
 const MAX_VIDEO = 50 * 1024 * 1024;
 
 const panel = "rounded-xl border border-[#E2E8F0] bg-white p-4 sm:p-5 dark:border-[#26272B] dark:bg-[#131416]";
 
-/** Wedding card studio: pick one of 10 templates, enter the couple's details and media, let AI write the wording, then personalise and share on WhatsApp. */
+/** Plays the chosen motion over the still preview image (static when the visitor prefers reduced motion). */
+function MotionCanvas({ src, effect, pal, warm }: { src: string; effect: CardEffect; pal: Palette; warm: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c || !src) return;
+    let live = true, raf = 0;
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const img = new Image();
+    img.onload = () => {
+      if (!live) return;
+      c.width = img.width; c.height = img.height;
+      const ctx = c.getContext("2d")!;
+      const draw = (t: number) => { ctx.clearRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0); drawEffect(ctx, effect, (t / 3200) % 1, c.width, c.height, pal, warm); if (live && !reduce) raf = requestAnimationFrame(draw); };
+      draw(0);
+    };
+    img.src = src;
+    return () => { live = false; cancelAnimationFrame(raf); };
+  }, [src, effect, pal, warm]);
+  return <canvas ref={ref} role="img" aria-label="Animated card preview" className="h-full w-full object-cover" />;
+}
+
+/** Invitation cards studio: pick one of 10 templates, enter the couple's details and media, let AI write the wording, then personalise and share on WhatsApp. */
 export function WeddingStudio() {
   const toast = useToast();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Template");
@@ -34,6 +58,10 @@ export function WeddingStudio() {
   const cardPhotoRef = useRef<HTMLInputElement>(null);
   const cardPhotoIdx = useRef(0);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<TemplateFilter>("all");
+  const [effect, setEffect] = useState<CardEffect>("none");
+  const [gifBusy, setGifBusy] = useState<string | null>(null);
+  const [zipGif, setZipGif] = useState<{ done: number; total: number } | null>(null);
   const [guestPreview, setGuestPreview] = useState<Guest | null>(null);
   const [guestImg, setGuestImg] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
@@ -45,15 +73,26 @@ export function WeddingStudio() {
   useEffect(() => {
     const s = loadStudio();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (s) { setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
+    if (s) { setEffect(s.effect ?? "none"); setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
     setHydrated(true);
   }, []);
-  useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId: null, publishedHash: null }); }, [hydrated, templateId, d, guests]);
+  useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId: null, publishedHash: null, effect }); }, [hydrated, templateId, d, guests, effect]);
   useEffect(() => () => { if (videoPreview) URL.revokeObjectURL(videoPreview); }, [videoPreview]);
 
 
   // The details every render uses (preview, guest PNGs, ZIP): the couple's own, with sample text only where a field is empty.
-  const rd = useMemo(() => ({ ...SAMPLE_DETAILS, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) }) as WeddingDetails, [d]);
+  const cfg = eventConfig(d.eventType);
+  const rd = useMemo(() => ({ ...sampleFor(d.eventType), ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) }) as WeddingDetails, [d]);
+
+  // A template suits an event when it is in the event's group (wedding events also use the shared "events" designs).
+  const suits = (t: WeddingTemplate, ev: EventType) => { const g = eventConfig(ev).group; return t.category === g || (g === "wedding" && t.category === "events" && eventConfig(t.defaultEvent).group === "wedding") || (g === "events" && t.category === "events"); };
+  const pickEvent = (ev: EventType) => {
+    const g = eventConfig(ev).group;
+    set({ eventType: ev }); setFilter(g === "events" ? "events" : g);
+    if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) setTemplateId(next.id); }
+  };
+  const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set({ eventType: t.defaultEvent }); };
+  const shown = TEMPLATES.filter((t) => filter === "all" || (filter === "animated" ? t.animated : t.category === filter));
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
@@ -68,24 +107,30 @@ export function WeddingStudio() {
     return () => { live = false; clearTimeout(t); };
   }, [hydrated, tpl, rd, d.photos]);
 
-  // Gallery thumbnails (only while the gallery is open).
+  // Gallery thumbnails: only the templates in the open filter, drawn with sample text for their own event type.
   const thumbKey = JSON.stringify([d.bride, d.groom, d.lang, d.eventType, d.photos[0]?.length, d.photos[1]?.length]);
+  const thumbKeyRef = useRef("");
   useEffect(() => {
     if (!hydrated || tab !== "Template") return;
     let live = true;
+    const fresh = thumbKeyRef.current !== thumbKey;
+    if (fresh) { thumbKeyRef.current = thumbKey; setThumbs({}); }
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      const base = { ...SAMPLE_DETAILS, eventType: d.eventType, lang: d.lang, ...(d.bride ? { bride: d.bride } : {}), ...(d.groom ? { groom: d.groom } : {}) };
-      for (const x of TEMPLATES) {
+      for (const x of shown) {
+        if (!fresh && thumbs[x.id]) continue;
+        const ev = suits(x, d.eventType) ? d.eventType : x.defaultEvent;
+        const same = ev === d.eventType;
+        const base = { ...sampleFor(ev), lang: d.lang, ...(same && d.bride ? { bride: d.bride } : {}), ...(same && d.groom ? { groom: d.groom } : {}) };
         const c = await renderWeddingCard({ template: x, details: base, photo: img, photo2: img2, width: 240 });
         if (!live) return;
         setThumbs((cur) => ({ ...cur, [x.id]: c.toDataURL("image/jpeg", 0.8) }));
       }
-    }, 300);
+    }, 250);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, tab, thumbKey]);
+  }, [hydrated, tab, thumbKey, filter]);
 
   // The personalised card for the guest being previewed.
   useEffect(() => {
@@ -182,6 +227,46 @@ export function WeddingStudio() {
     finally { setZip(null); }
   };
 
+  const HEXRE = /^#[0-9a-fA-F]{6}$/;
+  const pal: Palette = useMemo(() => ({ ...tpl.pal, ...(HEXRE.test(d.accent) ? { accent: d.accent } : {}) }), [tpl, d.accent]);
+  const warm = warmPetals(tpl.motif);
+  const gifEffect: CardEffect = effect === "none" ? "sparkle" : effect;
+  const gifBlob = async (g: { name: string; place: string } | null, photos: readonly [HTMLImageElement | null, HTMLImageElement | null], width: number, frames: number, onProgress?: (n: number, t: number) => void) => {
+    const base = await renderWeddingCard({ template: tpl, details: rd, guest: g, photo: photos[0], photo2: photos[1], width });
+    return renderGif({ base, effect: gifEffect, pal, warm, frames, onProgress });
+  };
+  const downloadGif = async (g: Guest | null) => {
+    if (gifBusy) return;
+    setGifBusy(g?.id ?? "card");
+    try {
+      const blob = await gifBlob(g ? { name: g.name, place: g.place } : null, await loadPhotos(), 540, 24);
+      saveBlob(blob, g ? `${safe(g.name, "Guest")}-Invitation.gif` : "Invitation-Card.gif");
+      toast(effect === "none" ? "GIF downloaded with twinkling sparkles. Pick a motion on the Template tab to change it." : "Animated GIF downloaded.");
+    } catch { toast("Couldn't create the GIF. Please try again."); }
+    finally { setGifBusy(null); }
+  };
+  const downloadCardPng = async () => {
+    const c = await renderWeddingCard({ template: tpl, details: rd, photo: d.photos[0] ? await loadImage(d.photos[0]) : null, photo2: d.photos[1] ? await loadImage(d.photos[1]) : null, width: 1080 });
+    await new Promise<void>((res) => c.toBlob((b) => { if (b) saveBlob(b, "Invitation-Card.png"); res(); }, "image/png"));
+  };
+  const downloadZipGifs = async () => {
+    if (zipGif || guests.length === 0) return;
+    setZipGif({ done: 0, total: guests.length });
+    try {
+      const { default: JSZip } = await import("jszip");
+      const z = new JSZip(), photos = await loadPhotos();
+      const pad = String(guests.length).length < 2 ? 2 : String(guests.length).length;
+      for (let i = 0; i < guests.length; i++) {
+        setZipGif({ done: i, total: guests.length });
+        const g = guests[i];
+        z.file(`${String(i + 1).padStart(pad, "0")}-${safe(g.name, `Guest-${i + 1}`)}.gif`, await gifBlob({ name: g.name, place: g.place }, photos, 400, 16));
+      }
+      saveBlob(await z.generateAsync({ type: "blob" }), "Invitation-GIF-Cards.zip");
+      toast(`${guests.length} animated cards downloaded as a ZIP.`);
+    } catch { toast("Couldn't build the GIF ZIP. Please try again."); }
+    finally { setZipGif(null); }
+  };
+
   const pending = guests.filter((g) => g.status === "pending" && g.name.trim() && validPhone(g.phone));
   const sendNext = () => {
     const n = pending[0];
@@ -207,9 +292,9 @@ export function WeddingStudio() {
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <p className="kicker mb-2">Wedding &amp; event invitations · വിവാഹ ക്ഷണക്കത്തുകൾ</p>
-      <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">Design a wedding card and send it to every guest on WhatsApp</h1>
-      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Choose a template, add the couple&apos;s details and photos, let AI write the wording, then share a personalised card with each guest&apos;s name on it.</p>
+      <p className="kicker mb-2">Invitation cards · ക്ഷണക്കത്തുകൾ</p>
+      <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">Design an invitation card and send it to every guest on WhatsApp</h1>
+      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Weddings, birthdays, housewarming, baby ceremonies and more: choose a template, add your details and photos, let AI write the wording, then share a personalised card (PNG or animated GIF) with each guest&apos;s name on it.</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 space-y-4">
@@ -218,10 +303,25 @@ export function WeddingStudio() {
           {tab === "Template" && (
             <section className={panel} aria-label="Templates">
               <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
+              <div role="tablist" aria-label="Template categories" className="-mx-1 mb-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {TEMPLATE_FILTERS.map((f) => (
+                  <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
+                ))}
+              </div>
+              <div className={cn("mb-4 rounded-lg border p-3", filter === "animated" ? "border-[#B8860B] bg-[#B8860B]/10" : "border-slate-200 dark:border-slate-700")}>
+                <p className="mb-2 text-xs font-bold text-slate-900 dark:text-white">✨ Animated GIF motion <span className="font-normal text-slate-600 dark:text-slate-300">· moves in the live preview; download it as a .gif from the preview or guest list</span></p>
+                <div role="radiogroup" aria-label="Animated GIF motion" className="flex flex-wrap gap-2">
+                  {EFFECTS.map((e) => (
+                    <button key={e.id} type="button" role="radio" aria-checked={effect === e.id} onClick={() => setEffect(e.id)} className={cn("rounded-full border px-3 py-1 text-xs font-semibold", effect === e.id ? "border-[#B8860B] bg-[#B8860B] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{e.label}</button>
+                  ))}
+                </div>
+              </div>
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-                {TEMPLATES.map((x) => (
+                {shown.map((x) => (
                   <li key={x.id}>
-                    <button type="button" onClick={() => setTemplateId(x.id)} aria-pressed={templateId === x.id} className={cn("w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
+                    <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
+                      {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
+                      {x.animated && <span className="absolute top-2.5 right-2.5 z-10 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white">GIF</span>}
                       <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
                         {thumbs[x.id] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={thumbs[x.id]} alt={`${x.name} template`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" /></div>}
                       </div>
@@ -231,24 +331,25 @@ export function WeddingStudio() {
                   </li>
                 ))}
               </ul>
-              <button type="button" onClick={() => setTab("Details")} className="mt-4 rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: couple details</button>
+              {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
+              <button type="button" onClick={() => setTab("Details")} className="mt-4 rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: event details</button>
             </section>
           )}
 
           {tab === "Details" && (
-            <section className={cn(panel, "space-y-4")} aria-label="Couple details">
+            <section className={cn(panel, "space-y-4")} aria-label="Event details">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => set({ eventType: e.target.value as EventType })}>{EVENT_TYPES.map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>
+                <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => pickEvent(e.target.value as EventType)}>{EVENTS.map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>
                 <Field id="w-lang" label="Language"><Select id="w-lang" value={d.lang} onChange={(e) => set({ lang: e.target.value as WLang })}><option value="en">English</option><option value="ml">Malayalam (മലയാളം)</option><option value="both">Bilingual (ML + EN)</option></Select></Field>
-                <Field id="w-bride" label="Bride's name"><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} /></Field>
-                <Field id="w-groom" label="Groom's name"><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} /></Field>
-                <Field id="w-bp" label="Bride's parents"><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>
-                <Field id="w-gp" label="Groom's parents"><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>
+                <Field id="w-groom" label={cfg.labels.name1}><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} placeholder={cfg.sample.groom} /></Field>
+                {cfg.useName2 && <Field id="w-bride" label={cfg.labels.name2}><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} placeholder={cfg.sample.bride || undefined} /></Field>}
+                <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>
+                {cfg.useHost2 && <Field id="w-bp" label={cfg.labels.host2}><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>}
                 <Field id="w-date" label="Date"><Input id="w-date" type="date" value={d.date} onChange={(e) => set({ date: e.target.value })} /></Field>
-                <Field id="w-time" label="Muhurtham / time"><Input id="w-time" value={d.time} onChange={(e) => set({ time: e.target.value })} placeholder="10:30 AM, Muhurtham 10:45 AM" /></Field>
-                <Field id="w-venue" label="Venue" className="sm:col-span-2"><Input id="w-venue" value={d.venue} onChange={(e) => set({ venue: e.target.value })} /></Field>
+                <Field id="w-time" label={cfg.labels.time}><Input id="w-time" value={d.time} onChange={(e) => set({ time: e.target.value })} placeholder={cfg.sample.time} /></Field>
+                <Field id="w-venue" label={cfg.labels.venue} className="sm:col-span-2"><Input id="w-venue" value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder={cfg.sample.venue} /></Field>
                 <Field id="w-maps" label="Google Maps link" hint="Optional. Guests get an “Open in Google Maps” button. Without a link, the venue name is searched." className="sm:col-span-2"><Input id="w-maps" type="url" value={d.mapsUrl} onChange={(e) => set({ mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/…" /></Field>
-                <Field id="w-msg" label="Invitation message / family note" className="sm:col-span-2"><Textarea id="w-msg" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} /></Field>
+                <Field id="w-msg" label="Invitation message / note" className="sm:col-span-2"><Textarea id="w-msg" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} /></Field>
               </div>
               <div className="rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
                 <div className="flex flex-wrap items-center gap-3">
@@ -305,6 +406,8 @@ export function WeddingStudio() {
                 <div className="mb-3 flex flex-wrap items-center gap-3">
                   <button type="button" onClick={() => void downloadZip()} disabled={guests.length === 0 || !!zip} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-4 py-2 text-sm font-bold text-white hover:bg-[#17181C] disabled:opacity-50 dark:bg-[#D12014] dark:hover:bg-[#E83E32]">{zip ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} Download All Cards (.ZIP)</button>
                   {zip && <span role="status" className="text-xs font-semibold text-slate-800 dark:text-slate-100">Generating {Math.min(zip.done + 1, zip.total)} of {zip.total} cards…</span>}
+                  <button type="button" onClick={() => void downloadZipGifs()} disabled={guests.length === 0 || !!zipGif} className="inline-flex items-center gap-1.5 rounded-lg border border-[#B8860B] bg-[#B8860B]/10 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-[#B8860B]/20 disabled:opacity-50 dark:text-white">{zipGif ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} ✨ Download All GIFs (.ZIP)</button>
+                  {zipGif && <span role="status" className="text-xs font-semibold text-slate-800 dark:text-slate-100">Generating GIF {Math.min(zipGif.done + 1, zipGif.total)} of {zipGif.total}…</span>}
                 </div>
                 <GuestTable guests={guests} busyId={busyId} onChange={setGuests} onSend={(g) => void sendOne(g)} onPreview={setGuestPreview} />
               </div>
@@ -336,8 +439,8 @@ export function WeddingStudio() {
             <div className="relative mx-auto w-full max-w-[420px]">
               <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {preview ? <img src={preview} alt="Wedding card preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} details={d} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} />}
+                {preview ? (effect !== "none" ? <MotionCanvas src={preview} effect={effect} pal={pal} warm={warm} /> : <img src={preview} alt="Invitation card preview" className="h-full w-full object-cover" />) : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
+                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} />}
               </div>
               <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
                 const f = e.target.files?.[0]; e.target.value = "";
@@ -347,6 +450,10 @@ export function WeddingStudio() {
                 const i = Math.min(cardPhotoIdx.current, d.photos.length);
                 const next = [...d.photos]; next[i] = u; set({ photos: next.slice(0, 4) });
               }} />
+            </div>
+            <div className="mx-auto flex max-w-[420px] flex-wrap gap-2">
+              <button type="button" onClick={() => void downloadCardPng()} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><Download className="h-4 w-4" aria-hidden="true" /> PNG</button>
+              <button type="button" onClick={() => void downloadGif(null)} disabled={!!gifBusy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#B8860B] bg-[#B8860B]/10 px-3 py-2 text-xs font-bold text-slate-900 hover:bg-[#B8860B]/20 disabled:opacity-50 dark:text-white">{gifBusy === "card" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} ✨ Animated GIF</button>
             </div>
             {videoPreview && <video src={videoPreview} controls playsInline className="mx-auto w-full max-w-[420px] rounded-lg bg-black" aria-label="Invitation video preview" />}
             {mapsLink(d) && <a href={mapsLink(d)} target="_blank" rel="noopener noreferrer" className="mx-auto flex max-w-[420px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><MapPin className="h-4 w-4" aria-hidden="true" /> Open venue in Google Maps</a>}
@@ -359,7 +466,7 @@ export function WeddingStudio() {
           <div role="dialog" aria-modal="true" aria-label="Personalised card" className="flex max-h-[94vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between"><h2 className="text-sm font-bold text-slate-900 dark:text-white">Card for {guestPreview.name || "this guest"}</h2><button type="button" aria-label="Close" onClick={() => setGuestPreview(null)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></div>
             <div className="w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>
-            <div className="flex gap-2"><button type="button" onClick={downloadGuest} disabled={!guestImg} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100"><Download className="h-4 w-4" aria-hidden="true" /> Download PNG</button><button type="button" onClick={() => void shareGuestImage()} disabled={!guestImg} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-bold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Share image</button></div>
+            <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadGuest} disabled={!guestImg} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100"><Download className="h-4 w-4" aria-hidden="true" /> Download PNG</button><button type="button" onClick={() => void shareGuestImage()} disabled={!guestImg} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-bold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Share image</button><button type="button" onClick={() => guestPreview && void downloadGif(guestPreview)} disabled={!guestImg || !!gifBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#B8860B] bg-[#B8860B]/10 px-3 py-2 text-sm font-bold text-slate-900 hover:bg-[#B8860B]/20 disabled:opacity-50 dark:text-white">{gifBusy && gifBusy === guestPreview?.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />} ✨ Download animated GIF</button></div>
           </div>
         </div>
       )}

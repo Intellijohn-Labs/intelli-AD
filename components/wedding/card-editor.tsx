@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EVENT_TYPES, type EventType, type WeddingDetails } from "@/lib/wedding";
+import { EVENTS, type EventConfig, type EventType, type WeddingDetails } from "@/lib/wedding";
 import type { CardZone } from "@/lib/wedding-render";
 
 const LABEL: Record<CardZone["id"], string> = {
@@ -15,7 +15,7 @@ const fieldCls = "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1
  * Transparent hit-zones over the live preview image. Clicking one opens a small inline editor bound to the same
  * details state as the Details tab, so edits re-render the card and persist. Only used by the studio preview.
  */
-export function CardEditOverlay({ zones, details, onChange, onPickPhoto }: { zones: CardZone[]; details: WeddingDetails; onChange: (p: Partial<WeddingDetails>) => void; onPickPhoto: (index: number) => void }) {
+export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto }: { zones: CardZone[]; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onPickPhoto: (index: number) => void }) {
   const [open, setOpen] = useState<CardZone["id"] | null>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const zone = zones.find((z) => z.id === open) ?? null;
@@ -81,15 +81,15 @@ export function CardEditOverlay({ zones, details, onChange, onPickPhoto }: { zon
           {zone.id === "title" && (
             <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Event type
               <select value={details.eventType} onChange={(e) => onChange({ eventType: e.target.value as EventType })} className={`mt-0.5 ${fieldCls}`}>
-                {EVENT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.en} · {t.ml}</option>)}
+                {EVENTS.map((t) => <option key={t.id} value={t.id}>{t.en} · {t.ml}</option>)}
               </select>
             </label>
           )}
-          {zone.id === "names" && <div className="grid grid-cols-2 gap-2">{input("Groom", details.groom, "groom", "Groom")}{input("Bride", details.bride, "bride", "Bride")}</div>}
-          {zone.id === "parents" && <div className="space-y-2">{input("Groom's parents", details.groomParents, "groomParents")}{input("Bride's parents", details.brideParents, "brideParents")}</div>}
+          {zone.id === "names" && <div className={cfg.useName2 ? "grid grid-cols-2 gap-2" : ""}>{input(cfg.labels.name1, details.groom, "groom", cfg.sample.groom)}{cfg.useName2 && input(cfg.labels.name2, details.bride, "bride", cfg.sample.bride || "")}</div>}
+          {zone.id === "parents" && <div className="space-y-2">{input(cfg.labels.host1, details.groomParents, "groomParents")}{cfg.useHost2 && input(cfg.labels.host2, details.brideParents, "brideParents")}</div>}
           {zone.id === "message" && area("Invitation message", details.message, "message", "Leave empty for the default wording")}
-          {zone.id === "datetime" && <div className="grid grid-cols-2 gap-2">{input("Date", details.date, "date", "", "date")}{input("Time", details.time, "time", "10:30 AM")}</div>}
-          {zone.id === "venue" && input("Venue", details.venue, "venue", "Venue & place")}
+          {zone.id === "datetime" && <div className="grid grid-cols-2 gap-2">{input("Date", details.date, "date", "", "date")}{input(cfg.labels.time, details.time, "time", cfg.sample.time)}</div>}
+          {zone.id === "venue" && input(cfg.labels.venue, details.venue, "venue", "Venue & place")}
           {zone.id === "verse" && area("Closing verse / footnote", details.verse, "verse")}
           <p className="text-[10px] text-slate-500 dark:text-slate-400">Enter or Esc to finish · changes save automatically</p>
         </div>

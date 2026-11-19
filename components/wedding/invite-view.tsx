@@ -5,9 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { fetchInvitation } from "@/lib/wedding-publish";
 import { loadImage, renderWeddingCard } from "@/lib/wedding-render";
-import { EVENT_TITLE, formatDate, getTemplate, mapsLink, type InvitePayload } from "@/lib/wedding";
+import { eventConfig, EVENT_TITLE, formatDate, getTemplate, mapsLink, type InvitePayload } from "@/lib/wedding";
 
-/** What a guest sees at /wedding-cards/invite/[id]?guest=…: their personalised card, the photos, the video and the venue button. */
+/** What a guest sees at /invitation-cards/invite/[id]?guest=…: their personalised card, the photos, the video and the venue button. */
 export function InviteView({ id }: { id: string }) {
   const sp = useSearchParams();
   const guest = sp.get("guest")?.slice(0, 80) || "";
@@ -44,7 +44,7 @@ export function InviteView({ id }: { id: string }) {
       <div className="mx-auto max-w-xl text-center">
         <p className="kicker mb-2">{title.en} · {title.ml}</p>
         <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl dark:text-white">{guest ? `Dear ${guest}, you are invited` : "You are invited"}</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{[d.groom, d.bride].filter(Boolean).join(" & ")}{d.date ? ` · ${formatDate(d.date, "en")}` : ""}</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{(eventConfig(d.eventType).couple ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ")}{d.date ? ` · ${formatDate(d.date, "en")}` : ""}</p>
       </div>
       <div className="mx-auto mt-6 max-w-xl space-y-5">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>

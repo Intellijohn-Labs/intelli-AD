@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { WeddingStudio } from "@/components/wedding/wedding-studio";
+import InvitationCardsPage from "../invitation-cards/page";
 
-export const metadata: Metadata = { title: "Wedding & Event Invitations" };
+export const metadata: Metadata = { title: "Invitation Cards · ക്ഷണക്കത്തുകൾ" };
 
-export default function WeddingCardsPage() {
-  return <WeddingStudio />;
-}
+/** Alias of /invitation-cards, so existing links keep working. */
+export default InvitationCardsPage;

@@ -37,10 +37,10 @@ export const SESSION_COOKIE = "intelliad_session";
 const REMEMBER_DAYS = 30;
 
 /** Pages that need no session: sign-in, the email callback, and shared wedding invitations (guests are not signed in). */
-export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/") || p.startsWith("/auth/") || p.startsWith("/wedding-cards/invite/");
+export const isPublicPath = (p: string) => p === "/login" || p.startsWith("/login/") || p.startsWith("/auth/") || p.startsWith("/wedding-cards/invite/") || p.startsWith("/invitation-cards/invite/");
 
 /** Open to signed-out visitors but still shown with the normal site header and footer. */
-export const isOpenPath = (p: string) => p === "/wedding-cards" || p === "/wedding-cards/";
+export const isOpenPath = (p: string) => p === "/wedding-cards" || p === "/wedding-cards/" || p === "/invitation-cards" || p === "/invitation-cards/";
 
 function readSession(): AuthUser | null {
   try {
