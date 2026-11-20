@@ -125,7 +125,7 @@ export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, e
 
 export const TEMPLATE_FILTERS = [
   { id: "all", label: "All" }, { id: "wedding", label: "Wedding (Hindu / Christian / Muslim)" }, { id: "birthday", label: "Birthday" }, { id: "housewarming", label: "Housewarming (ഗൃഹപ്രവേശം)" },
-  { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Inauguration / Anniversary)" }, { id: "animated", label: "✨ Animated (GIF)" },
+  { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Inauguration / Anniversary)" },
 ] as const;
 export type TemplateFilter = (typeof TEMPLATE_FILTERS)[number]["id"];
 export const EFFECTS: { id: CardEffect; label: string }[] = [

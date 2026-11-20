@@ -7,10 +7,8 @@ import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone } from "@/lib/wedding-render";
-import { renderGif, warmPetals } from "@/lib/wedding-motion";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { MotionCanvas } from "./motion-canvas";
-import { EMPTY_DETAILS, EFFECTS, EVENTS, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -39,7 +37,7 @@ export function WeddingStudio() {
   const cardPhotoIdx = useRef(0);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<TemplateFilter>("all");
-  const [effect, setEffect] = useState<CardEffect>("none");
+  const effect: CardEffect = "none";
   const [guestPreview, setGuestPreview] = useState<Guest | null>(null);
   const [guestImg, setGuestImg] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
@@ -52,7 +50,7 @@ export function WeddingStudio() {
   useEffect(() => {
     const s = loadStudio();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setEffect(s.effect ?? "none"); setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
+    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
     setHydrated(true);
   }, []);
   useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId, publishedHash, effect }); }, [hydrated, templateId, d, guests, effect, inviteId, publishedHash]);
@@ -71,7 +69,7 @@ export function WeddingStudio() {
     if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
-  const shown = TEMPLATES.filter((t) => filter === "all" || (filter === "animated" ? t.animated : t.category === filter));
+  const shown = TEMPLATES.filter((t) => filter === "all" || t.category === filter);
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
@@ -155,14 +153,12 @@ export function WeddingStudio() {
   const loadPhotos = useCallback(async () => [d.photos[0] ? await loadImage(d.photos[0]) : null, d.photos[1] ? await loadImage(d.photos[1]) : null] as const, [d.photos]);
   const HEXRE = /^#[0-9a-fA-F]{6}$/;
   const pal: Palette = useMemo(() => ({ ...tpl.pal, ...(HEXRE.test(d.accent) ? { accent: d.accent } : {}) }), [tpl, d.accent]);
-  const warm = warmPetals(tpl.motif);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const cardHash = useMemo(() => JSON.stringify([templateId, rd, effect, video?.name, video?.size]), [templateId, rd, effect, video]);
+  const cardHash = useMemo(() => JSON.stringify([templateId, rd, video?.name, video?.size]), [templateId, rd, video]);
 
-  /** The personalised card as an in-memory image (PNG, or a looping GIF when a motion is chosen). It is uploaded, never saved to this device. */
+  /** The personalised card as an in-memory image (a crisp static PNG). It is uploaded, never saved to this device. */
   const cardBlob = async (g: Guest, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<Blob> => {
-    const base = await renderWeddingCard({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: effect === "none" ? 1080 : 540 });
-    if (effect !== "none") return renderGif({ base, effect, pal, warm, frames: 24 });
+    const base = await renderWeddingCard({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: 1080 });
     return await new Promise<Blob>((res, rej) => base.toBlob((bl) => (bl ? res(bl) : rej(new Error("render failed"))), "image/png"));
   };
 
@@ -243,20 +239,12 @@ export function WeddingStudio() {
                   <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
                 ))}
               </div>
-              <div className={cn("mb-4 rounded-lg border p-3", filter === "animated" ? "border-[#B8860B] bg-[#B8860B]/10" : "border-slate-200 dark:border-slate-700")}>
-                <p className="mb-2 text-xs font-bold text-slate-900 dark:text-white">✨ Animated GIF motion <span className="font-normal text-slate-600 dark:text-slate-300">· moves in the live preview and dispatches as an animated GIF via Waau Panel</span></p>
-                <div role="radiogroup" aria-label="Animated GIF motion" className="flex flex-wrap gap-2">
-                  {EFFECTS.map((e) => (
-                    <button key={e.id} type="button" role="radio" aria-checked={effect === e.id} onClick={() => setEffect(e.id)} className={cn("rounded-full border px-3 py-1 text-xs font-semibold", effect === e.id ? "border-[#B8860B] bg-[#B8860B] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{e.label}</button>
-                  ))}
-                </div>
-              </div>
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {shown.map((x) => (
                   <li key={x.id}>
                     <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
                       {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
-                      {x.animated && <span className="absolute top-2.5 right-2.5 z-10 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white">GIF</span>}
+                      
                       <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
                         {thumbs[x.id] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={thumbs[x.id]} alt={`${x.name} template`} draggable={false} onContextMenu={(e) => e.preventDefault()} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" /></div>}
                       </div>
@@ -349,7 +337,7 @@ export function WeddingStudio() {
                 {(counts.queued > 0 || counts.sent > 0 || counts.failed > 0) && (
                   <p role="status" className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{counts.sent > 0 && <span className="mr-3">Sent via Waau Panel: {counts.sent}</span>}{counts.queued > 0 && <span className="mr-3">Queued in Waau Panel: {counts.queued}</span>}{counts.failed > 0 && <span className="text-red-700 dark:text-red-300">Failed: {counts.failed} (use Send to retry)</span>}</p>
                 )}
-                <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Each personalised card{effect !== "none" ? " (animated GIF)" : ""} is generated, stored securely and handed to Waau Panel for WhatsApp delivery. Until Waau Panel is connected, invitations wait as “Queued in Waau Panel”. Guests without a valid WhatsApp number are skipped. You need to be signed in to send.</p>
+                <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Each personalised card is generated, stored securely and handed to Waau Panel for WhatsApp delivery. Until Waau Panel is connected, invitations wait as “Queued in Waau Panel”. Guests without a valid WhatsApp number are skipped. You need to be signed in to send.</p>
               </div>
             </section>
           )}
@@ -365,7 +353,7 @@ export function WeddingStudio() {
             <div className="relative mx-auto w-full max-w-[420px]">
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {preview ? (effect !== "none" ? <MotionCanvas src={preview} effect={effect} pal={pal} warm={warm} /> : <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" />) : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
+                {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
                 {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} />}
               </div>
               <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
