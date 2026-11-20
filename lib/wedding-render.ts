@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, formatDate, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { eventConfig, EVENT_TITLE, formatDate, greetingText, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -137,12 +137,12 @@ const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, 
 
 /** A clickable region of the card in the 1080 x 1500 logical space (used only by the interactive studio preview). */
 type ZoneId = CardZone["id"];
-export interface CardZone { id: "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
+export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
 
 export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void }): Promise<HTMLCanvasElement> {
   const { template: t, details: d } = o;
   const p: Palette = { ...t.pal, ...(HEX.test(d.accent) ? { accent: d.accent } : {}) };
-  const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, t.blessing[1]].join(" ");
+  const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, o.guest ? greetingText(d, o.guest) : "", t.blessing[1]].join(" ");
   await loadPrintFonts(all + " അആഇ");
   const scale = o.width / CARD_W;
   const canvas = document.createElement("canvas");
@@ -162,6 +162,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const cfg = eventConfig(d.eventType);
 
   const lang = d.lang;
+  const badge = o.guest?.name && d.guestBadgeX != null && d.guestBadgeY != null ? { x: Math.min(100, Math.max(0, d.guestBadgeX)), y: Math.min(100, Math.max(0, d.guestBadgeY)) } : null;
   const wantMl = lang !== "en", wantEn = lang !== "ml";
   const M = MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
   // Image templates carry an exact safe box; every text line is confined to it (cw wide, centred on cx).
@@ -172,7 +173,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
-  type Block = { h: number; draw: (y: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
+  type Block = { tw?: number; h: number; draw: (y: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
   // Image templates have a hard safe box: when the full text can't fit even at a small size, low-priority lines are dropped
   // in stages (lvl 1: second-language extras, 2: message + parents, 3: blessing) instead of overflowing onto the artwork.
   const build = (k: number, lvl = 0): Block[] => {
@@ -185,8 +186,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
       const lines = wrap(ctx, opt.caps && !hasMl(str) ? str.toUpperCase() : str, cw);
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
+      ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
+      const tw = opt.id === "guest" ? Math.max(...lines.map((l) => ctx.measureText(l).width)) : undefined;
       blocks.push({
-        id: opt.id,
+        id: opt.id, tw,
         h: lines.length * fs * lh,
         draw: (y) => {
           ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
@@ -203,10 +206,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (wantEn && enS) text(enS, wantMl ? size * 0.72 : size, weight, opt);
     };
 
-    if (o.guest?.name) {
-      const g = o.guest;
-      text(wantMl && !wantEn ? `പ്രിയപ്പെട്ട ${g.name},` : `Dear ${g.name},`, 38, 700, { color: p.accent, italic: !hasMl(g.name) });
-      if (g.place) text(g.place, 28, 500, { color: p.sub, fam: SANS });
+    // The greeting sits in the text flow until the client positions it (guestBadgeX / Y), then it is drawn as a pill after the flow.
+    if (o.guest?.name && badge === null) {
+      const gt = greetingText(d, o.guest);
+      text(gt, 38, 700, { id: "guest", color: p.accent, italic: !hasMl(gt) });
     }
     const bless = d.blessing.trim();
     if (lvl >= 3) { /* no blessing line */ }
@@ -334,9 +337,24 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   };
   for (const b of blocks) {
     b.draw(y);
-    if (b.id) add(b.id, y - 6, b.h + 12, b.dual);
+    if (b.id === "guest") { const w = (b.tw ?? 300) + 36; zones.push({ id: "guest", x: cx - w / 2, y: y - 8, w, h: b.h + 16 }); }
+    else if (b.id) add(b.id, y - 6, b.h + 12, b.dual);
     for (const s of b.sub ?? []) zones.push({ id: s.id, x: zx, y: y + s.dy - 6, w: zw, h: s.h + 12 });
     y += b.h + gap;
+  }
+  if (badge && o.guest) {
+    // Positioned greeting: a pill centred on the client's chosen spot (kept fully inside the card), drawn over the artwork.
+    const gt = greetingText(d, o.guest);
+    let fs = 38; const setF = () => { ctx.font = `700 ${fs}px ${SERIF}`; };
+    setF(); while (ctx.measureText(gt).width > CARD_W - 150 && fs > 18) { fs -= 2; setF(); }
+    const bw = ctx.measureText(gt).width + 60, bh = fs * 1.9;
+    const bx = Math.min(CARD_W - bw / 2 - 10, Math.max(bw / 2 + 10, (badge.x / 100) * CARD_W));
+    const by = Math.min(CARD_H - bh / 2 - 10, Math.max(bh / 2 + 10, (badge.y / 100) * CARD_H));
+    ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+    ctx.fillStyle = `${p.bg1}EE`; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.stroke();
+    ctx.fillStyle = p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle"; setF(); ctx.fillText(gt, bx, by + fs * 0.04);
+    zones.push({ id: "guest", x: bx - bw / 2, y: by - bh / 2, w: bw, h: bh });
   }
   o.onZones?.(zones);
   return canvas;

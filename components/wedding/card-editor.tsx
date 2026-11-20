@@ -5,6 +5,7 @@ import { EVENTS, type EventConfig, type EventType, type WeddingDetails } from "@
 import type { CardZone } from "@/lib/wedding-render";
 
 const LABEL: Record<CardZone["id"], string> = {
+  guest: "Drag to move the guest greeting",
   blessing: "Click to edit blessing", title: "Click to edit event title", names: "Click to edit names", parents: "Click to edit family line",
   message: "Click to edit message", datetime: "Click to edit date & time", venue: "Click to edit venue", verse: "Click to edit closing verse", photo: "Click to upload photo",
 };
@@ -15,10 +16,24 @@ const fieldCls = "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1
  * Transparent hit-zones over the live preview image. Clicking one opens a small inline editor bound to the same
  * details state as the Details tab, so edits re-render the card and persist. Only used by the studio preview.
  */
-export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto, onRemovePhoto }: { zones: CardZone[]; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onRemovePhoto: (index: number) => void; onPickPhoto: (index: number) => void }) {
+export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto, onRemovePhoto, onMoveBadge }: { zones: CardZone[]; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onRemovePhoto: (index: number) => void; onMoveBadge: (x: number, y: number) => void; onPickPhoto: (index: number) => void }) {
   const [open, setOpen] = useState<CardZone["id"] | null>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const zone = zones.find((z) => z.id === open) ?? null;
+
+  // Draggable guest-greeting badge: pointer (mouse / touch / pen) drag inside the card, or arrow keys; dotted guides show while moving.
+  const frame = useRef<HTMLDivElement>(null);
+  const [grab, setGrab] = useState<{ dx: number; dy: number } | null>(null);
+  const guest = zones.find((z) => z.id === "guest") ?? null;
+  const positioned = details.guestBadgeX != null && details.guestBadgeY != null;
+  const gcx = guest ? (positioned ? (details.guestBadgeX! / 100) * CARD_W : guest.x + guest.w / 2) : 0;
+  const gcy = guest ? (positioned ? (details.guestBadgeY! / 100) * CARD_H : guest.y + guest.h / 2) : 0;
+  const place = (cx: number, cy: number) => {
+    if (!guest) return;
+    const x = Math.min(CARD_W - guest.w / 2, Math.max(guest.w / 2, cx)), y = Math.min(CARD_H - guest.h / 2, Math.max(guest.h / 2, cy));
+    onMoveBadge(Math.round((x / CARD_W) * 1000) / 10, Math.round((y / CARD_H) * 1000) / 10);
+  };
+  const toCard = (e: React.PointerEvent) => { const r = frame.current!.getBoundingClientRect(); return { px: ((e.clientX - r.left) / r.width) * CARD_W, py: ((e.clientY - r.top) / r.height) * CARD_H }; };
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +67,25 @@ export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto, on
 
   return (
     <>
-      {zones.map((z, i) => (
+      <div ref={frame} className="pointer-events-none absolute inset-0" aria-hidden={!guest}>
+        {grab && guest && (
+          <>
+            <div className={`absolute inset-y-0 border-l border-dotted ${Math.abs(gcx - CARD_W / 2) < 8 ? "border-[#D12014]" : "border-slate-500/70"}`} style={{ left: pct(gcx, CARD_W) }} />
+            <div className={`absolute inset-x-0 border-t border-dotted ${Math.abs(gcy - CARD_H / 2) < 8 ? "border-[#D12014]" : "border-slate-500/70"}`} style={{ top: pct(gcy, CARD_H) }} />
+            <div className="absolute inset-y-0 left-1/2 border-l border-dotted border-[#D12014]/30" /><div className="absolute inset-x-0 top-1/2 border-t border-dotted border-[#D12014]/30" />
+          </>
+        )}
+        {guest && (
+          <button type="button" aria-label="Move the guest greeting: drag, or use the arrow keys" title="Drag to move" data-card-zone
+            onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const { px, py } = toCard(e); setGrab({ dx: px - gcx, dy: py - gcy }); }}
+            onPointerMove={(e) => { if (!grab) return; const { px, py } = toCard(e); place(px - grab.dx, py - grab.dy); }}
+            onPointerUp={() => setGrab(null)} onPointerCancel={() => setGrab(null)}
+            onKeyDown={(e) => { const st = e.shiftKey ? 50 : 10, k = e.key; if (!k.startsWith("Arrow")) return; e.preventDefault(); place(gcx + (k === "ArrowRight" ? st : k === "ArrowLeft" ? -st : 0), gcy + (k === "ArrowDown" ? st : k === "ArrowUp" ? -st : 0)); }}
+            className={`pointer-events-auto absolute touch-none rounded-md outline-2 outline-dashed outline-offset-2 ${grab ? "cursor-grabbing outline-[#D12014]" : "cursor-grab outline-[#D12014]/55 hover:outline-[#D12014]"} focus-visible:outline-[#D12014]`}
+            style={{ left: pct(gcx - guest.w / 2, CARD_W), top: pct(gcy - guest.h / 2, CARD_H), width: pct(guest.w, CARD_W), height: pct(guest.h, CARD_H) }} />
+        )}
+      </div>
+      {zones.filter((z) => z.id !== "guest").map((z, i) => (
         <button
           key={`${z.id}-${i}`}
           type="button"

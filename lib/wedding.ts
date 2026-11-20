@@ -10,6 +10,7 @@ export type Motif = "kasavu" | "temple" | "church" | "nikah" | "botanical" | "ba
   | "art" | "peacock" | "nilavilakku" | "kanchipuram" | "cathedral" | "victorian" | "betrothal" | "mughal" | "sapphire" | "walima" | "emeraldfoil" | "marble" | "burgundy" | "rosegold" | "starlight";
 export type TemplateCategory = EventGroup;
 export type Faith = "hindu" | "christian" | "muslim" | "modern";
+export type GreetingFormat = "dear-name-place" | "dear-family" | "dear-family-place" | "to-family" | "ml-family" | "custom";
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
 
 export interface WeddingDetails {
@@ -33,6 +34,13 @@ export interface WeddingDetails {
   accent: string;
   /** Couple photos as downscaled JPEG data URLs (the first sits in the template's photo frame). */
   photos: string[];
+  /** How each guest's "To / Dear ..." line reads on their personalised card. */
+  guestGreetingFormat: GreetingFormat;
+  /** Prefix used by the "custom" greeting format (e.g. "With love to"). */
+  guestCustomPrefix: string;
+  /** Centre of the greeting badge as 0-100 % of card width / height; null = it sits in the normal text flow. */
+  guestBadgeX: number | null;
+  guestBadgeY: number | null;
 }
 
 export interface Palette { bg1: string; bg2: string; ink: string; sub: string; accent: string; accent2: string }
@@ -215,11 +223,36 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [] };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
 export const SAMPLE_DETAILS: WeddingDetails = sampleFor("wedding");
+
+export const GREETING_FORMATS: { id: GreetingFormat; label: string }[] = [
+  { id: "dear-name-place", label: "Dear {Name}, {Place}" },
+  { id: "dear-family", label: "Dear {Name} & Family" },
+  { id: "dear-family-place", label: "Dear {Name} & Family, {Place}" },
+  { id: "to-family", label: "To: {Name} & Family" },
+  { id: "ml-family", label: "സ്നേഹപൂർവ്വം {Name} & കുടുംബാംഗങ്ങൾക്കും" },
+  { id: "custom", label: "Custom prefix" },
+];
+/** Shown on the live preview until a real guest is added. */
+export const SAMPLE_GUEST = { name: "Arun", place: "Kochi" };
+
+/** The personalised "To / Dear ..." line for one guest. A name already ending in "& Family" is not doubled. */
+export function greetingText(d: Pick<WeddingDetails, "guestGreetingFormat" | "guestCustomPrefix">, g: { name: string; place: string }): string {
+  const name = g.name.trim().replace(/\s*(&|and)\s*family$/i, "").trim() || "Guest";
+  const place = g.place.trim(), tail = place ? `, ${place}` : "";
+  switch (d.guestGreetingFormat) {
+    case "dear-family": return `Dear ${name} & Family`;
+    case "dear-family-place": return `Dear ${name} & Family${tail}`;
+    case "to-family": return `To: ${name} & Family`;
+    case "ml-family": return `സ്നേഹപൂർവ്വം ${name} & കുടുംബാംഗങ്ങൾക്കും`;
+    case "custom": return `${d.guestCustomPrefix.trim() || "Dear"} ${name}${tail}`;
+    default: return `Dear ${name}${tail}`;
+  }
+}
 
 export type GuestStatus = "pending" | "queued" | "sent" | "failed";
 export interface Guest { id: string; name: string; place: string; phone: string; status: GuestStatus }
