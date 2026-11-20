@@ -305,6 +305,39 @@ export function WeddingStudio() {
 
           {tab === "Template" && (
             <section className={panel} aria-label="Templates">
+              {/* Step 1 order: Pick a template, then the greeting format, then the card font. */}
+              <div className="mb-4">
+              <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
+              <div role="tablist" aria-label="Template categories" className="-mx-1 mb-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {TEMPLATE_FILTERS.map((f) => (
+                  <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => chooseFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
+                ))}
+              </div>
+              <ul id="template-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                {shown.map((x, i) => (
+                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards); a selected template further down stays selected.
+                  <li key={x.id} className={!expanded && i >= 2 ? (i >= 5 ? "hidden" : i >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
+                    <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
+                      {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
+                      
+                      <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
+                        {thumbs[x.id] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={thumbs[x.id]} alt={`${x.name} template`} draggable={false} onContextMenu={(e) => e.preventDefault()} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" /></div>}
+                      </div>
+                      <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{x.name}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{x.tagline}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
+              {shown.length > cols && (
+                <div className="mt-4 flex justify-center">
+                  <button type="button" aria-expanded={expanded} aria-controls="template-grid" onClick={() => setExpandedFor(expanded ? null : filter)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-transparent dark:text-slate-100 dark:hover:bg-white/5">
+                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
+                  </button>
+                </div>
+              )}
+              </div>
               <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Guest greeting (&ldquo;To&rdquo; format)</h3>
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">How each guest&apos;s name appears on their card. Shown live on the preview: click it there to edit the wording, drag it into any open spot.</p>
@@ -337,37 +370,7 @@ export function WeddingStudio() {
                   ))}
                 </div>
               </div>
-              <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
-              <div role="tablist" aria-label="Template categories" className="-mx-1 mb-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {TEMPLATE_FILTERS.map((f) => (
-                  <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => chooseFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
-                ))}
-              </div>
-              <ul id="template-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-                {shown.map((x, i) => (
-                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards); a selected template further down stays selected.
-                  <li key={x.id} className={!expanded && i >= 2 ? (i >= 5 ? "hidden" : i >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
-                    <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
-                      {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
-                      
-                      <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
-                        {thumbs[x.id] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={thumbs[x.id]} alt={`${x.name} template`} draggable={false} onContextMenu={(e) => e.preventDefault()} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                      </div>
-                      <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{x.name}</p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{x.tagline}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
-              {shown.length > cols && (
-                <div className="mt-4 flex justify-center">
-                  <button type="button" aria-expanded={expanded} aria-controls="template-grid" onClick={() => setExpandedFor(expanded ? null : filter)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-transparent dark:text-slate-100 dark:hover:bg-white/5">
-                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
-                  </button>
-                </div>
-              )}
-              <button type="button" onClick={() => setTab("Details")} className="mt-4 rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: event details</button>
+              <button type="button" onClick={() => setTab("Details")} className="mt-1 rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: event details</button>
             </section>
           )}
 
