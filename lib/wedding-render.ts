@@ -154,19 +154,28 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const artImg = t.art ? await loadArt(t.art.src) : null;
   if (artImg) ctx.drawImage(artImg, 0, 0, CARD_W, CARD_H);
   else if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
+  if (t.art?.panel) {
+    const pad = 34, x = t.art.left - pad, y = t.art.top - pad, w = CARD_W - t.art.left - t.art.right + 2 * pad, h = CARD_H - t.art.top - t.art.bottom + 2 * pad;
+    ctx.save(); ctx.shadowColor = "rgba(40,20,0,0.28)"; ctx.shadowBlur = 30; ctx.fillStyle = "rgba(255,249,236,0.88)"; ctx.beginPath(); ctx.roundRect(x, y, w, h, 34); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x + 10, y + 10, w - 20, h - 20, 26); ctx.stroke();
+  }
   const cfg = eventConfig(d.eventType);
 
   const lang = d.lang;
   const wantMl = lang !== "en", wantEn = lang !== "ml";
-  const M = t.art?.m ?? MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
-  const cw = CARD_W - 2 * M;
+  const M = MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
+  // Image templates carry an exact safe box; every text line is confined to it (cw wide, centred on cx).
+  const sl = t.art?.left ?? M, sr = t.art?.right ?? M;
+  const cw = CARD_W - sl - sr - (t.art ? 24 : 0), cx = (sl + CARD_W - sr) / 2;
   const family = t.layout === "minimal" ? SANS : SERIF;
   const title = EVENT_TITLE[d.eventType];
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
   type Block = { h: number; draw: (y: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
-  const build = (k: number): Block[] => {
+  // Image templates have a hard safe box: when the full text can't fit even at a small size, low-priority lines are dropped
+  // in stages (lvl 1: second-language extras, 2: message + parents, 3: blessing) instead of overflowing onto the artwork.
+  const build = (k: number, lvl = 0): Block[] => {
     const blocks: Block[] = [];
     const text = (s: string, size: number, weight: number, opt: { id?: ZoneId; color?: string; italic?: boolean; caps?: boolean; ls?: number; fam?: string; lh?: number } = {}) => {
       const str = s.trim();
@@ -183,12 +192,12 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
           ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
           ctx.fillStyle = opt.color ?? p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          lines.forEach((l, i) => ctx.fillText(l, CARD_W / 2, y + (i + 0.5) * fs * lh));
+          lines.forEach((l, i) => ctx.fillText(l, cx, y + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
         },
       });
     };
-    const rule = (wid: number) => blocks.push({ h: 8 * k, draw: (y) => { ctx.fillStyle = p.accent; ctx.fillRect(CARD_W / 2 - wid / 2, y + 3 * k, wid, 2); } });
+    const rule = (wid: number) => blocks.push({ h: 8 * k, draw: (y) => { ctx.fillStyle = p.accent; ctx.fillRect(cx - wid / 2, y + 3 * k, wid, 2); } });
     const both = (ml: string, enS: string, size: number, weight: number, opt: Parameters<typeof text>[3] = {}) => {
       if (wantMl && ml) text(ml, size, weight, opt);
       if (wantEn && enS) text(enS, wantMl ? size * 0.72 : size, weight, opt);
@@ -200,7 +209,9 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (g.place) text(g.place, 28, 500, { color: p.sub, fam: SANS });
     }
     const bless = d.blessing.trim();
-    if (bless) text(bless, 30, 500, { id: "blessing", color: p.sub, italic: true });
+    if (lvl >= 3) { /* no blessing line */ }
+    else if (bless) text(bless, 30, 500, { id: "blessing", color: p.sub, italic: true });
+    else if (lvl >= 1) text(wantEn ? t.blessing[0] : t.blessing[1], 30, 500, { id: "blessing", color: p.sub, italic: true });
     else both(t.blessing[1], t.blessing[0], 30, 500, { id: "blessing", color: p.sub, italic: true });
     if (t.layout === "minimal") rule(120);
     both(title.ml, title.en, 34, 700, { id: "title", color: p.accent, caps: true, ls: 0.16 });
@@ -215,8 +226,8 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
           id: "photo", dual: !!photo2, sub: [{ id: "names", dy: ph + pad, h: cap }],
           h: ph + pad + cap + 24 * k,
           draw: (y) => {
-            const x = CARD_W / 2 - pw / 2;
-            ctx.save(); ctx.translate(CARD_W / 2, y + (ph + pad + cap) / 2); ctx.rotate(-0.04); ctx.translate(-CARD_W / 2, -(y + (ph + pad + cap) / 2));
+            const x = cx - pw / 2;
+            ctx.save(); ctx.translate(cx, y + (ph + pad + cap) / 2); ctx.rotate(-0.04); ctx.translate(-cx, -(y + (ph + pad + cap) / 2));
             ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 28 * k; ctx.shadowOffsetY = 12 * k; ctx.fillStyle = "#fff"; ctx.fillRect(x, y, pw, ph + pad + cap); ctx.shadowColor = "transparent";
             ctx.save(); ctx.beginPath(); ctx.rect(x + pad, y + pad, pw - 2 * pad, ph - pad); ctx.clip();
             if (photo) {
@@ -224,10 +235,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
               if (photo2) { const gp = 10 * k, hw = (pw - 2 * pad - gp) / 2; cover(photo, x + pad, hw); cover(photo2, x + pad + hw + gp, hw); }
               else cover(photo, x + pad, pw - 2 * pad);
             }
-            else { const g = ctx.createLinearGradient(x, y, x + pw, y + ph); g.addColorStop(0, p.accent2 + "88"); g.addColorStop(1, p.accent + "55"); ctx.fillStyle = g; ctx.fillRect(x + pad, y + pad, pw - 2 * pad, ph - pad); ctx.fillStyle = "#fff"; ctx.font = `700 ${120 * k}px ${SERIF}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("♥", CARD_W / 2, y + pad + (ph - pad) / 2); }
+            else { const g = ctx.createLinearGradient(x, y, x + pw, y + ph); g.addColorStop(0, p.accent2 + "88"); g.addColorStop(1, p.accent + "55"); ctx.fillStyle = g; ctx.fillRect(x + pad, y + pad, pw - 2 * pad, ph - pad); ctx.fillStyle = "#fff"; ctx.font = `700 ${120 * k}px ${SERIF}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("♥", cx, y + pad + (ph - pad) / 2); }
             ctx.restore();
             ctx.fillStyle = p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `italic 700 ${50 * k}px ${SERIF}`;
-            ctx.fillText((cfg.couple ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ") || "Bride & Groom", CARD_W / 2, y + ph + pad + cap / 2 - 4 * k);
+            ctx.fillText((cfg.couple ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ") || "Bride & Groom", cx, y + ph + pad + cap / 2 - 4 * k);
             ctx.restore();
           },
         });
@@ -237,9 +248,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const small = t.layout === "minimal";
       const dual = !!photo2;
       const gapP = 40 * k, ring = 24 * k;
-      const baseW = (t.shape === "arch" ? 330 : small ? 300 : 340) * k;
+      const baseW = Math.min((t.shape === "arch" ? 330 : small ? 300 : 340) * k, cw - 2 * ring);
       const pw = dual ? Math.min(baseW * 0.82, (cw - gapP - ring) / 2) : baseW;
-      const ph = dual ? (t.shape === "circle" ? pw : t.shape === "arch" ? pw * 1.28 : t.shape === "oval" ? pw * 1.18 : pw * 1.1) : (t.shape === "circle" ? 340 : t.shape === "arch" ? 420 : t.shape === "oval" ? 400 : small ? 380 : 340) * k;
+      const fit = baseW / ((t.shape === "arch" ? 330 : small ? 300 : 340) * k); // < 1 when a narrow safe box squeezes the portrait
+      const ph = dual ? (t.shape === "circle" ? pw : t.shape === "arch" ? pw * 1.28 : t.shape === "oval" ? pw * 1.18 : pw * 1.1) : (t.shape === "circle" ? 340 : t.shape === "arch" ? 420 : t.shape === "oval" ? 400 : small ? 380 : 340) * k * fit;
       const one = (im: HTMLImageElement, x: number, y: number) => {
         ctx.save(); shapePath(ctx, t.shape, x, y, pw, ph); ctx.clip();
         const sc = Math.max(pw / im.width, ph / im.height);
@@ -252,8 +264,8 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
         id: "photo", dual,
         h: ph + 16 * k,
         draw: (y) => {
-          if (photo2) { const x0 = CARD_W / 2 - (2 * pw + gapP) / 2; one(photo, x0, y); one(photo2, x0 + pw + gapP, y); }
-          else one(photo, CARD_W / 2 - pw / 2, y);
+          if (photo2) { const x0 = cx - (2 * pw + gapP) / 2; one(photo, x0, y); one(photo2, x0 + pw + gapP, y); }
+          else one(photo, cx - pw / 2, y);
         },
       });
     };
@@ -276,41 +288,54 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     const parents = cfg.group === "wedding"
       ? [d.groomParents.trim() && sonOf(d.groom.trim() || "Groom", d.groomParents.trim(), true), d.brideParents.trim() && sonOf(d.bride.trim() || "Bride", d.brideParents.trim(), false)].filter(Boolean).join("\n")
       : hostLine;
-    if (parents) text(parents, 30, 500, { id: "parents", color: p.sub, fam: SANS });
+    if (parents && lvl < 2) text(parents, 30, 500, { id: "parents", color: p.sub, fam: SANS });
     const msg = d.message.trim();
-    if (msg) text(msg, 32, 500, { id: "message", italic: true, color: p.ink });
+    if (lvl >= 2) { /* no message */ }
+    else if (msg) text(msg, 32, 500, { id: "message", italic: true, color: p.ink });
     else if (t.layout !== "polaroid") both(cfg.message.ml, cfg.message.en, 32, 500, { id: "message", italic: true });
     if (t.layout === "minimal") rule(120);
     const dt = d.date;
-    if (dt) { text(formatDate(dt, wantEn ? "en" : "ml"), 48, 800, { id: "datetime", color: p.accent === p.ink ? p.ink : p.ink }); if (lang === "both") text(formatDate(dt, "ml"), 34, 600, { id: "datetime", color: p.sub }); }
+    if (dt) { text(formatDate(dt, wantEn ? "en" : "ml"), 48, 800, { id: "datetime", color: p.accent === p.ink ? p.ink : p.ink }); if (lang === "both" && lvl < 1) text(formatDate(dt, "ml"), 34, 600, { id: "datetime", color: p.sub }); }
     if (d.time.trim()) text(`${lang === "ml" ? "സമയം" : lang === "both" ? "സമയം / Time" : "Time"}: ${d.time.trim()}`, 34, 600, { id: "datetime", color: p.accent, fam: SANS });
-    if (d.venue.trim()) { text(lang === "ml" ? "വേദി" : lang === "both" ? "വേദി / Venue" : "Venue", 26, 700, { id: "venue", color: p.sub, caps: true, ls: 0.18, fam: SANS }); text(d.venue.trim(), 36, 700, { id: "venue" }); }
+    if (d.venue.trim()) { if (lvl < 1) text(lang === "ml" ? "വേദി" : lang === "both" ? "വേദി / Venue" : "Venue", 26, 700, { id: "venue", color: p.sub, caps: true, ls: 0.18, fam: SANS }); text(d.venue.trim(), 36, 700, { id: "venue" }); }
     if (d.verse.trim()) text(d.verse.trim(), 26, 500, { id: "verse", italic: true, color: p.sub });
     return blocks;
   };
 
   // The botanical eucalyptus corner reaches further down, so its content starts lower.
-  const topOff = (t.motif === "botanical" ? 45 : 0) + (t.art?.top ?? MOTIF_LAYOUT[t.motif]?.top ?? 0);
-  const botOff = t.art?.bot ?? MOTIF_LAYOUT[t.motif]?.bot ?? 0;
-  const top = M * 0.8 + topOff, avail = CARD_H - 2 * M * 0.8 - topOff - botOff;
-  let k = 1.1, blocks = build(k);
+  const topOff = (t.motif === "botanical" ? 45 : 0) + (MOTIF_LAYOUT[t.motif]?.top ?? 0);
+  const botOff = MOTIF_LAYOUT[t.motif]?.bot ?? 0;
+  // Image templates: the text flow is exactly the safe box. Other motifs keep their original margins.
+  const top = t.art ? t.art.top : M * 0.8 + topOff, avail = t.art ? CARD_H - t.art.top - t.art.bottom : CARD_H - 2 * M * 0.8 - topOff - botOff;
   const gapOf = (kk: number) => 24 * kk;
   const total = (bs: Block[], kk: number) => bs.reduce((a, b) => a + b.h, 0) + Math.max(0, bs.length - 1) * gapOf(kk);
-  while (total(blocks, k) > avail && k > 0.45) { k *= 0.96; blocks = build(k); }
+  let k = 1.1, blocks = build(k);
+  if (!t.art) {
+    while (total(blocks, k) > avail && k > 0.45) { k *= 0.96; blocks = build(k); }
+  } else {
+    // Strict fit: shrink to a readable floor, then drop the next-least-important lines; the last stage may shrink further.
+    for (let lvl = 0; lvl <= 3; lvl++) {
+      k = 1.1; blocks = build(k, lvl);
+      const floor = lvl === 3 ? 0.2 : 0.62;
+      while (total(blocks, k) > avail && k > floor) { k *= 0.97; blocks = build(k, lvl); }
+      if (total(blocks, k) <= avail) break;
+    }
+  }
   const extra = Math.max(0, avail - total(blocks, k));
   const gap = gapOf(k) + (blocks.length > 1 ? Math.min(extra / (blocks.length - 1), 46) : 0);
   const used = blocks.reduce((a, b) => a + b.h, 0) + (blocks.length - 1) * gap;
   let y = top + Math.max(0, (avail - used) / 2);
   const zones: CardZone[] = [];
+  const zx = t.art ? sl : M * 0.7, zw = t.art ? cw : CARD_W - 2 * M * 0.7;
   const add = (id: ZoneId, y0: number, h: number, dual?: boolean) => {
     const last = zones[zones.length - 1];
     if (last && last.id === id && last.h >= 0 && y0 - (last.y + last.h) < gap * 1.5) { last.h = y0 + h - last.y; return; }
-    zones.push({ id, x: M * 0.7, y: y0, w: CARD_W - 2 * M * 0.7, h, dual });
+    zones.push({ id, x: zx, y: y0, w: zw, h, dual });
   };
   for (const b of blocks) {
     b.draw(y);
     if (b.id) add(b.id, y - 6, b.h + 12, b.dual);
-    for (const s of b.sub ?? []) zones.push({ id: s.id, x: M * 0.7, y: y + s.dy - 6, w: CARD_W - 2 * M * 0.7, h: s.h + 12 });
+    for (const s of b.sub ?? []) zones.push({ id: s.id, x: zx, y: y + s.dy - 6, w: zw, h: s.h + 12 });
     y += b.h + gap;
   }
   o.onZones?.(zones);

@@ -58,8 +58,8 @@ export interface WeddingTemplate {
   premium?: boolean;
   /** Shown under the Animated (GIF) filter (every template can still export a GIF). */
   animated?: boolean;
-  /** Illustrated image backdrop (same-origin SVG in public/templates, 1080 x 1500: artwork header + opaque text panel). m = side margin, top / bot = text-flow offsets. */
-  art?: { src: string; m: number; top: number; bot: number };
+  /** Illustrated image backdrop (same-origin SVG in public/templates, 1080 x 1500: artwork header + opaque text panel). left / right / top / bottom = the inner safe box (px from each edge of the 1080 x 1500 card) that every text line is confined to; panel draws a soft ivory panel behind the text for artwork with no clear area. */
+  art?: { src: string; left: number; right: number; top: number; bottom: number; panel?: boolean };
 }
 
 type RawTemplate = Omit<WeddingTemplate, "category" | "faith" | "defaultEvent" | "events" | "premium" | "animated">;
@@ -120,17 +120,45 @@ const META: Record<string, Meta> = {
   choroonu: { category: "baby", faith: "hindu", defaultEvent: "choroonu", events: ["choroonu", "noolukettu"], premium: true, animated: true }, baptism: { category: "baby", faith: "christian", defaultEvent: "baptism", events: ["baptism"], premium: true, animated: true }, babyshower: { category: "baby", defaultEvent: "babyshower", events: ["babyshower"], premium: true, animated: true }, aqiqah: { category: "baby", faith: "muslim", defaultEvent: "aqiqah", events: ["aqiqah"], premium: true, animated: true },
   ribbon: { category: "events", defaultEvent: "inauguration", events: ["inauguration"], premium: true, animated: true }, anniversary: { category: "events", defaultEvent: "anniversary", events: ["anniversary"], premium: true, animated: true },
 };
+/**
+ * Real-artwork Hindu wedding designs (public/templates/hindu-wedding, prepared by scripts/prepare-hindu-wedding-images.py).
+ * Each `art` box is the clear area of that image, measured on the final 1080 x 1500 card, so no text line reaches a border,
+ * garland, deity or other artwork; ink / accent colours are picked for the tone of that clear area.
+ */
+const HW = (id: string, over: Partial<RawTemplate> & Pick<RawTemplate, "name" | "ml" | "tagline" | "pal" | "blessing">, box: [number, number, number, number], panel = false): RawTemplate => ({
+  id, layout: "classic", motif: "art", shape: "oval", ...over,
+  art: { src: `/templates/hindu-wedding/${id}.jpg`, left: box[0], right: box[1], top: box[2], bottom: box[3], ...(panel ? { panel: true } : {}) },
+});
+const GANESHA: [string, string] = ["Sri Ganapathaye Namah", "ശ്രീ ഗണപതയേ നമഃ"], SHIVA: [string, string] = ["Om Namah Shivaya", "ഓം നമഃ ശിവായ"];
+const HINDU_RAW: RawTemplate[] = [
+  HW("hindu-royal-ganesha-couple", { name: "Royal Shiva Parvati Vivaha", ml: "ശിവപാർവതി വിവാഹം", tagline: "Golden pillars, sacred fire & marigold", pal: P("#FCEBD8", "#F7DAB8", "#5A1010", "#7A4A2B", "#9A6410", "#8C1C2B"), blessing: SHIVA }, [320, 300, 215, 760]),
+  HW("hindu-radha-krishna", { name: "Radha Krishna Lotus Garden", ml: "രാധാകൃഷ്ണ", tagline: "Pastel arch, lotus pond & the divine pair", pal: P("#FFFCF5", "#FBEFD8", "#4A1020", "#7A4B3A", "#A06A12", "#B03060"), blessing: ["Radhe Krishna", "രാധേ കൃഷ്ണ"] }, [525, 170, 280, 310]),
+  HW("hindu-shiva-parvati-arch", { name: "Shiva Parvati Floral Arch", ml: "ശിവപാർവതി", tagline: "Cream arch, hanging blooms & the celestial court", pal: P("#FBF3E4", "#F3E2C4", "#4A1710", "#7A4A2B", "#9A6410", "#8C1C2B"), blessing: SHIVA }, [300, 300, 260, 770]),
+  HW("hindu-ramayana-gold", { name: "Golden Temple Sri Rama Seetha", ml: "ശ്രീരാമ സീത", tagline: "Carved temple gateway at golden hour", pal: P("#F6D9A0", "#EDBE76", "#3B1405", "#5E2E10", "#7A2E00", "#6B1A10"), blessing: ["Sri Rama Jayam", "ശ്രീരാമ ജയം"] }, [280, 300, 210, 520]),
+  HW("hindu-gopuram-garden", { name: "Gopuram & Sri Rama Darbar", ml: "ഗോപുരം · രാമദർബാർ", tagline: "Parchment, banana leaves & temple tower", pal: P("#F8EFD8", "#F0E2BF", "#3B1A0A", "#6B4A2B", "#9A6410", "#8C1C2B"), blessing: GANESHA }, [290, 210, 215, 735]),
+  HW("hindu-shiva-sakthi-rose", { name: "Shiva Sakthi Rose Watercolor", ml: "ശിവശക്തി", tagline: "Blush wash, Ganesha lotus & pink lotuses", pal: P("#F7E4E6", "#F0D2D6", "#4A0F24", "#7A3A4A", "#9A5A10", "#A01E4A"), blessing: SHIVA }, [150, 150, 400, 580]),
+  HW("hindu-watercolor-couple", { name: "Shiva Parvati Watercolor Om", ml: "ഓം · ശിവപാർവതി", tagline: "Soft watercolor, Om mandala & temple bells", pal: P("#F6EDCC", "#EEE3BC", "#3B2A10", "#6B5A30", "#8A6410", "#7A3A1E"), blessing: SHIVA }, [100, 100, 255, 540]),
+  HW("hindu-temple-tower", { name: "Temple Gopuram & Lotus", ml: "ക്ഷേത്ര ഗോപുരം", tagline: "Colourful gopuram, banana leaf & petals", pal: P("#FFFFFF", "#FFF8EE", "#3E1A10", "#7A4A2B", "#A06A12", "#C0392B"), blessing: ["Om Namo Narayanaya", "ഓം നമോ നാരായണായ"] }, [500, 70, 440, 120]),
+  HW("hindu-mandap-pooja", { name: "Mandapam Pooja & Jasmine", ml: "മണ്ഡപം പൂജ", tagline: "Jasmine strings, brass lamps & the pooja mandap", pal: P("#FDF1EE", "#FADAD4", "#4A1020", "#7A3E3A", "#A06A12", "#B03060"), blessing: GANESHA }, [110, 480, 560, 390]),
+  HW("hindu-hands-minimal", { name: "Divine Union Minimal", ml: "ദിവ്യ സംഗമം", tagline: "Krishna & Radha's clasped hands on white", pal: P("#FFFFFF", "#FFF9F0", "#2E1A24", "#6B4A5A", "#9A6410", "#C0392B"), blessing: ["Radhe Krishna", "രാധേ കൃഷ്ണ"] }, [110, 110, 790, 70]),
+  HW("hindu-bells-hands", { name: "Divine Hands & Temple Bells", ml: "ദിവ്യ കരങ്ങൾ", tagline: "Bells, Ganesha lotus & garden florals", pal: P("#FBF1E6", "#F6E3D0", "#4A1020", "#7A4A3A", "#9A6410", "#B03060"), blessing: GANESHA }, [110, 110, 790, 370]),
+  HW("hindu-silhouette-couple", { name: "Shiva Parvati Silhouette Minimal", ml: "ശിവപാർവതി", tagline: "Hand-in-hand on white, saffron & gold drapes", pal: P("#FFFFFF", "#FFF9F0", "#2E1A24", "#6B4A5A", "#9A6410", "#C0392B"), blessing: SHIVA }, [100, 100, 100, 900]),
+  HW("hindu-sunrise-temple", { name: "Temple Sunrise Marigold Path", ml: "ക്ഷേത്ര സൂര്യോദയം", tagline: "Sunlit gopuram, marigold garlands & lamps", pal: P("#FFF8EA", "#F8E6C4", "#3E1A0A", "#6B4A2B", "#9A6410", "#8C1C2B"), blessing: GANESHA }, [210, 210, 370, 410], true),
+];
+const HINDU_TEMPLATES = HINDU_RAW;
+
 /** Illustrated, image-based balloon celebration designs. Artwork: scripts/generate-template-art.py -> public/templates. */
-const ART = (id: string) => ({ src: `/templates/${id}.svg`, m: 150, top: 400, bot: 20 });
+const ART = (id: string) => ({ src: `/templates/${id}.svg`, left: 150, right: 150, top: 520, bottom: 140 });
 const ART_TEMPLATES: RawTemplate[] = [
   { id: "balloon-luxury", name: "Luxury Gold & Pastel Balloon Arch", ml: "ഗോൾഡ് ബലൂൺ", tagline: "Gold, champagne & blush balloons with confetti", layout: "classic", motif: "art", shape: "circle", pal: P("#FFFAF2", "#F7E6D4", "#4A2E1F", "#7C6459", "#9A6B12", "#C9707F"), blessing: ["Join us to celebrate", "ആഘോഷത്തിൽ പങ്കുചേരൂ"], art: ART("balloon-luxury") },
   { id: "balloon-kids", name: "Kids Balloon & Cloud Carnival", ml: "ബലൂൺ കാർണിവൽ", tagline: "Rainbow, clouds, stars & pastel balloons", layout: "classic", motif: "art", shape: "circle", pal: P("#FFFFFF", "#EEF6FF", "#3A3358", "#6F6896", "#D6456B", "#7757D1"), blessing: ["Let's party!", "നമുക്ക് ആഘോഷിക്കാം!"], art: ART("balloon-kids") },
 ];
+const HINDU_META: Meta = { category: "wedding", faith: "hindu", defaultEvent: "wedding", events: ["wedding", "engagement", "reception"], premium: true };
 const ART_META: Record<string, Meta> = {
   "balloon-luxury": { category: "birthday", defaultEvent: "birthday", events: ["birthday", "anniversary"], premium: true },
   "balloon-kids": { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true },
 };
-export const TEMPLATES: WeddingTemplate[] = [...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id]) }));
+export const TEMPLATES: WeddingTemplate[] = [...HINDU_TEMPLATES, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id] ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);
