@@ -69,7 +69,7 @@ export function WeddingStudio() {
     if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
-  const shown = TEMPLATES.filter((t) => filter === "all" || (filter === "devotional" ? t.devotional : t.category === filter));
+  const shown = TEMPLATES.filter((t) => filter === "all" || t.category === filter);
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
