@@ -283,3 +283,16 @@ values ('invitation-cards', 'invitation-cards', true, 5242880, array['image/png'
 on conflict (id) do update
   set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Invitation card template controls, managed in /admin/invitations ───────────────────────────────────────────────
+-- One row per template the admin has touched (no row = enabled). "deleted" is a soft delete so it can be restored.
+-- RLS is ON with NO policies: only the server-side service-role client (the status route and the admin API) can read
+-- or write it; browsers get the hidden ids from GET /api/invitations/templates/status.
+create table if not exists public.invitation_template_settings (
+  template_id text primary key,
+  enabled boolean not null default true,
+  deleted boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+alter table public.invitation_template_settings enable row level security;

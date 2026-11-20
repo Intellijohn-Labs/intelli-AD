@@ -1,11 +1,12 @@
-import { ArrowRight, Megaphone, Monitor, Newspaper, Radio, SignpostBig } from "lucide-react";
+import { ArrowRight, Megaphone, Mails, Monitor, Newspaper, Radio, SignpostBig } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { newspapers } from "@/data/newspapers";
 import { createClient } from "@/lib/supabase/server";
 
-const CATEGORIES: { title: string; desc: string; icon: ReactNode; href?: string; badge: string; tone: string }[] = [
+const CATEGORIES: { title: string; desc: string; icon: ReactNode; href?: string; badge: string; tone: string; cta?: string }[] = [
   { title: "Newspaper Ads", desc: "Classified text, classified display and commercial display rates for every publication and edition.", icon: <Newspaper className="h-6 w-6" />, href: "/admin/rates", badge: "Live Rates", tone: "bg-[#0A0B0D]" },
+  { title: "Invitation Templates", desc: "Show, hide or remove any invitation card design from the studio without touching code.", icon: <Mails className="h-6 w-6" />, href: "/admin/invitations", badge: "Studio", tone: "bg-[#B8860B]", cta: "Manage templates" },
   { title: "Radio & Audio Ads", desc: "FM spots, sponsorships and podcast slots.", icon: <Radio className="h-6 w-6" />, badge: "Coming Soon", tone: "bg-slate-400" },
   { title: "TV & Screen Media", desc: "Television spots, digital screens and cinema.", icon: <Monitor className="h-6 w-6" />, badge: "Coming Soon", tone: "bg-slate-400" },
   { title: "Outdoor / Hoardings", desc: "Billboards, unipoles and transit media.", icon: <SignpostBig className="h-6 w-6" />, badge: "Coming Soon", tone: "bg-slate-400" },
@@ -45,7 +46,7 @@ export default async function AdminOverview() {
               </div>
               <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">{c.title}</h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{c.desc}</p>
-              {c.href && <p className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#D12014] dark:text-sky-300">Manage rates <ArrowRight className="h-4 w-4" aria-hidden="true" /></p>}
+              {c.href && <p className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[#D12014] dark:text-sky-300">{c.cta ?? "Manage rates"} <ArrowRight className="h-4 w-4" aria-hidden="true" /></p>}
             </>
           );
           return (

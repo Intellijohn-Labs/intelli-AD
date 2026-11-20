@@ -63,13 +63,31 @@ export function WeddingStudio() {
 
   // A template suits an event when it is in the event's group (wedding events also use the shared "events" designs).
   const suits = (t: WeddingTemplate, ev: EventType) => templateSuits(t, ev);
+
+  // Templates the admin disabled or deleted (/admin/invitations) are hidden; if the current pick is one of them, fall back to an active one.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    let live = true;
+    fetch("/api/invitations/templates/status").then((res) => (res.ok ? res.json() : null)).then((j: { disabled?: string[]; deleted?: string[] } | null) => {
+      if (live && j) setHidden(new Set([...(j.disabled ?? []), ...(j.deleted ?? [])]));
+    }).catch(() => { /* offline or not configured: every template stays available */ });
+    return () => { live = false; };
+  }, []);
+  const active = useMemo(() => TEMPLATES.filter((t) => !hidden.has(t.id)), [hidden]);
+  useEffect(() => {
+    if (!hydrated || !hidden.has(templateId)) return;
+    const next = active.find((t) => suits(t, d.eventType)) ?? active[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (next) setTemplateId(next.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, hidden, templateId, active, d.eventType]);
   const pickEvent = (ev: EventType) => {
     const g = eventConfig(ev).group;
     set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); setFilter(g === "events" ? "events" : g);
-    if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
+    if (!suits(tpl, ev)) { const next = active.find((t) => t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
-  const shown = TEMPLATES.filter((t) => filter === "all" || t.category === filter);
+  const shown = active.filter((t) => filter === "all" || t.category === filter);
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
