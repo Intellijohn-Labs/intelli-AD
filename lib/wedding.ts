@@ -15,7 +15,9 @@ export type GreetingFormat = "dear-name-place" | "dear-family" | "dear-family-pl
 export type BlockKey = "header" | "names" | "body" | "dateTime" | "venue";
 /** Everything on the card that can be moved, resized or given its own font: the greeting plus the five text groups. */
 export type BlockId = "guest" | BlockKey;
-export type FontStyle = "default" | "royal" | "script" | "sans" | "ml-classic";
+export type FontId = "playfair" | "cormorant" | "great-vibes" | "alex-brush" | "cinzel" | "lora" | "montserrat" | "poppins" | "dancing-script" | "libre-baskerville" | "noto-serif-ml" | "manjari" | "gayathri";
+/** "default" = the template's own type; royal / script / sans / ml-classic are the earlier presets (kept so saved cards still render); the rest are single fonts. */
+export type FontStyle = "default" | "royal" | "script" | "sans" | "ml-classic" | FontId;
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
 
 export interface WeddingDetails {
@@ -56,6 +58,8 @@ export interface WeddingDetails {
   fontStyle: FontStyle;
   /** Text size multiplier per block (0.5 - 1.8, 1 = template default). */
   blockScale: Partial<Record<BlockId, number>>;
+  /** Master text size for every block at once (0.7 - 1.8, 1 = template default); multiplies each block's own blockScale. */
+  contentScale: number;
   /** Per-block font override; a block with no entry follows fontStyle. */
   blockFont: Partial<Record<BlockId, FontStyle>>;
 }
@@ -259,7 +263,7 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, blockFont: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
@@ -276,20 +280,42 @@ export const GREETING_FORMATS: { id: GreetingFormat; label: string }[] = [
 /** Shown on the live preview until a real guest is added. */
 export const SAMPLE_GUEST = { name: "Arun", place: "Kochi" };
 
+const ML_SERIF = '"Noto Serif Malayalam", "Noto Serif", Georgia, serif';
+const ML_SANS = '"Noto Sans Malayalam", system-ui, sans-serif';
+const ML_SCRIPT = '"Chilanka", "Noto Serif Malayalam", cursive';
+/**
+ * The 13 curated fonts (Google Fonts, linked in app/layout.tsx so the canvas that renders the preview AND every exported PNG can use them).
+ * `stack` always ends with a Malayalam-capable face, so mixed English + Malayalam lines render cleanly. `weight` pins fonts that only ship
+ * one weight; `scale` evens out fonts that run small (scripts) or wide (Cinzel, Montserrat, Poppins) next to the template's own type.
+ */
+export const FONT_CHOICES: { id: FontId; label: string; note: string; family: string; stack: string; weight?: number; scale: number; script?: boolean; weights: number[] }[] = [
+  { id: "playfair", label: "Playfair Display", note: "Classic serif", family: "Playfair Display", stack: `"Playfair Display", ${ML_SERIF}`, scale: 1, weights: [500, 700, 800] },
+  { id: "cormorant", label: "Cormorant Garamond", note: "Luxury editorial serif", family: "Cormorant Garamond", stack: `"Cormorant Garamond", ${ML_SERIF}`, scale: 1.08, weights: [500, 600, 700] },
+  { id: "great-vibes", label: "Great Vibes", note: "Calligraphy script", family: "Great Vibes", stack: `"Great Vibes", ${ML_SCRIPT}`, weight: 400, scale: 1.2, script: true, weights: [400] },
+  { id: "alex-brush", label: "Alex Brush", note: "Flowing script", family: "Alex Brush", stack: `"Alex Brush", ${ML_SCRIPT}`, weight: 400, scale: 1.25, script: true, weights: [400] },
+  { id: "cinzel", label: "Cinzel", note: "Royal engraved caps", family: "Cinzel", stack: `"Cinzel", ${ML_SERIF}`, scale: 0.92, weights: [500, 700, 800] },
+  { id: "lora", label: "Lora", note: "Warm serif", family: "Lora", stack: `"Lora", ${ML_SERIF}`, scale: 1, weights: [500, 600, 700] },
+  { id: "montserrat", label: "Montserrat", note: "Modern clean sans", family: "Montserrat", stack: `"Montserrat", ${ML_SANS}`, scale: 0.94, weights: [500, 600, 700, 800] },
+  { id: "poppins", label: "Poppins", note: "Geometric sans", family: "Poppins", stack: `"Poppins", ${ML_SANS}`, scale: 0.94, weights: [500, 600, 700, 800] },
+  { id: "dancing-script", label: "Dancing Script", note: "Casual calligraphy", family: "Dancing Script", stack: `"Dancing Script", ${ML_SCRIPT}`, scale: 1.08, script: true, weights: [500, 600, 700] },
+  { id: "libre-baskerville", label: "Libre Baskerville", note: "Traditional print serif", family: "Libre Baskerville", stack: `"Libre Baskerville", ${ML_SERIF}`, scale: 0.94, weights: [400, 700] },
+  { id: "noto-serif-ml", label: "Noto Serif Malayalam", note: "Traditional Malayalam serif", family: "Noto Serif Malayalam", stack: ML_SERIF.replace('"Noto Serif", ', '"Noto Serif", '), scale: 1, weights: [600, 700, 800] },
+  { id: "manjari", label: "Manjari", note: "Graceful rounded Malayalam", family: "Manjari", stack: `"Manjari", ${ML_SERIF}`, scale: 1.05, weights: [400, 700] },
+  { id: "gayathri", label: "Gayathri", note: "Modern thin Malayalam", family: "Gayathri", stack: `"Gayathri", ${ML_SERIF}`, scale: 1.05, weights: [400, 700] },
+];
+/** What the font pickers list: the template's own type first, then the 13 curated fonts. */
 export const FONT_STYLES: { id: FontStyle; label: string; hint: string }[] = [
   { id: "default", label: "Template default", hint: "The typography this design was made for" },
-  { id: "royal", label: "Royal Serif", hint: "Playfair Display · Noto Serif Malayalam" },
-  { id: "script", label: "Calligraphy Script", hint: "Great Vibes for names · Chilanka for Malayalam" },
-  { id: "sans", label: "Modern Sans", hint: "Inter · Noto Sans Malayalam" },
-  { id: "ml-classic", label: "Malayalam Classic", hint: "Cormorant Garamond · Noto Serif Malayalam" },
+  ...FONT_CHOICES.map((f) => ({ id: f.id as FontStyle, label: f.label, hint: f.note })),
 ];
-const ML_SERIF = '"Noto Serif Malayalam", "Noto Serif", Georgia, serif';
-/** Canvas / CSS font stacks for each style (Google Fonts are linked in app/layout.tsx; Malayalam always has its own fallback face). */
+export const fontLabel = (id: FontStyle | undefined) => FONT_STYLES.find((f) => f.id === id)?.label ?? (id === "royal" ? "Royal Serif" : id === "script" ? "Calligraphy Script" : id === "sans" ? "Modern Sans" : id === "ml-classic" ? "Malayalam Classic" : "Template default");
+/** Canvas / CSS font stacks for every non-default style (the four legacy presets plus each curated font). */
 export const FONT_STACKS: Record<Exclude<FontStyle, "default">, string> = {
   royal: `"Playfair Display", ${ML_SERIF}`,
   script: '"Great Vibes", "Chilanka", "Noto Serif Malayalam", cursive',
   sans: 'Inter, "Noto Sans Malayalam", system-ui, sans-serif',
   "ml-classic": `"Cormorant Garamond", ${ML_SERIF}`,
+  ...(Object.fromEntries(FONT_CHOICES.map((f) => [f.id, f.stack])) as Record<FontId, string>),
 };
 
 /** Wording of each preset ({Place} is dropped, with its separator, when a guest has no place). */

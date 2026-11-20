@@ -8,7 +8,7 @@ import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, fontLabel, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -34,6 +34,7 @@ export function WeddingStudio() {
   const [preview, setPreview] = useState("");
   const [zones, setZones] = useState<CardZone[]>([]);
   const [groups, setGroups] = useState<GroupBox[]>([]);
+  const [zoom, setZoom] = useState(1); // preview canvas zoom only; the exported PNG is always rendered at full resolution
   const [nudge, setNudge] = useState<"guest" | BlockKey>("guest");
   const cardPhotoRef = useRef<HTMLInputElement>(null);
   const cardPhotoIdx = useRef(0);
@@ -105,9 +106,15 @@ export function WeddingStudio() {
   const curY = nudgeSaved?.y ?? (nudgeBox ? Math.round(((nudgeBox.y + nudgeBox.h / 2) / 1500) * 1000) / 10 : 10);
   const moveSel = (x: number, y: number) => (nudge === "guest" ? moveBadge(x, y) : moveBlock(nudge, x, y));
   const scaleOf = d.blockScale?.[nudge] ?? 1, scaleSaved = d.blockScale?.[nudge] != null, fontSaved = d.blockFont?.[nudge] != null;
-  const setScale = (v: number) => { const n = Math.min(1.8, Math.max(0.5, Math.round(v * 20) / 20)); setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [nudge]: n } })); };
+  const setScale = (v: number) => { const n = Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)); setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [nudge]: n } })); };
+  const scaleBlock = (key: BlockId, v: number) => setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [key]: Math.min(1.8, Math.max(0.7, Math.round(v * 10) / 10)) } }));
+  const master = d.contentScale ?? 1;
+  const fontForBlock = (key: BlockId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
+  // One font for every block at once: also clears the per-block overrides so nothing keeps an older choice.
+  const fontForAll = (f: FontStyle) => set({ fontStyle: f, blockFont: {} });
+  const setMaster = (v: number) => set({ contentScale: Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)) });
   const setBlockFont = (f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[nudge] = f; else delete bf[nudge]; return { ...cur, blockFont: bf }; });
-  const anyMoved = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0;
+  const anyMoved = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || master !== 1;
   const resetSel = () => setD((cur) => {
     const bp = { ...cur.blockPos }, bs = { ...cur.blockScale }, bf = { ...cur.blockFont };
     if (nudge !== "guest") delete bp[nudge];
@@ -122,11 +129,11 @@ export function WeddingStudio() {
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: rd, guest: previewGuest, photo: img, photo2: img2, width: 560, onZones: (z) => { if (live) setZones(z); }, onGroups: (g) => { if (live) setGroups(g); } });
+      const c = await renderWeddingCard({ template: tpl, details: rd, guest: previewGuest, photo: img, photo2: img2, width: zoom > 1 ? Math.round(1000 * zoom) : 560, onZones: (z) => { if (live) setZones(z); }, onGroups: (g) => { if (live) setGroups(g); } });
       if (live) setPreview(c.toDataURL("image/png"));
     }, 60);
     return () => { live = false; clearTimeout(t); };
-  }, [hydrated, tpl, rd, d.photos, previewGuest]);
+  }, [hydrated, tpl, rd, d.photos, previewGuest, zoom]);
 
   // Gallery thumbnails: only the templates in the open filter, drawn with sample text for their own event type.
   const thumbKey = JSON.stringify([d.bride, d.groom, d.lang, d.eventType, d.photos[0]?.length, d.photos[1]?.length]);
@@ -292,19 +299,19 @@ export function WeddingStudio() {
                 </div>
                 <div role="radiogroup" aria-label="Greeting box style" className="mt-2 flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Style</span>
-                  {([[true, "Pill box"], [false, "Plain text (no box)"]] as const).map(([v, label]) => (
+                  {([[true, "With box"], [false, "Text only"]] as const).map(([v, label]) => (
                     <button key={label} type="button" role="radio" aria-checked={(d.guestGreetingBoxed !== false) === v} onClick={() => set({ guestGreetingBoxed: v })} className={cn("rounded-full border px-3 py-1 text-xs font-bold", (d.guestGreetingBoxed !== false) === v ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5")}>{label}</button>
                   ))}
                 </div>
                 {d.guestGreetingFormat === "custom" && <Field id="w-prefix" label="Custom greeting (use {Name} and {Place})" className="mt-2"><Input id="w-prefix" value={d.guestGreetingTemplate} maxLength={120} placeholder="e.g. With love to {Name}, {Place}" onChange={(e) => set({ guestGreetingTemplate: e.target.value })} /></Field>}
               </div>
               <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Font style</h3>
-                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">Typography for English and Malayalam across the whole card. Pick a different font for one block under Fine-tune.</p>
-                <div role="radiogroup" aria-label="Font style" className="grid gap-2 sm:grid-cols-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Card font</h3>
+                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">13 curated English and Malayalam fonts for all the text on the card. Click any text on the card, or use Fine-tune, to give one block its own font.</p>
+                <div role="radiogroup" aria-label="Card font" className="grid gap-2 sm:grid-cols-2">
                   {FONT_STYLES.map((f) => (
                     <button key={f.id} type="button" role="radio" aria-checked={(d.fontStyle ?? "default") === f.id} onClick={() => set({ fontStyle: f.id })} className={cn("rounded-lg border px-3 py-2 text-left transition-colors", (d.fontStyle ?? "default") === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
-                      <span className="block truncate text-base leading-tight text-slate-900 dark:text-white" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id] }}>Arjun &amp; Anjali · അർജുൻ</span>
+                      <span className="block truncate text-lg leading-snug text-slate-900 dark:text-white" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id as Exclude<FontStyle, "default">] }}>Arjun &amp; Anjali · അർജുൻ</span>
                       <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{f.label}</span>
                       <span className="block text-[11px] text-slate-600 dark:text-slate-300">{f.hint}</span>
                     </button>
@@ -427,15 +434,24 @@ export function WeddingStudio() {
         <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Live card preview">
           <div className={cn(panel, "space-y-3")}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
+              <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
+              <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
+                <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 1} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">🔍</span><span className="sr-only">−</span></button>
+                <button type="button" onClick={() => setZoom(1)} title="Reset zoom" className="h-7 min-w-11 rounded-md px-1 text-[11px] font-bold tabular-nums text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10">{Math.round(zoom * 100)}%</button>
+                <button type="button" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))} disabled={zoom >= 1.5} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">+</span></button>
+              </div>
               {d.mapsUrl || d.venue ? <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300"><MapPin className="h-3 w-3" aria-hidden="true" /> Maps button on invite</span> : null}
             </div>
             <p className="text-center text-[11px] text-slate-600 dark:text-slate-300">Click any text on the card to edit it, or drag it anywhere</p>
             <div className="relative mx-auto w-full max-w-[420px]">
+              <div className={cn("rounded-lg", zoom > 1 && "max-h-[80vh] overflow-auto overscroll-contain")} aria-label={zoom > 1 ? "Zoomed preview (scroll to pan)" : undefined}>
+              <div style={{ width: `${zoom * 100}%` }}>
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} groups={groups} onMoveBlock={moveBlock} />}
+                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} groups={groups} onMoveBlock={moveBlock} onScale={scaleBlock} onFont={fontForBlock} onAllFont={fontForAll} />}
+              </div>
+              </div>
               </div>
               <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
                 const f = e.target.files?.[0]; e.target.value = "";
@@ -449,31 +465,44 @@ export function WeddingStudio() {
             <div className="mx-auto w-full max-w-[420px] rounded-lg border border-slate-200 p-2.5 dark:border-slate-700" aria-label="Card layout">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-bold text-slate-900 dark:text-white">Layout <span className="font-normal text-slate-600 dark:text-slate-300">· {anyMoved ? "custom layout" : "template default"}</span></p>
-                <button type="button" onClick={() => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {} })} disabled={!anyMoved} className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset layout</button>
+                <button type="button" onClick={() => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, contentScale: 1 })} disabled={!anyMoved} className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset layout</button>
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <label htmlFor="w-nudge" className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Fine-tune</label>
                 <Select id="w-nudge" value={nudge} onChange={(e) => setNudge(e.target.value as "guest" | BlockKey)}>{(Object.keys(NUDGE_LABEL) as ("guest" | BlockKey)[]).map((k) => <option key={k} value={k}>{NUDGE_LABEL[k]}</option>)}</Select>
                 <button type="button" onClick={resetSel} disabled={!nudgeSaved && !scaleSaved && !fontSaved} className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset</button>
               </div>
+              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-slate-50 p-1.5 dark:bg-white/5" role="group" aria-label="All text size">
+                <span className="w-9 text-[11px] leading-tight font-bold text-slate-700 dark:text-slate-200">All text</span>
+                <button type="button" aria-label="Make all text smaller" onClick={() => setMaster(master - 0.05)} disabled={master <= 0.7} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-[11px] font-bold text-slate-800 hover:bg-white disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">A−</button>
+                <input type="range" min={70} max={180} step={5} value={Math.round(master * 100)} aria-label="All text size, percent" onChange={(e) => setMaster(Number(e.target.value) / 100)} className="h-1.5 min-w-0 flex-1 accent-[#D12014]" />
+                <button type="button" aria-label="Make all text larger" onClick={() => setMaster(master + 0.05)} disabled={master >= 1.8} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-white disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">A+</button>
+                <button type="button" onClick={() => setMaster(1)} title="Reset to 100%" className="w-10 shrink-0 text-right text-[11px] font-bold tabular-nums text-slate-700 hover:underline dark:text-slate-200">{Math.round(master * 100)}%</button>
+              </div>
               <div className="mt-2 flex items-center gap-1.5" role="group" aria-label={`${NUDGE_LABEL[nudge]} text size`}>
                 <span className="w-9 text-[11px] font-bold text-slate-600 dark:text-slate-300">Size</span>
-                <button type="button" aria-label={`Smaller ${NUDGE_LABEL[nudge]} text`} onClick={() => setScale(scaleOf - 0.05)} disabled={scaleOf <= 0.5} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">A−</button>
-                <input type="range" min={50} max={180} step={5} value={Math.round(scaleOf * 100)} aria-label={`${NUDGE_LABEL[nudge]} text size, percent`} onChange={(e) => setScale(Number(e.target.value) / 100)} className="h-1.5 min-w-0 flex-1 accent-[#D12014]" />
+                <button type="button" aria-label={`Smaller ${NUDGE_LABEL[nudge]} text`} onClick={() => setScale(scaleOf - 0.05)} disabled={scaleOf <= 0.7} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">A−</button>
+                <input type="range" min={70} max={180} step={5} value={Math.round(scaleOf * 100)} aria-label={`${NUDGE_LABEL[nudge]} text size, percent`} onChange={(e) => setScale(Number(e.target.value) / 100)} className="h-1.5 min-w-0 flex-1 accent-[#D12014]" />
                 <button type="button" aria-label={`Larger ${NUDGE_LABEL[nudge]} text`} onClick={() => setScale(scaleOf + 0.05)} disabled={scaleOf >= 1.8} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">A+</button>
                 <span className="w-10 shrink-0 text-right text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{Math.round(scaleOf * 100)}%</span>
               </div>
               <div className="mt-2 flex items-center gap-2">
+                <label htmlFor="w-allfont" className="w-9 text-[11px] leading-tight font-bold text-slate-600 dark:text-slate-300">All font</label>
+                <Select id="w-allfont" value={d.fontStyle ?? "default"} onChange={(e) => fontForAll(e.target.value as FontStyle)}>
+                  {FONT_STYLES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                </Select>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
                 <label htmlFor="w-blockfont" className="w-9 text-[11px] font-bold text-slate-600 dark:text-slate-300">Font</label>
                 <Select id="w-blockfont" value={d.blockFont?.[nudge] ?? ""} onChange={(e) => setBlockFont(e.target.value as FontStyle | "")}>
-                  <option value="">Card style ({FONT_STYLES.find((f) => f.id === (d.fontStyle ?? "default"))?.label})</option>
+                  <option value="">Card font ({fontLabel(d.fontStyle)})</option>
                   {FONT_STYLES.filter((f) => f.id !== "default").map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
                 </Select>
               </div>
               {nudge === "guest" && (
                 <div role="radiogroup" aria-label="Greeting box style" className="mt-2 flex items-center gap-2">
-                  <span className="w-9 text-[11px] font-bold text-slate-600 dark:text-slate-300">Box</span>
-                  {([[true, "Pill box"], [false, "Plain text"]] as const).map(([v, label]) => (
+                  <span className="w-9 text-[11px] leading-tight font-bold text-slate-600 dark:text-slate-300">Greeting box</span>
+                  {([[true, "With box"], [false, "Text only"]] as const).map(([v, label]) => (
                     <button key={label} type="button" role="radio" aria-checked={(d.guestGreetingBoxed !== false) === v} onClick={() => set({ guestGreetingBoxed: v })} className={cn("flex-1 rounded-md border px-2 py-1 text-[11px] font-bold", (d.guestGreetingBoxed !== false) === v ? "border-[#D12014] bg-[#D12014]/5 text-[#A91400] dark:text-white" : "border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5")}>{label}</button>
                   ))}
                 </div>

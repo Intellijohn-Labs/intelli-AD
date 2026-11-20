@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EVENTS, greetingTemplate, type BlockKey, type EventConfig, type EventType, type WeddingDetails } from "@/lib/wedding";
+import { EVENTS, FONT_STYLES, fontLabel, greetingTemplate, type BlockId, type BlockKey, type EventConfig, type EventType, type FontStyle, type WeddingDetails } from "@/lib/wedding";
 import type { CardZone, GroupBox } from "@/lib/wedding-render";
 
 const LABEL: Record<CardZone["id"], string> = {
@@ -16,7 +16,7 @@ const fieldCls = "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1
  * Transparent hit-zones over the live preview image. Clicking one opens a small inline editor bound to the same
  * details state as the Details tab, so edits re-render the card and persist. Only used by the studio preview.
  */
-export function CardEditOverlay({ zones, groups, details, cfg, onChange, onPickPhoto, onRemovePhoto, onMoveBadge, onMoveBlock }: { zones: CardZone[]; groups: GroupBox[]; onMoveBlock: (key: BlockKey, x: number, y: number) => void; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onRemovePhoto: (index: number) => void; onMoveBadge: (x: number, y: number) => void; onPickPhoto: (index: number) => void }) {
+export function CardEditOverlay({ zones, groups, details, cfg, onChange, onPickPhoto, onRemovePhoto, onMoveBadge, onMoveBlock, onScale, onFont, onAllFont }: { zones: CardZone[]; groups: GroupBox[]; onScale: (key: BlockId, scale: number) => void; onFont: (key: BlockId, font: FontStyle | "") => void; onAllFont: (font: FontStyle) => void; onMoveBlock: (key: BlockKey, x: number, y: number) => void; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onRemovePhoto: (index: number) => void; onMoveBadge: (x: number, y: number) => void; onPickPhoto: (index: number) => void }) {
   const [open, setOpen] = useState<CardZone["id"] | null>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const zone = zones.find((z) => z.id === open) ?? null;
@@ -41,6 +41,8 @@ export function CardEditOverlay({ zones, groups, details, cfg, onChange, onPickP
     setGuide({ x, y });
     if (key === "guest") onMoveBadge(px, py); else onMoveBlock(key, px, py);
   };
+  const sizeKey = zone ? keyOf(zone.id) : null; // the popover's block, for its inline text-size toolbar
+  const sizeNow = sizeKey ? details.blockScale?.[sizeKey] ?? 1 : 1;
   const toCard = (e: React.PointerEvent) => { const r = frame.current!.getBoundingClientRect(); return { px: ((e.clientX - r.left) / r.width) * CARD_W, py: ((e.clientY - r.top) / r.height) * CARD_H }; };
 
   useEffect(() => {
@@ -156,6 +158,41 @@ export function CardEditOverlay({ zones, groups, details, cfg, onChange, onPickP
           {zone.id === "datetime" && <div className="grid grid-cols-2 gap-2">{input("Date", details.date, "date", "", "date")}{input(cfg.labels.time, details.time, "time", cfg.sample.time)}</div>}
           {zone.id === "venue" && input(cfg.labels.venue, details.venue, "venue", "Venue & place")}
           {zone.id === "verse" && area("Closing verse / footnote", details.verse, "verse")}
+          {sizeKey && (
+            <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-2 dark:border-slate-700" role="group" aria-label="Text size for this block">
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Text size</span>
+              <span className="flex items-center gap-1">
+                <button type="button" aria-label="Smaller text" onClick={() => onScale(sizeKey, sizeNow - 0.1)} disabled={sizeNow <= 0.7} className="h-7 w-8 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">−</button>
+                <button type="button" onClick={() => onScale(sizeKey, 1)} title="Reset to 100%" className="h-7 min-w-12 rounded-md px-1 text-[11px] font-bold tabular-nums text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10">{Math.round(sizeNow * 100)}%</button>
+                <button type="button" aria-label="Larger text" onClick={() => onScale(sizeKey, sizeNow + 0.1)} disabled={sizeNow >= 1.8} className="h-7 w-8 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">+</button>
+              </span>
+            </div>
+          )}
+          {sizeKey && (
+            <div className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Font (this block)
+                <select aria-label="Font for this block" value={details.blockFont?.[sizeKey] ?? ""} onChange={(e) => onFont(sizeKey, e.target.value as FontStyle | "")} className={`mt-0.5 ${fieldCls}`}>
+                  <option value="">Card font ({fontLabel(details.fontStyle)})</option>
+                  {FONT_STYLES.filter((f) => f.id !== "default").map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+              </label>
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Font (all text)
+                <select aria-label="Font for all card text" value={details.fontStyle ?? "default"} onChange={(e) => onAllFont(e.target.value as FontStyle)} className={`mt-0.5 ${fieldCls}`}>
+                  {FONT_STYLES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+              </label>
+            </div>
+          )}
+          {zone.id === "guest" && (
+            <div role="radiogroup" aria-label="Greeting box" className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Greeting box</span>
+              <span className="flex gap-1">
+                {([[true, "With box"], [false, "Text only"]] as const).map(([v, label]) => (
+                  <button key={label} type="button" role="radio" aria-checked={(details.guestGreetingBoxed !== false) === v} onClick={() => onChange({ guestGreetingBoxed: v })} className={`rounded-md border px-2.5 py-1 text-[11px] font-bold ${(details.guestGreetingBoxed !== false) === v ? "border-[#D12014] bg-[#D12014]/5 text-[#A91400] dark:text-white" : "border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"}`}>{label}</button>
+                ))}
+              </span>
+            </div>
+          )}
           <p className="text-[10px] text-slate-500 dark:text-slate-400">Enter or Esc to finish · changes save automatically</p>
         </div>
       )}

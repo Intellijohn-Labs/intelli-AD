@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, FONT_STACKS, formatDate, greetingText, type BlockId, type BlockKey, type FontStyle, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, formatDate, greetingText, type BlockId, type BlockKey, type FontStyle, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -137,22 +137,36 @@ const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, 
 
 /** A clickable region of the card in the 1080 x 1500 logical space (used only by the interactive studio preview). */
 type ZoneId = CardZone["id"];
-/** The canvas font stack for a block: the card's template font unless a style (card-wide or per block) overrides it. */
-function fontFor(style: FontStyle, id: string | undefined, base: string): string {
-  if (style === "default") return base;
-  if (style === "script") return id === "guest" || id === "names" || id === "blessing" ? FONT_STACKS.script : FONT_STACKS.royal;
-  if (style === "royal") return base === SANS ? SANS : FONT_STACKS.royal; // keep the small sans lines (parents, time, venue label) readable
-  return FONT_STACKS[style];
+/** Text-size multipliers are clamped to the range the controls offer (70 % - 180 %). */
+const clampScale = (v: number | undefined) => Math.min(1.8, Math.max(0.7, v ?? 1));
+
+/** A block's resolved typography: the stack, a pinned weight (single-weight fonts), a size multiplier, and whether it is a script (no caps). */
+interface FontSpec { fam: string; weight?: number; scale: number; script: boolean }
+function fontSpec(style: FontStyle, id: string | undefined, base: string): FontSpec {
+  if (style === "default") return { fam: base, scale: 1, script: false };
+  const f = FONT_CHOICES.find((c) => c.id === style);
+  if (f) return { fam: f.stack, weight: f.weight, scale: f.scale, script: !!f.script };
+  if (style === "script") { // legacy preset: script for names / greeting / blessing, serif for the small lines
+    const on = id === "guest" || id === "names" || id === "blessing";
+    return on ? { fam: FONT_STACKS.script, weight: 400, scale: 1.2, script: true } : { fam: FONT_STACKS.royal, scale: 1, script: false };
+  }
+  if (style === "royal") return { fam: base === SANS ? SANS : FONT_STACKS.royal, scale: 1, script: false }; // keep the small sans lines readable
+  return { fam: FONT_STACKS[style], scale: 1, script: false };
 }
 
-/** Makes sure the chosen display fonts are decoded before text is measured (same 4 s cap as the Malayalam faces). */
+/** Makes sure the chosen fonts are decoded before text is measured (same 4 s cap as the Malayalam faces). */
 async function loadCardFonts(styles: Set<FontStyle>, sample: string) {
   if (typeof document === "undefined" || !document.fonts) return;
   const specs: string[] = [];
-  if (styles.has("royal") || styles.has("script")) specs.push('500 40px "Playfair Display"', '700 40px "Playfair Display"', '800 40px "Playfair Display"');
-  if (styles.has("script")) specs.push('400 40px "Great Vibes"', '400 40px "Chilanka"');
-  if (styles.has("sans")) specs.push('500 40px "Inter"', '700 40px "Inter"', '800 40px "Inter"');
-  if (styles.has("ml-classic")) specs.push('500 40px "Cormorant Garamond"', '600 40px "Cormorant Garamond"', '700 40px "Cormorant Garamond"');
+  const add = (family: string, weights: number[]) => weights.forEach((w) => specs.push(`${w} 40px "${family}"`));
+  for (const st of styles) {
+    const f = FONT_CHOICES.find((c) => c.id === st);
+    if (f) { add(f.family, f.weights); if (f.script) add("Chilanka", [400]); continue; }
+    if (st === "royal" || st === "script") add("Playfair Display", [500, 700, 800]);
+    if (st === "script") { add("Great Vibes", [400]); add("Chilanka", [400]); }
+    if (st === "sans") add("Inter", [500, 700, 800]);
+    if (st === "ml-classic") add("Cormorant Garamond", [500, 600, 700]);
+  }
   if (!specs.length) return;
   try { await Promise.race([Promise.all(specs.map((sp) => document.fonts.load(sp, sample || "Aa"))), new Promise((res) => setTimeout(res, 4000))]); } catch { /* system fallback */ }
 }
@@ -207,9 +221,9 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (!str) return;
       // Per-block size (blockScale, applied on top of the whole-card fit) and font (blockFont, else the card's fontStyle).
       const bid: BlockId | undefined = opt.id === "guest" ? "guest" : grpOf(opt.id);
-      const fam = fontFor((bid && d.blockFont?.[bid]) || d.fontStyle || "default", opt.id, opt.fam ?? family);
-      const script = fam.startsWith('"Great Vibes"'), weight = script ? 400 : weight0, caps = opt.caps && !script;
-      const fs = size * k * (scaled && bid ? d.blockScale?.[bid] ?? 1 : 1) * (script ? 1.2 : 1), lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
+      const { fam, weight: pinned, scale: fontScale, script } = fontSpec((bid && d.blockFont?.[bid]) || d.fontStyle || "default", opt.id, opt.fam ?? family);
+      const weight = pinned ?? weight0, caps = opt.caps && !script;
+      const fs = size * k * (scaled ? clampScale(d.contentScale) * (bid ? clampScale(d.blockScale?.[bid]) : 1) : 1) * fontScale, lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
       ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
       const lines = wrap(ctx, caps && !hasMl(str) ? str.toUpperCase() : str, cw);
@@ -404,9 +418,9 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     // Positioned greeting: centred on the client's chosen spot (kept fully inside the card), drawn over the artwork,
     // as a bordered pill or (guestGreetingBoxed = false) as plain text with a soft halo so it stays legible on any background.
     const gt = greetingText(d, o.guest), boxed = d.guestGreetingBoxed !== false;
-    const fam = fontFor(d.blockFont?.guest || d.fontStyle || "default", "guest", SERIF), script = fam.startsWith('"Great Vibes"');
-    let fs = 38 * (d.blockScale?.guest ?? 1) * (script ? 1.2 : 1);
-    const setF = () => { ctx.font = `${script ? 400 : 700} ${fs}px ${fam}`; };
+    const gf = fontSpec(d.blockFont?.guest || d.fontStyle || "default", "guest", SERIF);
+    let fs = 38 * clampScale(d.contentScale) * clampScale(d.blockScale?.guest) * gf.scale;
+    const setF = () => { ctx.font = `${gf.weight ?? 700} ${fs}px ${gf.fam}`; };
     setF(); while (ctx.measureText(gt).width > CARD_W - 150 && fs > 14) { fs -= 2; setF(); }
     const bw = ctx.measureText(gt).width + (boxed ? 60 * (fs / 38) : 24), bh = fs * (boxed ? 1.9 : 1.5);
     const bx = Math.min(CARD_W - bw / 2 - 10, Math.max(bw / 2 + 10, (badge.x / 100) * CARD_W));
