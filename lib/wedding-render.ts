@@ -171,6 +171,11 @@ async function loadCardFonts(styles: Set<FontStyle>, sample: string) {
   try { await Promise.race([Promise.all(specs.map((sp) => document.fonts.load(sp, sample || "Aa"))), new Promise((res) => setTimeout(res, 4000))]); } catch { /* system fallback */ }
 }
 
+/** Which movable section a clickable card zone belongs to (null for the photo, which is not text). */
+export function blockOfZone(id: CardZone["id"]): BlockId | null {
+  return id === "guest" ? "guest" : id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : null;
+}
+
 /** A movable text group as drawn: where it sits now (logical 1080 x 1500 px) and whether the client has positioned it. */
 export interface GroupBox { key: BlockKey; x: number; y: number; w: number; h: number; moved: boolean }
 export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }

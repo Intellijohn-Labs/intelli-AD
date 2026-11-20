@@ -6,9 +6,10 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
+import { SectionToolbar } from "./section-toolbar";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, fontLabel, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -35,7 +36,7 @@ export function WeddingStudio() {
   const [zones, setZones] = useState<CardZone[]>([]);
   const [groups, setGroups] = useState<GroupBox[]>([]);
   const [zoom, setZoom] = useState(1); // preview canvas zoom only; the exported PNG is always rendered at full resolution
-  const [nudge, setNudge] = useState<"guest" | BlockKey>("guest");
+  const [selected, setSelected] = useState<CardZone["id"] | null>(null); // the text section whose toolbar is open (null = clean preview)
   const cardPhotoRef = useRef<HTMLInputElement>(null);
   const cardPhotoIdx = useRef(0);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
@@ -95,32 +96,26 @@ export function WeddingStudio() {
   // The preview shows the first real guest's greeting, or a sample one, so it can be styled and positioned before any guest exists.
   const firstGuest = guests.find((g) => g.name.trim());
   const previewGuest = useMemo(() => (firstGuest ? { name: firstGuest.name, place: firstGuest.place } : SAMPLE_GUEST), [firstGuest?.name, firstGuest?.place]); // eslint-disable-line react-hooks/exhaustive-deps
-  const guestZone = zones.find((z) => z.id === "guest");
   const clamp = (v: number) => Math.min(100, Math.max(0, Math.round(v * 10) / 10));
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
   const moveBlock = (key: BlockKey, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
-  const NUDGE_LABEL: Record<"guest" | BlockKey, string> = { guest: "Greeting", header: "Header / blessing", names: "Names", body: "Message", dateTime: "Date & time", venue: "Venue / footer" };
-  const nudgeBox = nudge === "guest" ? (guestZone ? { x: guestZone.x, y: guestZone.y, w: guestZone.w, h: guestZone.h } : null) : groups.find((g) => g.key === nudge) ?? null;
-  const nudgeSaved = nudge === "guest" ? (d.guestBadgeX != null && d.guestBadgeY != null ? { x: d.guestBadgeX, y: d.guestBadgeY } : null) : d.blockPos?.[nudge] ?? null;
-  const curX = nudgeSaved?.x ?? (nudgeBox ? Math.round(((nudgeBox.x + nudgeBox.w / 2) / 1080) * 1000) / 10 : 50);
-  const curY = nudgeSaved?.y ?? (nudgeBox ? Math.round(((nudgeBox.y + nudgeBox.h / 2) / 1500) * 1000) / 10 : 10);
-  const moveSel = (x: number, y: number) => (nudge === "guest" ? moveBadge(x, y) : moveBlock(nudge, x, y));
-  const scaleOf = d.blockScale?.[nudge] ?? 1, scaleSaved = d.blockScale?.[nudge] != null, fontSaved = d.blockFont?.[nudge] != null;
-  const setScale = (v: number) => { const n = Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)); setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [nudge]: n } })); };
-  const scaleBlock = (key: BlockId, v: number) => setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [key]: Math.min(1.8, Math.max(0.7, Math.round(v * 10) / 10)) } }));
-  const master = d.contentScale ?? 1;
+  const scaleBlock = (key: BlockId, v: number) => setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [key]: Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)) } }));
+  const setMaster = (v: number) => set({ contentScale: Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)) });
   const fontForBlock = (key: BlockId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
   // One font for every block at once: also clears the per-block overrides so nothing keeps an older choice.
   const fontForAll = (f: FontStyle) => set({ fontStyle: f, blockFont: {} });
-  const setMaster = (v: number) => set({ contentScale: Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)) });
-  const setBlockFont = (f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[nudge] = f; else delete bf[nudge]; return { ...cur, blockFont: bf }; });
-  const anyMoved = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || master !== 1;
-  const resetSel = () => setD((cur) => {
-    const bp = { ...cur.blockPos }, bs = { ...cur.blockScale }, bf = { ...cur.blockFont };
-    if (nudge !== "guest") delete bp[nudge];
-    delete bs[nudge]; delete bf[nudge];
-    return { ...cur, ...(nudge === "guest" ? { guestBadgeX: null, guestBadgeY: null } : {}), blockPos: bp, blockScale: bs, blockFont: bf };
-  });
+  const layoutCustom = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || (d.contentScale ?? 1) !== 1;
+  const resetLayout = () => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, contentScale: 1 });
+
+  // The toolbar is only there while a section is selected: Escape, Done, or a click anywhere but on a text section / the toolbar / the bar above the card closes it.
+  useEffect(() => {
+    if (!selected) return;
+    const down = (e: PointerEvent) => { if (!(e.target as HTMLElement).closest("[data-card-zone], [data-section-toolbar], [data-preview-bar]")) setSelected(null); };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setSelected(null); };
+    document.addEventListener("pointerdown", down);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("pointerdown", down); document.removeEventListener("keydown", key); };
+  }, [selected]);
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
@@ -307,7 +302,7 @@ export function WeddingStudio() {
               </div>
               <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Card font</h3>
-                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">13 curated English and Malayalam fonts for all the text on the card. Click any text on the card, or use Fine-tune, to give one block its own font.</p>
+                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">13 curated English and Malayalam fonts for all the text on the card. Click any text on the card to give just that section its own font.</p>
                 <div role="radiogroup" aria-label="Card font" className="grid gap-2 sm:grid-cols-2">
                   {FONT_STYLES.map((f) => (
                     <button key={f.id} type="button" role="radio" aria-checked={(d.fontStyle ?? "default") === f.id} onClick={() => set({ fontStyle: f.id })} className={cn("rounded-lg border px-3 py-2 text-left transition-colors", (d.fontStyle ?? "default") === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
@@ -433,23 +428,24 @@ export function WeddingStudio() {
 
         <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Live card preview">
           <div className={cn(panel, "space-y-3")}>
-            <div className="flex items-center justify-between gap-2">
+            <div data-preview-bar className="flex items-center justify-between gap-2">
               <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
-              <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
-                <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 1} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">🔍</span><span className="sr-only">−</span></button>
-                <button type="button" onClick={() => setZoom(1)} title="Reset zoom" className="h-7 min-w-11 rounded-md px-1 text-[11px] font-bold tabular-nums text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10">{Math.round(zoom * 100)}%</button>
-                <button type="button" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))} disabled={zoom >= 1.5} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">+</span></button>
+              <div className="flex shrink-0 items-center gap-2">
+                {layoutCustom && <button type="button" onClick={resetLayout} className="text-[11px] font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] dark:text-slate-300">Reset layout</button>}
+                <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
+                  <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 1} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">−</span></button>
+                  <button type="button" onClick={() => setZoom(1)} title="Reset zoom" className="h-7 min-w-11 rounded-md px-1 text-[11px] font-bold tabular-nums text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10">{Math.round(zoom * 100)}%</button>
+                  <button type="button" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))} disabled={zoom >= 1.5} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">+</span></button>
+                </div>
               </div>
-              {d.mapsUrl || d.venue ? <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300"><MapPin className="h-3 w-3" aria-hidden="true" /> Maps button on invite</span> : null}
             </div>
-            <p className="text-center text-[11px] text-slate-600 dark:text-slate-300">Click any text on the card to edit it, or drag it anywhere</p>
             <div className="relative mx-auto w-full max-w-[420px]">
               <div className={cn("rounded-lg", zoom > 1 && "max-h-[80vh] overflow-auto overscroll-contain")} aria-label={zoom > 1 ? "Zoomed preview (scroll to pan)" : undefined}>
               <div style={{ width: `${zoom * 100}%` }}>
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} groups={groups} onMoveBlock={moveBlock} onScale={scaleBlock} onFont={fontForBlock} onAllFont={fontForAll} />}
+                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} />}
               </div>
               </div>
               </div>
@@ -462,63 +458,13 @@ export function WeddingStudio() {
                 const next = [...d.photos]; next[i] = u; set({ photos: next.slice(0, 4) });
               }} />
             </div>
-            <div className="mx-auto w-full max-w-[420px] rounded-lg border border-slate-200 p-2.5 dark:border-slate-700" aria-label="Card layout">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Layout <span className="font-normal text-slate-600 dark:text-slate-300">· {anyMoved ? "custom layout" : "template default"}</span></p>
-                <button type="button" onClick={() => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, contentScale: 1 })} disabled={!anyMoved} className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset layout</button>
+            {selected ? (
+              <div className="mx-auto w-full max-w-[420px]">
+                <SectionToolbar zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleBlock} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
               </div>
-              <div className="mt-2 flex items-center gap-2">
-                <label htmlFor="w-nudge" className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Fine-tune</label>
-                <Select id="w-nudge" value={nudge} onChange={(e) => setNudge(e.target.value as "guest" | BlockKey)}>{(Object.keys(NUDGE_LABEL) as ("guest" | BlockKey)[]).map((k) => <option key={k} value={k}>{NUDGE_LABEL[k]}</option>)}</Select>
-                <button type="button" onClick={resetSel} disabled={!nudgeSaved && !scaleSaved && !fontSaved} className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset</button>
-              </div>
-              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-slate-50 p-1.5 dark:bg-white/5" role="group" aria-label="All text size">
-                <span className="w-9 text-[11px] leading-tight font-bold text-slate-700 dark:text-slate-200">All text</span>
-                <button type="button" aria-label="Make all text smaller" onClick={() => setMaster(master - 0.05)} disabled={master <= 0.7} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-[11px] font-bold text-slate-800 hover:bg-white disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">A−</button>
-                <input type="range" min={70} max={180} step={5} value={Math.round(master * 100)} aria-label="All text size, percent" onChange={(e) => setMaster(Number(e.target.value) / 100)} className="h-1.5 min-w-0 flex-1 accent-[#D12014]" />
-                <button type="button" aria-label="Make all text larger" onClick={() => setMaster(master + 0.05)} disabled={master >= 1.8} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-white disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">A+</button>
-                <button type="button" onClick={() => setMaster(1)} title="Reset to 100%" className="w-10 shrink-0 text-right text-[11px] font-bold tabular-nums text-slate-700 hover:underline dark:text-slate-200">{Math.round(master * 100)}%</button>
-              </div>
-              <div className="mt-2 flex items-center gap-1.5" role="group" aria-label={`${NUDGE_LABEL[nudge]} text size`}>
-                <span className="w-9 text-[11px] font-bold text-slate-600 dark:text-slate-300">Size</span>
-                <button type="button" aria-label={`Smaller ${NUDGE_LABEL[nudge]} text`} onClick={() => setScale(scaleOf - 0.05)} disabled={scaleOf <= 0.7} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">A−</button>
-                <input type="range" min={70} max={180} step={5} value={Math.round(scaleOf * 100)} aria-label={`${NUDGE_LABEL[nudge]} text size, percent`} onChange={(e) => setScale(Number(e.target.value) / 100)} className="h-1.5 min-w-0 flex-1 accent-[#D12014]" />
-                <button type="button" aria-label={`Larger ${NUDGE_LABEL[nudge]} text`} onClick={() => setScale(scaleOf + 0.05)} disabled={scaleOf >= 1.8} className="h-7 w-8 shrink-0 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">A+</button>
-                <span className="w-10 shrink-0 text-right text-[11px] font-bold tabular-nums text-slate-700 dark:text-slate-200">{Math.round(scaleOf * 100)}%</span>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <label htmlFor="w-allfont" className="w-9 text-[11px] leading-tight font-bold text-slate-600 dark:text-slate-300">All font</label>
-                <Select id="w-allfont" value={d.fontStyle ?? "default"} onChange={(e) => fontForAll(e.target.value as FontStyle)}>
-                  {FONT_STYLES.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-                </Select>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <label htmlFor="w-blockfont" className="w-9 text-[11px] font-bold text-slate-600 dark:text-slate-300">Font</label>
-                <Select id="w-blockfont" value={d.blockFont?.[nudge] ?? ""} onChange={(e) => setBlockFont(e.target.value as FontStyle | "")}>
-                  <option value="">Card font ({fontLabel(d.fontStyle)})</option>
-                  {FONT_STYLES.filter((f) => f.id !== "default").map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-                </Select>
-              </div>
-              {nudge === "guest" && (
-                <div role="radiogroup" aria-label="Greeting box style" className="mt-2 flex items-center gap-2">
-                  <span className="w-9 text-[11px] leading-tight font-bold text-slate-600 dark:text-slate-300">Greeting box</span>
-                  {([[true, "With box"], [false, "Text only"]] as const).map(([v, label]) => (
-                    <button key={label} type="button" role="radio" aria-checked={(d.guestGreetingBoxed !== false) === v} onClick={() => set({ guestGreetingBoxed: v })} className={cn("flex-1 rounded-md border px-2 py-1 text-[11px] font-bold", (d.guestGreetingBoxed !== false) === v ? "border-[#D12014] bg-[#D12014]/5 text-[#A91400] dark:text-white" : "border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5")}>{label}</button>
-                  ))}
-                </div>
-              )}
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {([["X", curX, (v: number) => moveSel(v, curY)], ["Y", curY, (v: number) => moveSel(curX, v)]] as const).map(([axis, val, apply]) => (
-                  <div key={axis} className="flex items-center gap-1">
-                    <span className="w-4 text-[11px] font-bold text-slate-600 dark:text-slate-300">{axis}</span>
-                    <button type="button" aria-label={`Move ${NUDGE_LABEL[nudge]} ${axis === "X" ? "left" : "up"}`} onClick={() => apply(val - 1)} className="h-7 w-7 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">−</button>
-                    <input type="number" min={0} max={100} step={0.5} aria-label={`${NUDGE_LABEL[nudge]} ${axis} position, percent`} value={val} onChange={(e) => { const n = Number(e.target.value); if (Number.isFinite(n)) apply(n); }} className="h-7 w-full min-w-0 rounded-md border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-900 dark:border-slate-600 dark:bg-[#0A0B0D] dark:text-white" />
-                    <button type="button" aria-label={`Move ${NUDGE_LABEL[nudge]} ${axis === "X" ? "right" : "down"}`} onClick={() => apply(val + 1)} className="h-7 w-7 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">+</button>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300">Drag any text block on the card (or focus it and use the arrow keys). Every guest&apos;s card uses this exact layout.</p>
-            </div>
+            ) : (
+              <p className="text-center text-[11px] text-slate-500 dark:text-slate-400">Click any text on the card to edit it · drag to move</p>
+            )}
             {videoPreview && <video src={videoPreview} controls playsInline className="mx-auto w-full max-w-[420px] rounded-lg bg-black" aria-label="Invitation video preview" />}
             {mapsLink(d) && <a href={mapsLink(d)} target="_blank" rel="noopener noreferrer" className="mx-auto flex max-w-[420px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><MapPin className="h-4 w-4" aria-hidden="true" /> Open venue in Google Maps</a>}
           </div>
