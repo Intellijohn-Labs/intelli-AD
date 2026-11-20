@@ -151,12 +151,14 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   ctx.scale(scale, scale);
   ctx.imageSmoothingQuality = "high";
   const initial = (n: string) => (Array.from(n.trim())[0] ?? "").toUpperCase();
-  if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
+  const artImg = t.art ? await loadArt(t.art.src) : null;
+  if (artImg) ctx.drawImage(artImg, 0, 0, CARD_W, CARD_H);
+  else if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
   const cfg = eventConfig(d.eventType);
 
   const lang = d.lang;
   const wantMl = lang !== "en", wantEn = lang !== "ml";
-  const M = MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
+  const M = t.art?.m ?? MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
   const cw = CARD_W - 2 * M;
   const family = t.layout === "minimal" ? SANS : SERIF;
   const title = EVENT_TITLE[d.eventType];
@@ -288,8 +290,8 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   };
 
   // The botanical eucalyptus corner reaches further down, so its content starts lower.
-  const topOff = (t.motif === "botanical" ? 45 : 0) + (MOTIF_LAYOUT[t.motif]?.top ?? 0);
-  const botOff = MOTIF_LAYOUT[t.motif]?.bot ?? 0;
+  const topOff = (t.motif === "botanical" ? 45 : 0) + (t.art?.top ?? MOTIF_LAYOUT[t.motif]?.top ?? 0);
+  const botOff = t.art?.bot ?? MOTIF_LAYOUT[t.motif]?.bot ?? 0;
   const top = M * 0.8 + topOff, avail = CARD_H - 2 * M * 0.8 - topOff - botOff;
   let k = 1.1, blocks = build(k);
   const gapOf = (kk: number) => 24 * kk;
@@ -313,6 +315,14 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   }
   o.onZones?.(zones);
   return canvas;
+}
+
+const artCache = new Map<string, Promise<HTMLImageElement | null>>();
+/** Same-origin template artwork (public/templates), cached so thumbnails, preview and guest cards share one decode. */
+function loadArt(src: string): Promise<HTMLImageElement | null> {
+  let hit = artCache.get(src);
+  if (!hit) { hit = loadImage(src).then((im) => { if (!im) artCache.delete(src); return im; }); artCache.set(src, hit); }
+  return hit;
 }
 
 export function loadImage(src: string): Promise<HTMLImageElement | null> {

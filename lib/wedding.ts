@@ -7,7 +7,7 @@ export type Layout = "classic" | "polaroid" | "minimal";
 export type PhotoShape = "arch" | "circle" | "oval" | "rect";
 export type Motif = "kasavu" | "temple" | "church" | "nikah" | "botanical" | "banarasi" | "polaroid" | "velvet" | "marigold" | "minimal"
   | "goldconfetti" | "pastelballoon" | "rosegoldbday" | "gruhapravesham" | "emeraldhome" | "christianhome" | "choroonu" | "baptism" | "babyshower" | "aqiqah" | "ribbon" | "anniversary"
-  | "peacock" | "nilavilakku" | "kanchipuram" | "cathedral" | "victorian" | "betrothal" | "mughal" | "sapphire" | "walima" | "emeraldfoil" | "marble" | "burgundy" | "rosegold" | "starlight";
+  | "art" | "peacock" | "nilavilakku" | "kanchipuram" | "cathedral" | "victorian" | "betrothal" | "mughal" | "sapphire" | "walima" | "emeraldfoil" | "marble" | "burgundy" | "rosegold" | "starlight";
 export type TemplateCategory = EventGroup;
 export type Faith = "hindu" | "christian" | "muslim" | "modern";
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
@@ -58,9 +58,13 @@ export interface WeddingTemplate {
   premium?: boolean;
   /** Shown under the Animated (GIF) filter (every template can still export a GIF). */
   animated?: boolean;
+  /** Shown under the Devotional filter. */
+  devotional?: boolean;
+  /** Illustrated image backdrop (same-origin SVG in public/templates, 1080 x 1500: artwork header + opaque text panel). m = side margin, top / bot = text-flow offsets. */
+  art?: { src: string; m: number; top: number; bot: number };
 }
 
-type RawTemplate = Omit<WeddingTemplate, "category" | "faith" | "defaultEvent" | "events" | "premium" | "animated">;
+type RawTemplate = Omit<WeddingTemplate, "category" | "faith" | "defaultEvent" | "events" | "premium" | "animated" | "devotional">;
 const RAW_TEMPLATES: RawTemplate[] = [
   { id: "kasavu", name: "Royal Kerala Kasavu & Gold", ml: "കസവ് & സ്വർണ്ണം", tagline: "Traditional Malayalam / English", layout: "classic", motif: "kasavu", shape: "arch", pal: { bg1: "#FFFBF0", bg2: "#F8EDD2", ink: "#3B0A12", sub: "#6B4A2B", accent: "#B8860B", accent2: "#8C1C2B" }, blessing: ["With the blessings of the Almighty", "ദൈവാനുഗ്രഹത്താൽ"] },
   { id: "temple", name: "Guruvayoor Temple Floral", ml: "ഗുരുവായൂർ പുഷ്പാലങ്കാരം", tagline: "Sacred Hindu temple theme", layout: "classic", motif: "temple", shape: "oval", pal: { bg1: "#FFF6E3", bg2: "#FDE4B8", ink: "#4A1507", sub: "#7A3E1B", accent: "#D9480F", accent2: "#B8860B" }, blessing: ["Sri Ganapathaye Namah", "ശ്രീ ഗണപതയേ നമഃ"] },
@@ -103,7 +107,7 @@ const NEW_TEMPLATES: RawTemplate[] = [
   { id: "anniversary", name: "Ruby & Gold Anniversary Crest", ml: "വാർഷികാഘോഷം", tagline: "Ruby, gold crest & hearts", layout: "classic", motif: "anniversary", shape: "oval", pal: P("#7A0A2E", "#3F0518", "#FFF0D2", "#F0D6A8", "#E3B85C", "#F6DE98"), blessing: ["Celebrating years of love", "സ്നേഹത്തിന്റെ വർഷങ്ങൾ ആഘോഷിക്കാൻ"] },
 ];
 
-type Meta = { category: TemplateCategory; faith?: Faith; defaultEvent: EventType; /** Events this design fits; wedding-group designs fit every wedding-type event. */ events?: EventType[]; premium?: boolean; animated?: boolean };
+type Meta = { devotional?: boolean; category: TemplateCategory; faith?: Faith; defaultEvent: EventType; /** Events this design fits; wedding-group designs fit every wedding-type event. */ events?: EventType[]; premium?: boolean; animated?: boolean };
 const wd = (faith: Faith, extra: Partial<Meta> = {}, defaultEvent: EventType = "wedding"): Meta => ({ category: "wedding", faith, defaultEvent, ...extra });
 const META: Record<string, Meta> = {
   kasavu: wd("hindu", { animated: true }), temple: wd("hindu"), church: wd("christian"), nikah: wd("muslim", {}, "nikah"), botanical: wd("modern"), banarasi: wd("hindu", { animated: true }), minimal: wd("modern"),
@@ -118,19 +122,36 @@ const META: Record<string, Meta> = {
   choroonu: { category: "baby", faith: "hindu", defaultEvent: "choroonu", events: ["choroonu", "noolukettu"], premium: true, animated: true }, baptism: { category: "baby", faith: "christian", defaultEvent: "baptism", events: ["baptism"], premium: true, animated: true }, babyshower: { category: "baby", defaultEvent: "babyshower", events: ["babyshower"], premium: true, animated: true }, aqiqah: { category: "baby", faith: "muslim", defaultEvent: "aqiqah", events: ["aqiqah"], premium: true, animated: true },
   ribbon: { category: "events", defaultEvent: "inauguration", events: ["inauguration"], premium: true, animated: true }, anniversary: { category: "events", defaultEvent: "anniversary", events: ["anniversary"], premium: true, animated: true },
 };
-export const TEMPLATES: WeddingTemplate[] = [...RAW_TEMPLATES, ...NEW_TEMPLATES].map((t) => ({ ...t, ...META[t.id] }));
+/** Illustrated, image-based designs: devotional (Hindu / Christian / Muslim) and balloon celebrations. Artwork: scripts/generate-template-art.py -> public/templates. */
+const ART = (id: string) => ({ src: `/templates/${id}.svg`, m: 150, top: 400, bot: 20 });
+const ART_TEMPLATES: RawTemplate[] = [
+  { id: "radha-krishna", name: "Radha Krishna Divine Gold", ml: "രാധാകൃഷ്ണ", tagline: "Peacock feather, flute & lotus on royal gold", layout: "classic", motif: "art", shape: "circle", pal: P("#FFF7E6", "#FBE9C6", "#4A0F1F", "#7A3E2B", "#9A6B00", "#8C1C2B"), blessing: ["Radhe Krishna", "രാധേ കൃഷ്ണ"], art: ART("radha-krishna") },
+  { id: "ganapathy-gold", name: "Sree Ganapathy Auspicious", ml: "ശ്രീ ഗണപതി", tagline: "Lord Ganesha, brass lamps & marigold garlands", layout: "classic", motif: "art", shape: "circle", pal: P("#FFF6E2", "#FBE6BE", "#4A1208", "#7A3A1B", "#A8650A", "#B3350F"), blessing: ["Sri Ganapathaye Namah", "ശ്രീ ഗണപതയേ നമഃ"], art: ART("ganapathy-gold") },
+  { id: "guruvayoor-krishna", name: "Guruvayoorappan Temple Grace", ml: "ഗുരുവായൂരപ്പൻ", tagline: "Kerala temple Krishna, kasavu & jasmine", layout: "classic", motif: "art", shape: "oval", pal: P("#FFFAEE", "#F6E8C8", "#4A1410", "#7A4A2B", "#9A6B00", "#8C1C2B"), blessing: ["Guruvayoorappan Saranam", "ഗുരുവായൂരപ്പൻ ശരണം"], art: ART("guruvayoor-krishna") },
+  { id: "christian-devotional", name: "Sacred Blessing Dove & Cross", ml: "ദിവ്യ അനുഗ്രഹം", tagline: "Stained-glass rose window, dove & lilies", layout: "classic", motif: "art", shape: "circle", pal: P("#FFFFFF", "#F5F2EA", "#1F2A44", "#5F6C8A", "#8A6A1C", "#3A5FB0"), blessing: ["God is love", "ദൈവം സ്നേഹമാകുന്നു"], art: ART("christian-devotional") },
+  { id: "islamic-devotional", name: "Masjid & Golden Lanterns", ml: "മസ്ജിദ് & ഫാനൂസ്", tagline: "Emerald dome, crescent & glowing fanoos", layout: "classic", motif: "art", shape: "arch", pal: P("#073B2E", "#052F26", "#FFF4D6", "#CFE3D6", "#E8C766", "#F0DA94"), blessing: ["Bismillahir Rahmanir Raheem", "ബിസ്മില്ലാഹിർറഹ്മാനിർറഹീം"], art: ART("islamic-devotional") },
+  { id: "balloon-luxury", name: "Luxury Gold & Pastel Balloon Arch", ml: "ഗോൾഡ് ബലൂൺ", tagline: "Gold, champagne & blush balloons with confetti", layout: "classic", motif: "art", shape: "circle", pal: P("#FFFAF2", "#F7E6D4", "#4A2E1F", "#7C6459", "#9A6B12", "#C9707F"), blessing: ["Join us to celebrate", "ആഘോഷത്തിൽ പങ്കുചേരൂ"], art: ART("balloon-luxury") },
+  { id: "balloon-kids", name: "Kids Balloon & Cloud Carnival", ml: "ബലൂൺ കാർണിവൽ", tagline: "Rainbow, clouds, stars & pastel balloons", layout: "classic", motif: "art", shape: "circle", pal: P("#FFFFFF", "#EEF6FF", "#3A3358", "#6F6896", "#D6456B", "#7757D1"), blessing: ["Let's party!", "നമുക്ക് ആഘോഷിക്കാം!"], art: ART("balloon-kids") },
+];
+const ART_META: Record<string, Meta> = {
+  "radha-krishna": { category: "wedding", faith: "hindu", defaultEvent: "wedding", events: ["wedding", "engagement", "housewarming", "choroonu"], premium: true, devotional: true },
+  "ganapathy-gold": { category: "wedding", faith: "hindu", defaultEvent: "wedding", events: ["wedding", "engagement", "housewarming", "inauguration"], premium: true, devotional: true },
+  "guruvayoor-krishna": { category: "wedding", faith: "hindu", defaultEvent: "wedding", events: ["wedding", "engagement", "housewarming", "choroonu", "noolukettu"], premium: true, devotional: true },
+  "christian-devotional": { category: "wedding", faith: "christian", defaultEvent: "wedding", events: ["wedding", "engagement", "baptism"], premium: true, devotional: true },
+  "islamic-devotional": { category: "wedding", faith: "muslim", defaultEvent: "nikah", events: ["nikah", "reception", "aqiqah"], premium: true, devotional: true },
+  "balloon-luxury": { category: "birthday", defaultEvent: "birthday", events: ["birthday", "anniversary"], premium: true },
+  "balloon-kids": { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true },
+};
+export const TEMPLATES: WeddingTemplate[] = [...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id]) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);
 
 export const TEMPLATE_FILTERS = [
-  { id: "all", label: "All" }, { id: "wedding", label: "Wedding (Hindu / Christian / Muslim)" }, { id: "birthday", label: "Birthday" }, { id: "housewarming", label: "Housewarming (ഗൃഹപ്രവേശം)" },
+  { id: "all", label: "All" }, { id: "devotional", label: "🪔 Devotional" }, { id: "wedding", label: "Wedding (Hindu / Christian / Muslim)" }, { id: "birthday", label: "Birthday" }, { id: "housewarming", label: "Housewarming (ഗൃഹപ്രവേശം)" },
   { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Inauguration / Anniversary)" },
 ] as const;
 export type TemplateFilter = (typeof TEMPLATE_FILTERS)[number]["id"];
-export const EFFECTS: { id: CardEffect; label: string }[] = [
-  { id: "none", label: "None (still card)" }, { id: "petals", label: "Floating petals" }, { id: "shimmer", label: "24K gold foil shimmer" }, { id: "sparkle", label: "Twinkling sparkles" },
-];
 
 export const getTemplate = (id: string) => TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
 

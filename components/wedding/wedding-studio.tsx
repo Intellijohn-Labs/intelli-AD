@@ -69,7 +69,7 @@ export function WeddingStudio() {
     if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
-  const shown = TEMPLATES.filter((t) => filter === "all" || t.category === filter);
+  const shown = TEMPLATES.filter((t) => filter === "all" || (filter === "devotional" ? t.devotional : t.category === filter));
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
@@ -225,7 +225,7 @@ export function WeddingStudio() {
     <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <p className="kicker mb-2">Invitation cards · ക്ഷണക്കത്തുകൾ</p>
       <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">Design an invitation card and send it to every guest on WhatsApp</h1>
-      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Weddings, birthdays, housewarming, baby ceremonies and more: choose a template, add your details and photos, let AI write the wording, then send a personalised card (still or animated) to each guest on WhatsApp through Waau Panel.</p>
+      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Weddings, birthdays, housewarming, baby ceremonies and more: choose a template, add your details and photos, let AI write the wording, then send a personalised card to each guest on WhatsApp through Waau Panel.</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 space-y-4">
