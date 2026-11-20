@@ -1,20 +1,21 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ImagePlus, Loader2, MapPin, Send, Sparkles, Trash2, Video, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ImagePlus, Loader2, Maximize2, MapPin, Send, Sparkles, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { SectionToolbar } from "./section-toolbar";
+import { DispatchLog } from "./dispatch-log";
+import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
 const TABS = ["Template", "Details", "Media", "Guests & share"] as const;
-const MAX_VIDEO = 50 * 1024 * 1024;
 
 const panel = "rounded-xl border border-[#E2E8F0] bg-white p-4 sm:p-5 dark:border-[#26272B] dark:bg-[#131416]";
 
@@ -25,8 +26,6 @@ export function WeddingStudio() {
   const [templateId, setTemplateId] = useState(TEMPLATES[0].id);
   const [d, setD] = useState<WeddingDetails>(EMPTY_DETAILS);
   const [guests, setGuests] = useState<Guest[]>([]);
-  const [video, setVideo] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -42,6 +41,8 @@ export function WeddingStudio() {
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<TemplateFilter>("all");
   // The template grid shows one row until "See more"; switching category always collapses it again.
+  const [logTick, setLogTick] = useState(0); // bumps the Step 4 dispatch log after each send
+  const [studioOpen, setStudioOpen] = useState(false); // the Canva-style fullscreen editor
   const [fontsOpen, setFontsOpen] = useState(false); // Card font shows the first 4 choices until "View more"
   const FONTS_COLLAPSED = 4;
   const [expandedFor, setExpandedFor] = useState<TemplateFilter | null>(null);
@@ -59,7 +60,6 @@ export function WeddingStudio() {
   const [guestPreview, setGuestPreview] = useState<Guest | null>(null);
   const [guestImg, setGuestImg] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLInputElement>(null);
   const tpl = getTemplate(templateId);
   const msgEdited = useRef(false);
   const set = (p: Partial<WeddingDetails>) => { if ("message" in p) msgEdited.current = p.message !== ""; setD((cur) => ({ ...cur, ...p })); };
@@ -72,7 +72,6 @@ export function WeddingStudio() {
     setHydrated(true);
   }, []);
   useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId, publishedHash, effect }); }, [hydrated, templateId, d, guests, effect, inviteId, publishedHash]);
-  useEffect(() => () => { if (videoPreview) URL.revokeObjectURL(videoPreview); }, [videoPreview]);
 
 
   // The details every render uses (preview, guest PNGs, ZIP): the couple's own, with sample text only where a field is empty.
@@ -113,6 +112,13 @@ export function WeddingStudio() {
   const clamp = (v: number) => Math.min(100, Math.max(0, Math.round(v * 10) / 10));
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
   const moveBlock = (key: BlockKey, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
+  const styleText = (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => setD((cur) => {
+    const next: TextStyle = { ...(cur.textStyle?.[id] ?? {}) };
+    for (const [k, v] of Object.entries(patch)) { if (v == null) delete (next as Record<string, unknown>)[k]; else (next as Record<string, unknown>)[k] = v; }
+    const map = { ...(cur.textStyle ?? {}) };
+    if (Object.keys(next).length) map[id] = next; else delete map[id];
+    return { ...cur, textStyle: map };
+  });
   const clampText = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(v * 20) / 20));
   const scaleText = (key: TextId, v: number) => setD((cur) => {
     const bs = { ...cur.blockScale }, n = clampText(v);
@@ -123,8 +129,8 @@ export function WeddingStudio() {
   const fontForBlock = (key: BlockId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
   // One font for every block at once: also clears the per-block overrides so nothing keeps an older choice.
   const fontForAll = (f: FontStyle) => set({ fontStyle: f, blockFont: {} });
-  const layoutCustom = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || (d.contentScale ?? 1) !== 1;
-  const resetLayout = () => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, contentScale: 1 });
+  const layoutCustom = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || Object.keys(d.textStyle ?? {}).length > 0 || (d.contentScale ?? 1) !== 1;
+  const resetLayout = () => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, textStyle: {}, contentScale: 1 });
 
   // The toolbar is only there while a section is selected: Escape, Done, or a click anywhere but on a text section / the toolbar / the bar above the card closes it.
   useEffect(() => {
@@ -153,7 +159,7 @@ export function WeddingStudio() {
   const thumbKey = JSON.stringify([d.bride, d.groom, d.lang, d.eventType, d.photos[0]?.length, d.photos[1]?.length]);
   const thumbKeyRef = useRef("");
   useEffect(() => {
-    if (!hydrated || tab !== "Template") return;
+    if (!hydrated || (tab !== "Template" && !studioOpen)) return;
     let live = true;
     const fresh = thumbKeyRef.current !== thumbKey;
     if (fresh) { thumbKeyRef.current = thumbKey; setThumbs({}); }
@@ -172,7 +178,7 @@ export function WeddingStudio() {
     }, 250);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, tab, thumbKey, filter, expanded, cols]);
+  }, [hydrated, tab, thumbKey, filter, expanded, cols, studioOpen]);
 
   // The personalised card for the guest being previewed.
   useEffect(() => {
@@ -195,12 +201,6 @@ export function WeddingStudio() {
     for (const f of Array.from(files).slice(0, 4 - d.photos.length)) { const u = await photoToDataUrl(f); if (u) out.push(u); }
     if (out.length) set({ photos: [...d.photos, ...out].slice(0, 4) });
   };
-  const pickVideo = (f: File | undefined) => {
-    if (!f) return;
-    if (!/^video\/(mp4|webm)$/.test(f.type)) { toast("Please choose an MP4 or WebM video."); return; }
-    if (f.size > MAX_VIDEO) { toast("The video is over 50 MB. Please trim or compress it."); return; }
-    setVideo(f); setVideoPreview(URL.createObjectURL(f));
-  };
 
   const generate = async () => {
     setAiBusy(true); setAiError("");
@@ -208,8 +208,8 @@ export function WeddingStudio() {
       const res = await fetch("/api/ai/generate-wedding-copy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventType: d.eventType, lang: d.lang, bride: d.bride, groom: d.groom, brideParents: d.brideParents, groomParents: d.groomParents, date: d.date, venue: d.venue, note: d.message, template: tpl.name, themeHint: tpl.tagline }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { setAiError(j.error ?? "The AI couldn't write the wording. You can type it yourself below."); return; }
-      set({ blessing: j.blessing || d.blessing, message: j.message || d.message, verse: j.verse || d.verse, accent: j.accentColor || d.accent }); msgEdited.current = false;
-      toast("AI wording and accent colour added. Edit anything you like.");
+      set({ blessing: j.blessing || d.blessing, message: j.message || d.message, verse: j.verse || d.verse }); msgEdited.current = false;
+      toast("AI wording and verses added. Edit anything you like.");
     } catch { setAiError("Couldn't reach the AI service. You can type the wording yourself."); }
     finally { setAiBusy(false); }
   };
@@ -218,10 +218,8 @@ export function WeddingStudio() {
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
   const safe = (n: string, fb: string) => n.trim().replace(/[^\p{L}\p{N}\p{M}]+/gu, "-").replace(/^-+|-+$/g, "") || fb;
   const loadPhotos = useCallback(async () => [d.photos[0] ? await loadImage(d.photos[0]) : null, d.photos[1] ? await loadImage(d.photos[1]) : null] as const, [d.photos]);
-  const HEXRE = /^#[0-9a-fA-F]{6}$/;
-  const pal: Palette = useMemo(() => ({ ...tpl.pal, ...(HEXRE.test(d.accent) ? { accent: d.accent } : {}) }), [tpl, d.accent]);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const cardHash = useMemo(() => JSON.stringify([templateId, rd, video?.name, video?.size]), [templateId, rd, video]);
+  const cardHash = useMemo(() => JSON.stringify([templateId, rd]), [templateId, rd]);
 
   /**
    * The personalised card as an in-memory JPEG (1080 px wide, quality 0.88: razor-sharp for WhatsApp at roughly 0.3 - 0.9 MB, where the
@@ -239,7 +237,7 @@ export function WeddingStudio() {
   /** Makes sure this card exists as an online invitation page (the personalised link guests get); null when online storage isn't available. */
   const ensurePublished = async (): Promise<string | null> => {
     if (inviteId && !inviteId.startsWith("local-") && publishedHash === cardHash) return inviteId;
-    const r = await publishInvitation(templateId, rd, video, effect);
+    const r = await publishInvitation(templateId, rd, null, effect);
     if (r.local) { toast("The invitation page couldn't be saved online, so cards are sent without a personal link."); return null; }
     setInviteId(r.id); setPublishedHash(cardHash);
     return r.id;
@@ -270,7 +268,7 @@ export function WeddingStudio() {
   const sendOne = async (g: Guest) => {
     if (busyId || batch || !g.name.trim() || !validPhone(g.phone)) return;
     setBusyId(g.id);
-    try { await dispatchOne(g, await ensurePublished(), await loadPhotos()); } finally { setBusyId(null); }
+    try { await dispatchOne(g, await ensurePublished(), await loadPhotos()); } finally { setBusyId(null); setLogTick((t) => t + 1); }
   };
 
   const sendable = guests.filter((g) => (g.status === "pending" || g.status === "failed") && g.name.trim() && validPhone(g.phone));
@@ -285,7 +283,7 @@ export function WeddingStudio() {
         setBusyId(list[i].id);
         if (!(await dispatchOne(list[i], invId, photos))) break;
       }
-    } finally { setBusyId(null); setBatch(null); }
+    } finally { setBusyId(null); setBatch(null); setLogTick((t) => t + 1); }
   };
   const counts = { queued: guests.filter((g) => g.status === "queued").length, sent: guests.filter((g) => g.status === "sent").length, failed: guests.filter((g) => g.status === "failed").length };
 
@@ -398,22 +396,21 @@ export function WeddingStudio() {
               </div>
               <div className="rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void generate()} disabled={aiBusy} className="inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {aiBusy ? "Writing…" : "AI: write wording & pick accent colour"}</button>
-                  <span className="text-xs text-slate-700 dark:text-slate-200">Poetic Malayalam / English wording, a blessing verse and a matching accent colour, from your details.</span>
+                  <button type="button" onClick={() => void generate()} disabled={aiBusy} className="inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {aiBusy ? "Writing…" : "AI: write wording & verses"}</button>
+                  <span className="text-xs text-slate-700 dark:text-slate-200">Poetic Malayalam / English wording and blessing verses generated from your details.</span>
                 </div>
                 {aiError && <p role="alert" className="mt-2 text-xs font-semibold text-red-800 dark:text-red-200">{aiError}</p>}
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <Field id="w-bless" label="Blessing line"><Input id="w-bless" value={d.blessing} onChange={(e) => set({ blessing: e.target.value })} placeholder={tpl.blessing[d.lang === "ml" ? 1 : 0]} /></Field>
                   <Field id="w-verse" label="Closing verse"><Input id="w-verse" value={d.verse} onChange={(e) => set({ verse: e.target.value })} /></Field>
-                  <Field id="w-accent" label="Accent colour" hint="Overrides the template accent."><div className="flex items-center gap-2"><input id="w-accent" type="color" value={/^#[0-9a-fA-F]{6}$/.test(d.accent) ? d.accent : tpl.pal.accent} onChange={(e) => set({ accent: e.target.value })} className="h-10 w-14 cursor-pointer rounded border border-slate-300 bg-white" />{d.accent && <button type="button" onClick={() => set({ accent: "" })} className="text-xs font-semibold text-slate-700 underline dark:text-slate-200">Use template colour</button>}</div></Field>
                 </div>
               </div>
-              <button type="button" onClick={() => setTab("Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: photos &amp; video</button>
+              <button type="button" onClick={() => setTab("Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: photos</button>
             </section>
           )}
 
           {tab === "Media" && (
-            <section className={cn(panel, "space-y-5")} aria-label="Photos and video">
+            <section className={cn(panel, "space-y-5")} aria-label="Couple photos">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Couple photos</h2>
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">Upload 1 combined couple photo or 2 individual portraits (both appear side-by-side on the card; up to 4 appear on the guest invite page).</p>
@@ -431,16 +428,6 @@ export function WeddingStudio() {
                   <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="sr-only" onChange={(e) => { void addPhotos(e.target.files); e.target.value = ""; }} />
                 </div>
                 {d.photos.length > 0 && <button type="button" onClick={clearPhotos} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Clear all photos</button>}
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">Invitation video / teaser</h2>
-                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">MP4 or WebM, up to 50 MB. Guests can play it on their invitation page.</p>
-                {videoPreview ? (
-                  <div className="max-w-sm"><video src={videoPreview} controls playsInline className="w-full rounded-lg bg-black" /><button type="button" onClick={() => { setVideo(null); setVideoPreview(null); }} className="mt-1 text-xs font-semibold text-red-700 underline dark:text-red-300">Remove video</button></div>
-                ) : (
-                  <button type="button" onClick={() => videoRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-400 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/5"><Video className="h-4 w-4" aria-hidden="true" /> Upload video</button>
-                )}
-                <input ref={videoRef} type="file" accept="video/mp4,video/webm" className="sr-only" onChange={(e) => { pickVideo(e.target.files?.[0]); e.target.value = ""; }} />
               </div>
               <button type="button" onClick={() => setTab("Guests & share")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: guests &amp; share</button>
             </section>
@@ -464,6 +451,7 @@ export function WeddingStudio() {
                 )}
                 <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Each personalised card is generated, stored securely and handed to Waau Panel for WhatsApp delivery. Until Waau Panel is connected, invitations wait as “Queued in Waau Panel”. Guests without a valid WhatsApp number are skipped. You need to be signed in to send.</p>
               </div>
+              <DispatchLog refreshKey={logTick} />
             </section>
           )}
         </div>
@@ -473,6 +461,7 @@ export function WeddingStudio() {
             <div data-preview-bar className="flex items-center justify-between gap-2">
               <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
               <div className="flex shrink-0 items-center gap-2">
+                <button type="button" onClick={() => { setSelected(null); setStudioOpen(true); }} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" title="Open the fullscreen studio"><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Enlarge</button>
                 {layoutCustom && <button type="button" onClick={resetLayout} className="text-[11px] font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] dark:text-slate-300">Reset layout</button>}
                 <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
                   <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 1} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">−</span></button>
@@ -502,16 +491,24 @@ export function WeddingStudio() {
             </div>
             {selected ? (
               <div className="mx-auto w-full max-w-[420px]">
-                <SectionToolbar zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleText} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
+                <SectionToolbar onStyle={styleText} zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleText} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
               </div>
             ) : (
               <p className="text-center text-[11px] text-slate-500 dark:text-slate-400">Click any text on the card to edit it · drag to move</p>
             )}
-            {videoPreview && <video src={videoPreview} controls playsInline className="mx-auto w-full max-w-[420px] rounded-lg bg-black" aria-label="Invitation video preview" />}
             {mapsLink(d) && <a href={mapsLink(d)} target="_blank" rel="noopener noreferrer" className="mx-auto flex max-w-[420px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><MapPin className="h-4 w-4" aria-hidden="true" /> Open venue in Google Maps</a>}
           </div>
         </aside>
       </div>
+
+      {studioOpen && (
+        <StudioFullscreen
+          d={d} rd={rd} tpl={tpl} cfg={cfg} previewGuest={previewGuest} setD={setD} set={set}
+          templates={active} thumbs={thumbs} onPickTemplate={pickTemplate}
+          moveBadge={moveBadge} moveBlock={moveBlock} scaleText={scaleText} setMaster={setMaster} fontForBlock={fontForBlock} fontForAll={fontForAll} styleText={styleText}
+          layoutCustom={layoutCustom} resetLayout={resetLayout} onClose={() => setStudioOpen(false)}
+        />
+      )}
 
       {guestPreview && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-stone-950/75 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setGuestPreview(null); }}>

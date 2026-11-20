@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 import { useState } from "react";
-import { EVENTS, FONT_STYLES, fontLabel, greetingTemplate, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type BlockId, type EventConfig, type EventType, type FontStyle, type TextId, type WeddingDetails } from "@/lib/wedding";
+import { EVENTS, FONT_STYLES, fontLabel, greetingTemplate, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type BlockId, type EventConfig, type EventType, type FontStyle, type TextId, type TextStyle, type WeddingDetails } from "@/lib/wedding";
 import { blockOfZone, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { cn } from "@/lib/utils";
 
@@ -17,9 +17,11 @@ const clampScale = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_M
  * The contextual toolbar for the text section the client clicked on the card: edit its wording, set its font and size (for just this
  * section or all text), toggle the greeting's box, fine-tune its position, then Done. Rendered only while a section is selected.
  */
-export function SectionToolbar({ zone, zones, groups, details, cfg, onChange, onMoveBadge, onMoveBlock, onScale, onMaster, onFont, onAllFont, onDone }: {
+export function SectionToolbar({ zone, zones, groups, details, cfg, onStyle, onChange, onMoveBadge, onMoveBlock, onScale, onMaster, onFont, onAllFont, onDone }: {
   zone: CardZone["id"]; zones: CardZone[]; groups: GroupBox[]; details: WeddingDetails; cfg: EventConfig;
   onChange: (p: Partial<WeddingDetails>) => void;
+  /** Colour / alignment / letter spacing / line height for this element; a null patch value clears that setting. */
+  onStyle: (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => void;
   onMoveBadge: (x: number, y: number) => void; onMoveBlock: (key: Exclude<BlockId, "guest">, x: number, y: number) => void;
   onScale: (key: TextId, v: number) => void; onMaster: (v: number) => void;
   onFont: (key: BlockId, f: FontStyle | "") => void; onAllFont: (f: FontStyle) => void; onDone: () => void;
@@ -40,6 +42,7 @@ export function SectionToolbar({ zone, zones, groups, details, cfg, onChange, on
   const own = details.blockScale?.[tid] ?? (legacy ? details.blockScale?.[legacy] : undefined);
   const size = scope === "all" ? details.contentScale ?? 1 : own ?? 1;
   const setSize = (v: number) => (scope === "all" ? onMaster(clampScale(v)) : onScale(tid, clampScale(v)));
+  const ts: TextStyle = details.textStyle?.[tid] ?? {};
   const fontVal = scope === "all" ? details.fontStyle ?? "default" : details.blockFont?.[key] ?? "";
 
   const input = (label: string, value: string, k: keyof WeddingDetails, ph = "", type = "text") => (
@@ -106,6 +109,24 @@ export function SectionToolbar({ zone, zones, groups, details, cfg, onChange, on
           <button type="button" aria-label="Larger text" onClick={() => setSize(size + 0.05)} disabled={size >= TEXT_SCALE_MAX} className={btn}>A+</button>
           <span className="w-11 shrink-0 rounded-md bg-slate-100 px-1 py-0.5 text-center text-[11px] font-bold tabular-nums text-slate-800 dark:bg-white/10 dark:text-slate-100" aria-live="polite">{Math.round(size * 100)}%</span>
           <button type="button" onClick={() => setSize(1)} disabled={Math.round(size * 100) === 100} className="shrink-0 rounded-md border border-slate-300 px-1.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset</button>
+        </div>
+        {/* Typography details for this text only */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2" role="group" aria-label={`${ELEMENT[tid]} text style`}>
+          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">Colour
+            <input type="color" aria-label="Text colour" value={ts.color ?? "#3b0a12"} onChange={(e) => onStyle(tid, { color: e.target.value })} className="h-7 w-9 cursor-pointer rounded border border-slate-300 bg-transparent p-0.5 dark:border-slate-600" />
+            <button type="button" onClick={() => onStyle(tid, { color: null })} disabled={!ts.color} className="rounded-md border border-slate-300 px-1.5 py-1 text-[10px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Auto</button>
+          </label>
+          <span className="flex items-center gap-1" role="radiogroup" aria-label="Alignment">
+            {(["left", "center", "right"] as const).map((a) => (
+              <button key={a} type="button" role="radio" aria-checked={(ts.align ?? "center") === a} aria-label={`Align ${a}`} onClick={() => onStyle(tid, { align: a === "center" ? null : a })} className={cn("h-7 w-8 rounded-md border text-[11px] font-bold", (ts.align ?? "center") === a ? "border-[#D12014] bg-[#D12014]/5 text-[#A91400] dark:text-white" : "border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5")}>{a === "left" ? "⇤" : a === "right" ? "⇥" : "↔"}</button>
+            ))}
+          </span>
+          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">Letter spacing
+            <input type="range" min={0} max={0.3} step={0.01} value={ts.ls ?? 0} aria-label="Letter spacing" onChange={(e) => onStyle(tid, { ls: Number(e.target.value) || null })} className="h-1.5 w-20 accent-[#D12014]" />
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">Line height
+            <input type="range" min={1} max={2.4} step={0.05} value={ts.lh ?? 1.25} aria-label="Line height" onChange={(e) => onStyle(tid, { lh: Number(e.target.value) })} className="h-1.5 w-20 accent-[#D12014]" />
+          </label>
         </div>
         {key === "guest" && (
           <div role="radiogroup" aria-label="Greeting box" className="flex items-center gap-1.5">

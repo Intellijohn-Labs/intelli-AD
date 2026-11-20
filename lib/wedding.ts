@@ -21,6 +21,15 @@ export type FontId = "playfair" | "cormorant" | "great-vibes" | "alex-brush" | "
 export type TextId = "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse";
 /** Text-size multiplier range offered by every size control (50 % - 250 %). */
 export const TEXT_SCALE_MIN = 0.5, TEXT_SCALE_MAX = 2.5;
+/** Typography overrides for one built-in text element (anything unset keeps the template's own look). */
+export interface TextStyle { color?: string; align?: "left" | "center" | "right"; /** letter spacing in em */ ls?: number; /** line height multiplier */ lh?: number }
+export type LayerShape = "rect" | "rounded" | "circle";
+export type ElementKind = "divider-diamond" | "divider-dots" | "frame-double" | "star" | "heart" | "flower";
+/** Extra things the client drops on the card in the fullscreen studio. x / y = centre as 0-100 % of the card; w = width as % of card width. Array order = stacking order (last is on top). */
+export type CardLayer =
+  | { id: string; type: "text"; x: number; y: number; w: number; text: string; size: number; font: FontStyle | ""; color: string; align: "left" | "center" | "right"; ls: number; lh: number; opacity: number; bold: boolean; italic: boolean }
+  | { id: string; type: "image"; x: number; y: number; w: number; src: string; shape: LayerShape; opacity: number; border: number; borderColor: string; shadow: boolean }
+  | { id: string; type: "element"; x: number; y: number; w: number; kind: ElementKind; color: string; opacity: number };
 export type FontStyle = "default" | "royal" | "script" | "sans" | "ml-classic" | FontId;
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
 
@@ -41,7 +50,7 @@ export interface WeddingDetails {
   message: string;
   blessing: string;
   verse: string;
-  /** AI-suggested accent colour (#rrggbb); overrides the template accent. */
+  /** Legacy: an accent override from earlier AI runs. Kept so old drafts load; it is no longer shown or applied. */
   accent: string;
   /** Couple photos as downscaled JPEG data URLs (the first sits in the template's photo frame). */
   photos: string[];
@@ -64,6 +73,10 @@ export interface WeddingDetails {
   blockScale: Partial<Record<TextId | BlockId, number>>;
   /** Master text size for every block at once (0.5 - 2.5, 1 = template default); multiplies each element's own blockScale. */
   contentScale: number;
+  /** Per-element colour / alignment / letter spacing / line height. */
+  textStyle: Partial<Record<TextId, TextStyle>>;
+  /** Custom text boxes, uploaded images and decorative elements placed in the fullscreen studio. */
+  layers: CardLayer[];
   /** Per-block font override; a block with no entry follows fontStyle. */
   blockFont: Partial<Record<BlockId, FontStyle>>;
 }
@@ -267,7 +280,7 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, blockFont: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
@@ -476,7 +489,7 @@ export function loadStudio(): StudioSave | null {
   try { const r = localStorage.getItem(KEY); return r ? (JSON.parse(r) as StudioSave) : null; } catch { return null; }
 }
 export function saveStudio(s: StudioSave) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { try { localStorage.setItem(KEY, JSON.stringify({ ...s, details: { ...s.details, photos: [] } })); } catch { /* storage full */ } }
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { try { localStorage.setItem(KEY, JSON.stringify({ ...s, details: { ...s.details, photos: [], layers: (s.details.layers ?? []).filter((l) => l.type !== "image") } })); } catch { /* storage full */ } }
 }
 export const localInviteKey = (id: string) => `intelliad.wedding.invite.${id}`;
 

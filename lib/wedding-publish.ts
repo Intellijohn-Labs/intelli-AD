@@ -28,10 +28,16 @@ export async function publishInvitation(templateId: string, details: WeddingDeta
     const folder = `invites/${newId()}`;
     const photos: string[] = [];
     for (const [i, p] of details.photos.entries()) photos.push(await upload(`${folder}/photo-${i}.jpg`, await (await fetch(p)).blob()));
+    // Uploaded overlay images (logos, QR codes, extra portraits) are stored like the photos so guests' devices can draw the same card.
+    const layers = await Promise.all((details.layers ?? []).map(async (l, i) => {
+      if (l.type !== "image" || !l.src.startsWith("data:")) return l;
+      const blob = await (await fetch(l.src)).blob();
+      return { ...l, src: await upload(`${folder}/layer-${i}.${blob.type.includes("png") ? "png" : "jpg"}`, blob) };
+    }));
     let videoUrl: string | null = null;
     if (video) videoUrl = await upload(`${folder}/video.${video.type.includes("webm") ? "webm" : "mp4"}`, video);
     const id = newId();
-    const { error } = await sb.from("wedding_invitations").insert({ id, template_id: templateId, data: { details: { ...details, photos }, videoUrl, effect } });
+    const { error } = await sb.from("wedding_invitations").insert({ id, template_id: templateId, data: { details: { ...details, photos, layers }, videoUrl, effect } });
     if (error) throw new Error(error.message);
     return { id, local: false, videoUrl };
   } catch (e) {

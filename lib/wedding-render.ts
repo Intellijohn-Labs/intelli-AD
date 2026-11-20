@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type FontStyle, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -20,7 +20,6 @@ function mix(hex: string, other: string, t: number) {
   const a = p(hex), b = p(other);
   return `#${a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("")}`;
 }
-const HEX = /^#[0-9a-fA-F]{6}$/;
 
 function wrap(ctx: Ctx, text: string, maxW: number): string[] {
   const out: string[] = [];
@@ -179,6 +178,78 @@ async function loadCardFonts(styles: Set<FontStyle>, sample: string) {
   try { await Promise.race([Promise.all(specs.map((sp) => document.fonts.load(sp, sample || "Aa"))), new Promise((res) => setTimeout(res, 4000))]); } catch { /* system fallback */ }
 }
 
+/** Where a custom layer sits on the card (logical 1080 x 1500 px), for the studio's selection / drag / resize handles. */
+export interface LayerBox { id: string; x: number; y: number; w: number; h: number }
+const ELEMENT_ASPECT: Record<string, number> = { "divider-diamond": 0.08, "divider-dots": 0.05, "frame-double": 1.28, star: 1, heart: 0.92, flower: 1 };
+/** Height / width of a custom layer that has no natural height (text and images measure themselves). */
+export const elementAspect = (kind: string) => ELEMENT_ASPECT[kind] ?? 1;
+const layerImgCache = new Map<string, Promise<HTMLImageElement | null>>();
+function layerImage(src: string): Promise<HTMLImageElement | null> {
+  let hit = layerImgCache.get(src);
+  if (!hit) { hit = loadImage(src); layerImgCache.set(src, hit); if (layerImgCache.size > 40) layerImgCache.delete(layerImgCache.keys().next().value as string); }
+  return hit;
+}
+
+/** Draws one custom layer centred on its saved spot (kept inside the card) and returns its box. */
+function drawLayer(ctx: Ctx, l: CardLayer, img: HTMLImageElement | null, d: WeddingDetails): LayerBox | null {
+  const W = CARD_W, H = CARD_H;
+  const place = (w: number, h: number) => ({ cx: Math.min(W - w / 2, Math.max(w / 2, (l.x / 100) * W)), cy: Math.min(H - h / 2, Math.max(h / 2, (l.y / 100) * H)) });
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, Math.max(0.05, l.opacity));
+  let box: LayerBox | null = null;
+  if (l.type === "text") {
+    const f = fontSpec(l.font || d.fontStyle || "default", "names", SERIF);
+    const fs = l.size * f.scale, boxW = (l.w / 100) * W;
+    ctx.font = `${l.italic ? "italic " : ""}${f.weight ?? (l.bold ? 700 : 500)} ${fs}px ${f.fam}`;
+    (ctx as Ctx & { letterSpacing: string }).letterSpacing = l.ls && !hasMl(l.text) ? `${l.ls * fs}px` : "0px";
+    const lines = wrap(ctx, l.text || " ", boxW), lineH = fs * l.lh, h = Math.max(lineH, lines.length * lineH);
+    const { cx, cy } = place(boxW, h);
+    ctx.fillStyle = l.color; ctx.textBaseline = "middle"; ctx.textAlign = l.align;
+    const tx = l.align === "left" ? cx - boxW / 2 : l.align === "right" ? cx + boxW / 2 : cx;
+    lines.forEach((ln, i) => ctx.fillText(ln, tx, cy - h / 2 + (i + 0.5) * lineH));
+    box = { id: l.id, x: cx - boxW / 2, y: cy - h / 2, w: boxW, h };
+  } else if (l.type === "image") {
+    if (!img) { ctx.restore(); return null; }
+    const w = (l.w / 100) * W, h = l.shape === "circle" ? w : w * (img.height / img.width);
+    const { cx, cy } = place(w, h), x = cx - w / 2, y = cy - h / 2;
+    const path = (c: Ctx, ox: number, oy: number) => { c.beginPath(); if (l.shape === "circle") c.ellipse(ox + w / 2, oy + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); else if (l.shape === "rounded") c.roundRect(ox, oy, w, h, Math.min(w, h) * 0.12); else c.rect(ox, oy, w, h); };
+    const off = document.createElement("canvas"); off.width = Math.max(1, Math.round(w)); off.height = Math.max(1, Math.round(h)); // clipped copy, so a shadow follows its real (transparent) edges
+    const oc = off.getContext("2d")!; oc.imageSmoothingQuality = "high";
+    path(oc, 0, 0); oc.clip();
+    const sc = Math.max(w / img.width, h / img.height); oc.drawImage(img, (w - img.width * sc) / 2, (h - img.height * sc) / 2, img.width * sc, img.height * sc);
+    if (l.shadow) { ctx.shadowColor = "rgba(0,0,0,0.38)"; ctx.shadowBlur = 26; ctx.shadowOffsetY = 8; }
+    ctx.drawImage(off, x, y, w, h);
+    ctx.shadowColor = "transparent";
+    if (l.border > 0) { path(ctx, x, y); ctx.strokeStyle = l.borderColor; ctx.lineWidth = l.border; ctx.stroke(); }
+    box = { id: l.id, x, y, w, h };
+  } else {
+    const w = (l.w / 100) * W, h = w * elementAspect(l.kind), { cx, cy } = place(w, h);
+    ctx.translate(cx, cy); ctx.fillStyle = l.color; ctx.strokeStyle = l.color; ctx.lineCap = "round";
+    const lw = Math.max(2, w * 0.006);
+    const diamond = (x: number, r: number) => { ctx.beginPath(); ctx.moveTo(x, -r); ctx.lineTo(x + r, 0); ctx.lineTo(x, r); ctx.lineTo(x - r, 0); ctx.closePath(); ctx.fill(); };
+    if (l.kind === "divider-diamond") {
+      ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w * 0.07, 0); ctx.moveTo(w * 0.07, 0); ctx.lineTo(w / 2, 0); ctx.stroke();
+      diamond(0, w * 0.034); for (const dx of [-w * 0.1, w * 0.1]) { ctx.beginPath(); ctx.arc(dx, 0, w * 0.01, 0, Math.PI * 2); ctx.fill(); }
+    } else if (l.kind === "divider-dots") {
+      for (let i = -4; i <= 4; i++) { ctx.beginPath(); ctx.arc((i * w) / 9.5, 0, Math.max(1.5, w * 0.014 * (1 - Math.abs(i) * 0.14)), 0, Math.PI * 2); ctx.fill(); }
+    } else if (l.kind === "frame-double") {
+      ctx.lineWidth = lw * 1.6; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, w * 0.04); ctx.stroke();
+      ctx.lineWidth = lw * 0.7; ctx.beginPath(); ctx.roundRect(-w / 2 + w * 0.03, -h / 2 + w * 0.03, w - w * 0.06, h - w * 0.06, w * 0.025); ctx.stroke();
+    } else if (l.kind === "star") {
+      ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? w * 0.2 : w * 0.5; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill();
+    } else if (l.kind === "heart") {
+      ctx.beginPath(); ctx.moveTo(0, h * 0.42); ctx.bezierCurveTo(-w * 0.62, h * 0.02, -w * 0.4, -h * 0.5, 0, -h * 0.16); ctx.bezierCurveTo(w * 0.4, -h * 0.5, w * 0.62, h * 0.02, 0, h * 0.42); ctx.fill();
+    } else {
+      for (let i = 0; i < 8; i++) { ctx.save(); ctx.rotate((i * Math.PI) / 4); ctx.beginPath(); ctx.ellipse(0, -w * 0.27, w * 0.13, w * 0.23, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      ctx.globalAlpha *= 0.9; ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(0, 0, w * 0.09, 0, Math.PI * 2); ctx.fill();
+    }
+    box = { id: l.id, x: cx - w / 2, y: cy - h / 2, w, h };
+  }
+  (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
+  ctx.restore();
+  return box;
+}
+
 /** Which movable section a clickable card zone belongs to (null for the photo, which is not text). */
 export function blockOfZone(id: CardZone["id"]): BlockId | null {
   return id === "guest" ? "guest" : id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : null;
@@ -188,12 +259,12 @@ export function blockOfZone(id: CardZone["id"]): BlockId | null {
 export interface GroupBox { key: BlockKey; x: number; y: number; w: number; h: number; moved: boolean }
 export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
 
-export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void; onGroups?: (g: GroupBox[]) => void }): Promise<HTMLCanvasElement> {
+export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void; onGroups?: (g: GroupBox[]) => void; onLayers?: (b: LayerBox[]) => void }): Promise<HTMLCanvasElement> {
   const { template: t, details: d } = o;
-  const p: Palette = { ...t.pal, ...(HEX.test(d.accent) ? { accent: d.accent } : {}) };
-  const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, o.guest ? greetingText(d, o.guest) : "", t.blessing[1]].join(" ");
+  const p: Palette = { ...t.pal }; // the template's own palette: the old accent override (d.accent) is no longer applied
+  const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, o.guest ? greetingText(d, o.guest) : "", t.blessing[1], ...(d.layers ?? []).map((l) => (l.type === "text" ? l.text : ""))].join(" ");
   await loadPrintFonts(all + " അആഇ");
-  await loadCardFonts(new Set<FontStyle>([d.fontStyle ?? "default", ...Object.values(d.blockFont ?? {}) as FontStyle[]]), all);
+  await loadCardFonts(new Set<FontStyle>([d.fontStyle ?? "default", ...Object.values(d.blockFont ?? {}) as FontStyle[], ...(d.layers ?? []).flatMap((l) => (l.type === "text" && l.font ? [l.font] : []))]), all);
   const scale = o.width / CARD_W;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(CARD_W * scale); canvas.height = Math.round(CARD_H * scale);
@@ -201,6 +272,8 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   ctx.scale(scale, scale);
   ctx.imageSmoothingQuality = "high";
   const initial = (n: string) => (Array.from(n.trim())[0] ?? "").toUpperCase();
+  const layers = d.layers ?? [];
+  const layerImgs = await Promise.all(layers.map((l) => (l.type === "image" ? layerImage(l.src) : Promise.resolve(null))));
   const artImg = t.art ? await loadArt(t.art.src) : null;
   if (artImg) ctx.drawImage(artImg, 0, 0, CARD_W, CARD_H);
   else if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
@@ -236,9 +309,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const bid: BlockId | undefined = opt.id === "guest" ? "guest" : grpOf(opt.id);
       const { fam, weight: pinned, scale: fontScale, script } = fontSpec((bid && d.blockFont?.[bid]) || d.fontStyle || "default", opt.id, opt.fam ?? family);
       const weight = pinned ?? weight0, caps = opt.caps && !script;
-      const fs = size * k * (scaled ? clampScale(d.contentScale) * sizeOf(d, opt.id) : 1) * fontScale, lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
+      const ts = (opt.id && d.textStyle?.[opt.id as TextId]) || {}; // per-element colour / alignment / letter spacing / line height
+      const lsEm = ts.ls ?? opt.ls;
+      const fs = size * k * (scaled ? clampScale(d.contentScale) * sizeOf(d, opt.id) : 1) * fontScale, lh = ts.lh ?? opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
       ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
-      (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
+      (ctx as Ctx & { letterSpacing: string }).letterSpacing = lsEm && !hasMl(str) ? `${lsEm * fs}px` : "0px";
       const lines = wrap(ctx, caps && !hasMl(str) ? str.toUpperCase() : str, cw);
       const tw = Math.max(...lines.map((l) => ctx.measureText(l).width)); // widest line (with letter spacing): the block's real width
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
@@ -254,9 +329,10 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
             ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.stroke();
           }
           ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
-          (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
-          ctx.fillStyle = opt.pill ? p.ink : opt.color ?? p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          lines.forEach((l, i) => ctx.fillText(l, x, y + padY + (i + 0.5) * fs * lh));
+          (ctx as Ctx & { letterSpacing: string }).letterSpacing = lsEm && !hasMl(str) ? `${lsEm * fs}px` : "0px";
+          const align = opt.pill ? "center" : ts.align ?? "center", tx = align === "left" ? x - tw / 2 : align === "right" ? x + tw / 2 : x; // lines align inside the block's own width
+          ctx.fillStyle = ts.color ?? (opt.pill ? p.ink : opt.color ?? p.ink); ctx.textAlign = align; ctx.textBaseline = "middle";
+          lines.forEach((l, i) => ctx.fillText(l, tx, y + padY + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
         },
       });
@@ -445,11 +521,15 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     }
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; setF();
     if (!boxed) { ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = `${p.bg1}CC`; ctx.strokeText(gt, bx, by + fs * 0.04); }
-    ctx.fillStyle = p.ink; ctx.fillText(gt, bx, by + fs * 0.04);
+    ctx.fillStyle = d.textStyle?.guest?.color ?? p.ink; ctx.fillText(gt, bx, by + fs * 0.04);
     zones.push({ id: "guest", x: bx - bw / 2, y: by - bh / 2, w: bw, h: bh });
   }
+  // Custom layers (text boxes, images, decorations) sit on top of everything, in stacking order.
+  const layerBoxes: LayerBox[] = [];
+  layers.forEach((l, i) => { const bx = drawLayer(ctx, l, layerImgs[i], d); if (bx) layerBoxes.push(bx); });
   o.onZones?.(zones);
   o.onGroups?.(groups);
+  o.onLayers?.(layerBoxes);
   return canvas;
 }
 
@@ -463,6 +543,18 @@ function loadArt(src: string): Promise<HTMLImageElement | null> {
 
 export function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((res) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+}
+
+/** Downscales an overlay image (logo, QR code, portrait) to <= `max` px; PNG / WebP / GIF keep their transparency, anything else becomes JPEG. */
+export async function layerImageToDataUrl(file: Blob, max = 900): Promise<string | null> {
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+    c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+    return /png|webp|gif/.test(file.type) ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.9);
+  } catch { return null; }
 }
 
 /** Downscales an uploaded image to a <= 1000 px JPEG data URL so it can be stored and drawn quickly. */
