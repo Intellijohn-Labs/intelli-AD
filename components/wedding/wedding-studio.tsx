@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Loader2, MapPin, Send, Sparkles, Trash2, Video, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ImagePlus, Loader2, MapPin, Send, Sparkles, Trash2, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
@@ -41,6 +41,18 @@ export function WeddingStudio() {
   const cardPhotoIdx = useRef(0);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<TemplateFilter>("all");
+  // The template grid shows one row until "See more"; switching category always collapses it again.
+  const [expandedFor, setExpandedFor] = useState<TemplateFilter | null>(null);
+  const expanded = expandedFor === filter;
+  const chooseFilter = (f: TemplateFilter) => { setFilter(f); setExpandedFor(null); };
+  const [cols, setCols] = useState(5); // cards per row at the current width: 2 (phone), 3 (>= 640 px), 5 (>= 1280 px), matching the grid classes
+  useEffect(() => {
+    const sm = window.matchMedia("(min-width: 640px)"), xl = window.matchMedia("(min-width: 1280px)");
+    const sync = () => setCols(xl.matches ? 5 : sm.matches ? 3 : 2);
+    sync();
+    sm.addEventListener("change", sync); xl.addEventListener("change", sync);
+    return () => { sm.removeEventListener("change", sync); xl.removeEventListener("change", sync); };
+  }, []);
   const effect: CardEffect = "none";
   const [guestPreview, setGuestPreview] = useState<Guest | null>(null);
   const [guestImg, setGuestImg] = useState("");
@@ -87,8 +99,8 @@ export function WeddingStudio() {
   }, [hydrated, hidden, templateId, active, d.eventType]);
   const pickEvent = (ev: EventType) => {
     const g = eventConfig(ev).group;
-    set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); setFilter(g === "events" ? "events" : g);
-    if (!suits(tpl, ev)) { const next = active.find((t) => t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
+    set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); chooseFilter(g === "events" ? "events" : g);
+    if (!suits(tpl, ev)) { const next = active.find((t) => t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); chooseFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
   const shown = active.filter((t) => filter === "all" || t.category === filter);
@@ -146,7 +158,7 @@ export function WeddingStudio() {
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      for (const x of shown) {
+      for (const x of expanded ? shown : shown.slice(0, cols)) {
         if (!fresh && thumbs[x.id]) continue;
         const ev = suits(x, d.eventType) ? d.eventType : x.defaultEvent;
         const same = ev === d.eventType;
@@ -158,7 +170,7 @@ export function WeddingStudio() {
     }, 250);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, tab, thumbKey, filter]);
+  }, [hydrated, tab, thumbKey, filter, expanded, cols]);
 
   // The personalised card for the guest being previewed.
   useEffect(() => {
@@ -328,12 +340,13 @@ export function WeddingStudio() {
               <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
               <div role="tablist" aria-label="Template categories" className="-mx-1 mb-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {TEMPLATE_FILTERS.map((f) => (
-                  <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
+                  <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => chooseFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
                 ))}
               </div>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-                {shown.map((x) => (
-                  <li key={x.id}>
+              <ul id="template-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                {shown.map((x, i) => (
+                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards); a selected template further down stays selected.
+                  <li key={x.id} className={!expanded && i >= 2 ? (i >= 5 ? "hidden" : i >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
                     <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
                       {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
                       
@@ -347,6 +360,13 @@ export function WeddingStudio() {
                 ))}
               </ul>
               {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
+              {shown.length > cols && (
+                <div className="mt-4 flex justify-center">
+                  <button type="button" aria-expanded={expanded} aria-controls="template-grid" onClick={() => setExpandedFor(expanded ? null : filter)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-transparent dark:text-slate-100 dark:hover:bg-white/5">
+                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
+                  </button>
+                </div>
+              )}
               <button type="button" onClick={() => setTab("Details")} className="mt-4 rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: event details</button>
             </section>
           )}
