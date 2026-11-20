@@ -63,8 +63,8 @@ export interface WeddingDetails {
   guestBadgeY: number | null;
   /** The "custom" greeting wording; {Name} and {Place} are replaced for every guest (e.g. "To {Name}, {Place}"). */
   guestGreetingTemplate: string;
-  /** Centre of each dragged text group as 0-100 % of card width / height; a group with no entry stays in the template's safe-zone flow. */
-  blockPos: Partial<Record<BlockKey, { x: number; y: number }>>;
+  /** Centre of each dragged text element (keyed by TextId; the greeting uses guestBadgeX / Y) as 0-100 % of the card; an element with no entry stays in the template's flow. */
+  blockPos: Partial<Record<TextId | BlockKey, { x: number; y: number }>>;
   /** true = the greeting sits in a rounded bordered pill; false = plain text straight on the card. */
   guestGreetingBoxed: boolean;
   /** Typography for the whole card (a block can override it with blockFont). */
@@ -78,7 +78,7 @@ export interface WeddingDetails {
   /** Custom text boxes, uploaded images and decorative elements placed in the fullscreen studio. */
   layers: CardLayer[];
   /** Per-block font override; a block with no entry follows fontStyle. */
-  blockFont: Partial<Record<BlockId, FontStyle>>;
+  blockFont: Partial<Record<TextId | BlockId, FontStyle>>;
 }
 
 export interface Palette { bg1: string; bg2: string; ink: string; sub: string; accent: string; accent2: string }

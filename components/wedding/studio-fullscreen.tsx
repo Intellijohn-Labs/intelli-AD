@@ -51,7 +51,7 @@ function LayerOverlay({ layers, boxes, selectedId, onSelect, onChange, onDelete 
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: string; dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
-  const resize = useRef<{ id: string; sx: number; w0: number; size0: number; boxW: number } | null>(null);
+  const resize = useRef<{ id: string; sx: number; w0: number; size0: number } | null>(null);
   const pctAt = (e: React.PointerEvent) => { const r = frame.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100, rect: r }; };
   const label = (l: CardLayer) => (l.type === "text" ? `Text box: ${l.text.slice(0, 24)}` : l.type === "image" ? "Image" : `Element: ${l.kind}`);
   return (
@@ -83,10 +83,11 @@ function LayerOverlay({ layers, boxes, selectedId, onSelect, onChange, onDelete 
             {on && (
               <span
                 role="slider" aria-label="Resize: drag the corner" aria-valuenow={Math.round(l.w)} tabIndex={-1}
-                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resize.current = { id: l.id, sx: e.clientX, w0: l.w, size0: l.type === "text" ? l.size : 0, boxW: Math.max(30, b.w) }; }}
+                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resize.current = { id: l.id, sx: e.clientX, w0: l.w, size0: l.type === "text" ? l.size : 0 }; }}
                 onPointerMove={(e) => {
                   const r0 = resize.current; if (!r0 || r0.id !== l.id) return;
-                  const rect = frame.current!.getBoundingClientRect(), dx = ((e.clientX - r0.sx) / rect.width) * CARD_W, ratio = Math.max(0.1, (r0.boxW + 2 * dx) / r0.boxW);
+                  // Calibrated on screen pixels (the same feel at any zoom): 0.4 % of the starting size per px, about 1 % per 2.5 px of drag.
+                  const ratio = Math.max(0.1, 1 + (e.clientX - r0.sx) * 0.004);
                   if (l.type === "text") onChange(l.id, { w: Math.round(clamp(r0.w0 * ratio, 5, 100) * 10) / 10, size: Math.round(clamp(r0.size0 * ratio, 12, 260)) });
                   else onChange(l.id, { w: Math.round(clamp(r0.w0 * ratio, 4, 100) * 10) / 10 });
                 }}
@@ -110,9 +111,9 @@ export function StudioFullscreen(p: {
   d: WeddingDetails; rd: WeddingDetails; tpl: WeddingTemplate; cfg: EventConfig; previewGuest: { name: string; place: string };
   setD: Dispatch<SetStateAction<WeddingDetails>>; set: (patch: Partial<WeddingDetails>) => void;
   templates: WeddingTemplate[]; thumbs: Record<string, string>; onPickTemplate: (t: WeddingTemplate) => void;
-  moveBadge: (x: number, y: number) => void; moveBlock: (key: BlockKey, x: number, y: number) => void;
+  moveBadge: (x: number, y: number) => void; moveBlock: (key: Exclude<TextId, "guest">, x: number, y: number) => void;
   scaleText: (id: TextId, v: number) => void; setMaster: (v: number) => void;
-  fontForBlock: (key: BlockId, f: FontStyle | "") => void; fontForAll: (f: FontStyle) => void;
+  fontForBlock: (key: TextId, f: FontStyle | "") => void; fontForAll: (f: FontStyle) => void;
   styleText: (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => void;
   layoutCustom: boolean; resetLayout: () => void; onClose: () => void;
 }) {
@@ -146,14 +147,16 @@ export function StudioFullscreen(p: {
     return () => { live = false; clearTimeout(t); };
   }, [tpl, rd, d.photos, previewGuest, renderW]);
 
-  // Undo / redo over the whole details state (changes made within 700 ms, e.g. a slider drag, count as one step).
+  // Undo / redo over the whole details state: layout, typography, colours and every layer come back together in one click.
   const present = useRef(d), past = useRef<WeddingDetails[]>([]), future = useRef<WeddingDetails[]>([]), lastPush = useRef(0), skip = useRef(false);
   const [, bump] = useState(0);
   useEffect(() => {
     if (skip.current) { skip.current = false; present.current = d; return; }
     if (d === present.current) return;
+    // A burst of changes (a slider or a long drag) is one undo step: the state before the burst is saved once, when the burst starts.
     const now = Date.now();
-    if (now - lastPush.current > 700) { past.current.push(present.current); if (past.current.length > 80) past.current.shift(); lastPush.current = now; }
+    if (now - lastPush.current > 400) { past.current.push(present.current); if (past.current.length > 80) past.current.shift(); }
+    lastPush.current = now;
     future.current = []; present.current = d; bump((n) => n + 1);
   }, [d]);
   const undo = useCallback(() => { const prev = past.current.pop(); if (!prev) return; future.current.push(present.current); skip.current = true; setD(prev); bump((n) => n + 1); }, [setD]);
@@ -280,7 +283,7 @@ export function StudioFullscreen(p: {
         <h2 className="min-w-0 flex-1 truncate text-sm font-bold">{tpl.name}</h2>
         <button type="button" onClick={undo} disabled={!past.current.length} aria-label="Undo" title="Undo (Ctrl/Cmd+Z)" className={btn}><Undo2 className="h-4 w-4" aria-hidden="true" /></button>
         <button type="button" onClick={redo} disabled={!future.current.length} aria-label="Redo" title="Redo (Shift+Ctrl/Cmd+Z)" className={btn}><Redo2 className="h-4 w-4" aria-hidden="true" /></button>
-        {p.layoutCustom && <button type="button" onClick={p.resetLayout} className="hidden px-1 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] sm:block dark:text-slate-300">Reset layout</button>}
+        <button type="button" onClick={p.resetLayout} disabled={!p.layoutCustom} className="px-1 text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] disabled:cursor-default disabled:opacity-40 disabled:no-underline disabled:hover:text-slate-600 dark:text-slate-300">Reset layout</button>
         <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Canvas zoom">
           <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => clamp(Math.round((z - 0.1) * 10) / 10, 0.5, 2))} disabled={zoom <= 0.5} className="h-7 w-7 rounded-md text-sm font-bold hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-white/10">−</button>
           <button type="button" onClick={() => setZoom(1)} title="Reset zoom" className="h-7 min-w-12 rounded-md px-1 text-[11px] font-bold tabular-nums hover:bg-slate-100 dark:hover:bg-white/10">{Math.round(zoom * 100)}%</button>
@@ -374,7 +377,7 @@ export function StudioFullscreen(p: {
               <>
                 <CardEditOverlay
                   zones={zones} groups={groups} details={d} selected={sel?.kind === "zone" ? sel.id : null} onSelect={(id) => setSel({ kind: "zone", id })}
-                  onPickPhoto={(i) => { photoIdx.current = i; photoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={p.moveBadge} onMoveBlock={p.moveBlock} onScaleText={p.scaleText}
+                  onPickPhoto={(i) => { photoIdx.current = i; photoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={p.moveBadge} onMoveBlock={p.moveBlock} onScaleText={p.scaleText} onEditText={() => requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-section-toolbar] textarea, [data-section-toolbar] input:not([type=range]):not([type=color]):not([type=date])")?.focus())}
                 />
                 <LayerOverlay layers={layers} boxes={boxes} selectedId={sel?.kind === "layer" ? sel.id : null} onSelect={(id) => setSel({ kind: "layer", id })} onChange={upd} onDelete={del} />
               </>

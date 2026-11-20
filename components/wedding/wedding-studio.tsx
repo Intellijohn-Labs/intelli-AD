@@ -42,7 +42,16 @@ export function WeddingStudio() {
   const [filter, setFilter] = useState<TemplateFilter>("all");
   // The template grid shows one row until "See more"; switching category always collapses it again.
   const [logTick, setLogTick] = useState(0); // bumps the Step 4 dispatch log after each send
-  const [studioOpen, setStudioOpen] = useState(false); // the Canva-style fullscreen editor
+  const [studioOpen, setStudioOpen] = useState(false);
+  const scrollBeforeStudio = useRef(0);
+  const enlargeRef = useRef<HTMLButtonElement>(null);
+  const closeStudio = () => { // back to exactly where the page was (the fullscreen layer locks and unlocks page scrolling)
+    setStudioOpen(false);
+    const y = scrollBeforeStudio.current;
+    requestAnimationFrame(() => { window.scrollTo(0, y); requestAnimationFrame(() => { window.scrollTo(0, y); enlargeRef.current?.focus({ preventScroll: true }); }); });
+  };
+  /** Double-click on a card text: put the cursor in that text's edit field in the toolbar. */
+  const editTextField = () => requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-section-toolbar] textarea, [data-section-toolbar] input:not([type=range]):not([type=color]):not([type=date])")?.focus()); // the Canva-style fullscreen editor
   const [fontsOpen, setFontsOpen] = useState(false); // Card font shows the first 4 choices until "View more"
   const FONTS_COLLAPSED = 4;
   const [expandedFor, setExpandedFor] = useState<TemplateFilter | null>(null);
@@ -111,7 +120,7 @@ export function WeddingStudio() {
   const previewGuest = useMemo(() => (firstGuest ? { name: firstGuest.name, place: firstGuest.place } : SAMPLE_GUEST), [firstGuest?.name, firstGuest?.place]); // eslint-disable-line react-hooks/exhaustive-deps
   const clamp = (v: number) => Math.min(100, Math.max(0, Math.round(v * 10) / 10));
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
-  const moveBlock = (key: BlockKey, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
+  const moveBlock = (key: Exclude<TextId, "guest">, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
   const styleText = (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => setD((cur) => {
     const next: TextStyle = { ...(cur.textStyle?.[id] ?? {}) };
     for (const [k, v] of Object.entries(patch)) { if (v == null) delete (next as Record<string, unknown>)[k]; else (next as Record<string, unknown>)[k] = v; }
@@ -119,14 +128,14 @@ export function WeddingStudio() {
     if (Object.keys(next).length) map[id] = next; else delete map[id];
     return { ...cur, textStyle: map };
   });
-  const clampText = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(v * 20) / 20));
+  const clampText = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(v * 100) / 100));
   const scaleText = (key: TextId, v: number) => setD((cur) => {
     const bs = { ...cur.blockScale }, n = clampText(v);
     if (n === 1) delete bs[key]; else bs[key] = n; // 100 % is the default: no entry, so "Reset layout" only shows for real customisations
     return { ...cur, blockScale: bs };
   });
   const setMaster = (v: number) => set({ contentScale: clampText(v) });
-  const fontForBlock = (key: BlockId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
+  const fontForBlock = (key: TextId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
   // One font for every block at once: also clears the per-block overrides so nothing keeps an older choice.
   const fontForAll = (f: FontStyle) => set({ fontStyle: f, blockFont: {} });
   const layoutCustom = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || Object.keys(d.textStyle ?? {}).length > 0 || (d.contentScale ?? 1) !== 1;
@@ -388,7 +397,7 @@ export function WeddingStudio() {
                 {cfg.useName2 && <Field id="w-bride" label={cfg.labels.name2}><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} placeholder={cfg.sample.bride || undefined} /></Field>}
                 <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>
                 {cfg.useHost2 && <Field id="w-bp" label={cfg.labels.host2}><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>}
-                <Field id="w-date" label="Date"><Input id="w-date" type="date" value={d.date} onChange={(e) => set({ date: e.target.value })} /></Field>
+                <Field id="w-date" label="Date" hint={d.date ? undefined : "Sample date shown on the card. Pick your own date to replace it."}><Input id="w-date" type="date" value={d.date || cfg.sample.date || ""} className={d.date ? undefined : "text-slate-500"} onChange={(e) => set({ date: e.target.value })} /></Field>
                 <Field id="w-time" label={cfg.labels.time}><Input id="w-time" value={d.time} onChange={(e) => set({ time: e.target.value })} placeholder={cfg.sample.time} /></Field>
                 <Field id="w-venue" label={cfg.labels.venue} className="sm:col-span-2"><Input id="w-venue" value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder={cfg.sample.venue} /></Field>
                 <Field id="w-maps" label="Google Maps link" hint="Optional. Guests get an “Open in Google Maps” button. Without a link, the venue name is searched." className="sm:col-span-2"><Input id="w-maps" type="url" value={d.mapsUrl} onChange={(e) => set({ mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/…" /></Field>
@@ -461,8 +470,8 @@ export function WeddingStudio() {
             <div data-preview-bar className="flex items-center justify-between gap-2">
               <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
               <div className="flex shrink-0 items-center gap-2">
-                <button type="button" onClick={() => { setSelected(null); setStudioOpen(true); }} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" title="Open the fullscreen studio"><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Enlarge</button>
-                {layoutCustom && <button type="button" onClick={resetLayout} className="text-[11px] font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] dark:text-slate-300">Reset layout</button>}
+                <button ref={enlargeRef} type="button" onClick={() => { setSelected(null); scrollBeforeStudio.current = window.scrollY; setStudioOpen(true); }} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" title="Open the fullscreen studio"><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Enlarge</button>
+                <button type="button" onClick={resetLayout} disabled={!layoutCustom} className="text-[11px] font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] disabled:cursor-default disabled:opacity-40 disabled:no-underline disabled:hover:text-slate-600 dark:text-slate-300">Reset layout</button>
                 <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
                   <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 1} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">−</span></button>
                   <button type="button" onClick={() => setZoom(1)} title="Reset zoom" className="h-7 min-w-11 rounded-md px-1 text-[11px] font-bold tabular-nums text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10">{Math.round(zoom * 100)}%</button>
@@ -476,7 +485,7 @@ export function WeddingStudio() {
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScaleText={scaleText} />}
+                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScaleText={scaleText} onEditText={editTextField} />}
               </div>
               </div>
               </div>
@@ -506,7 +515,7 @@ export function WeddingStudio() {
           d={d} rd={rd} tpl={tpl} cfg={cfg} previewGuest={previewGuest} setD={setD} set={set}
           templates={active} thumbs={thumbs} onPickTemplate={pickTemplate}
           moveBadge={moveBadge} moveBlock={moveBlock} scaleText={scaleText} setMaster={setMaster} fontForBlock={fontForBlock} fontForAll={fontForAll} styleText={styleText}
-          layoutCustom={layoutCustom} resetLayout={resetLayout} onClose={() => setStudioOpen(false)}
+          layoutCustom={layoutCustom} resetLayout={resetLayout} onClose={closeStudio}
         />
       )}
 

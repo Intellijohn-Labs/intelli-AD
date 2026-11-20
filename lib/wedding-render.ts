@@ -140,6 +140,12 @@ type ZoneId = CardZone["id"];
 const clampScale = (v: number | undefined) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, v ?? 1));
 /** The group key older saves used for a text element's size (blockScale.header scaled blessing + title together, and so on). */
 const LEGACY_SCALE_KEY: Partial<Record<string, BlockId>> = { blessing: "header", title: "header", parents: "body", message: "body", datetime: "dateTime" };
+/** One text element's own font override: its own entry, else the legacy group entry. */
+const fontOverride = (d: WeddingDetails, id: string | undefined): FontStyle | undefined => {
+  if (!id) return undefined;
+  const map = (d.blockFont ?? {}) as Record<string, FontStyle | undefined>, leg = LEGACY_SCALE_KEY[id];
+  return map[id] ?? (leg ? map[leg] : undefined);
+};
 /** One text element's own size: its own entry, else the legacy group entry, else 1. */
 const sizeOf = (d: WeddingDetails, id: string | undefined): number => {
   if (!id) return 1;
@@ -250,13 +256,13 @@ function drawLayer(ctx: Ctx, l: CardLayer, img: HTMLImageElement | null, d: Wedd
   return box;
 }
 
-/** Which movable section a clickable card zone belongs to (null for the photo, which is not text). */
-export function blockOfZone(id: CardZone["id"]): BlockId | null {
-  return id === "guest" ? "guest" : id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : null;
+/** The text element a clickable card zone is (each element is moved, sized and styled on its own); null for the photo. */
+export function blockOfZone(id: CardZone["id"]): TextId | null {
+  return id === "photo" ? null : id;
 }
 
 /** A movable text group as drawn: where it sits now (logical 1080 x 1500 px) and whether the client has positioned it. */
-export interface GroupBox { key: BlockKey; x: number; y: number; w: number; h: number; moved: boolean }
+export interface GroupBox { key: TextId; x: number; y: number; w: number; h: number; moved: boolean }
 export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
 
 export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void; onGroups?: (g: GroupBox[]) => void; onLayers?: (b: LayerBox[]) => void }): Promise<HTMLCanvasElement> {
@@ -296,7 +302,6 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
-  const grpOf = (id?: ZoneId): BlockKey | undefined => (id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : undefined);
   type Block = { tw?: number; h: number; draw: (y: number, x?: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
   // Image templates have a hard safe box: when the full text can't fit even at a small size, low-priority lines are dropped
   // in stages (lvl 1: second-language extras, 2: message + parents, 3: blessing) instead of overflowing onto the artwork.
@@ -305,9 +310,8 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     const text = (s: string, size: number, weight0: number, opt: { id?: ZoneId; color?: string; italic?: boolean; caps?: boolean; ls?: number; fam?: string; lh?: number; pill?: boolean } = {}) => {
       const str = s.trim();
       if (!str) return;
-      // Per-block size (blockScale, applied on top of the whole-card fit) and font (blockFont, else the card's fontStyle).
-      const bid: BlockId | undefined = opt.id === "guest" ? "guest" : grpOf(opt.id);
-      const { fam, weight: pinned, scale: fontScale, script } = fontSpec((bid && d.blockFont?.[bid]) || d.fontStyle || "default", opt.id, opt.fam ?? family);
+      // Per-element size (blockScale, applied on top of the whole-card fit) and font (blockFont, else the card's fontStyle).
+      const { fam, weight: pinned, scale: fontScale, script } = fontSpec(fontOverride(d, opt.id) || d.fontStyle || "default", opt.id, opt.fam ?? family);
       const weight = pinned ?? weight0, caps = opt.caps && !script;
       const ts = (opt.id && d.textStyle?.[opt.id as TextId]) || {}; // per-element colour / alignment / letter spacing / line height
       const lsEm = ts.ls ?? opt.ls;
@@ -332,6 +336,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = lsEm && !hasMl(str) ? `${lsEm * fs}px` : "0px";
           const align = opt.pill ? "center" : ts.align ?? "center", tx = align === "left" ? x - tw / 2 : align === "right" ? x + tw / 2 : x; // lines align inside the block's own width
           ctx.fillStyle = ts.color ?? (opt.pill ? p.ink : opt.color ?? p.ink); ctx.textAlign = align; ctx.textBaseline = "middle";
+          if (opt.id === "guest" && !opt.pill) { ctx.save(); ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = `${p.bg1}CC`; lines.forEach((l, i) => ctx.strokeText(l, tx, y + padY + (i + 0.5) * fs * lh)); ctx.restore(); }
           lines.forEach((l, i) => ctx.fillText(l, tx, y + padY + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
         },
@@ -343,8 +348,8 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (wantEn && enS) text(enS, wantMl ? size * 0.72 : size, weight, opt);
     };
 
-    // The greeting sits in the text flow until the client positions it (guestBadgeX / Y), then it is drawn as a pill after the flow.
-    if (o.guest?.name && badge === null) {
+    // The greeting is an ordinary block: it keeps exactly the same typography, colour and box whether it sits in the flow or has been dragged.
+    if (o.guest?.name) {
       const gt = greetingText(d, o.guest);
       text(gt, 38, 700, { id: "guest", color: p.accent, italic: !hasMl(gt) && d.guestGreetingBoxed === false, pill: d.guestGreetingBoxed !== false });
     }
@@ -449,9 +454,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const top = t.art ? t.art.top : M * 0.8 + topOff, avail = t.art ? CARD_H - t.art.top - t.art.bottom : CARD_H - 2 * M * 0.8 - topOff - botOff;
   const gapOf = (kk: number) => 24 * kk;
   const total = (bs: Block[], kk: number) => bs.reduce((a, b) => a + b.h, 0) + Math.max(0, bs.length - 1) * gapOf(kk);
-  // Text groups the client dragged (d.blockPos) leave the safe-zone flow and are drawn as their own stacks; the rest keep the flow.
-  const pos = d.blockPos ?? {};
-  const inFlow = (bs: Block[]) => bs.filter((b) => { const g = grpOf(b.id); return !(g && pos[g]); });
+  // Every text element can be dragged on its own (d.blockPos, or guestBadgeX / Y for the greeting). The flow is laid out as if nothing had
+  // moved, and a moved element simply isn't drawn in its slot: the other blocks never shift when one is dragged away.
+  const pos = (d.blockPos ?? {}) as Record<string, { x: number; y: number } | undefined>;
+  const placeOf = (id: TextId): { x: number; y: number } | null => (id === "guest" ? badge : pos[id] ?? null);
+  const textKey = (b: Block): TextId | undefined => (b.id && b.id !== "photo" ? (b.id as TextId) : undefined);
   // Sizes are fitted for the whole card, so dragging a block never changes how large any text is.
   let lvlFit = 0;
   let k = 1.1, blocks = build(k, 0, false);
@@ -467,62 +474,47 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       lvlFit = lvl;
     }
   }
-  blocks = build(k, lvlFit, true); // sizes fitted without blockScale, then the client's per-block scale is applied on top
-  const flow = inFlow(blocks);
-  const extra = Math.max(0, avail - total(flow, k));
-  const flowH = flow.reduce((a, b) => a + b.h, 0);
+  blocks = build(k, lvlFit, true); // sizes fitted without blockScale, then the client's per-element scale is applied on top
+  const extra = Math.max(0, avail - total(blocks, k));
+  const flowH = blocks.reduce((a, b) => a + b.h, 0);
   // Scaled-up blocks can outgrow the safe box: tighten the gaps (never below 4 px) before anything spills past it.
-  const gap = total(flow, k) > avail && flow.length > 1 ? Math.max(4, (avail - flowH) / (flow.length - 1)) : gapOf(k) + (flow.length > 1 ? Math.min(extra / (flow.length - 1), 46) : 0);
-  const used = flow.reduce((a, b) => a + b.h, 0) + Math.max(0, flow.length - 1) * gap;
+  const gap = total(blocks, k) > avail && blocks.length > 1 ? Math.max(4, (avail - flowH) / (blocks.length - 1)) : gapOf(k) + (blocks.length > 1 ? Math.min(extra / (blocks.length - 1), 46) : 0);
+  const used = flowH + Math.max(0, blocks.length - 1) * gap;
   let y = top + Math.max(0, (avail - used) / 2);
   const zones: CardZone[] = [];
   const zx = t.art ? sl : M * 0.7, zw = t.art ? cw : CARD_W - 2 * M * 0.7;
-  const add = (id: ZoneId, y0: number, h: number, dual?: boolean, x = zx, w = zw, merge = gap * 1.5) => {
-    const last = zones[zones.length - 1];
-    if (last && last.id === id && last.h >= 0 && y0 - (last.y + last.h) < merge) { last.h = y0 + h - last.y; return; }
-    zones.push({ id, x, y: y0, w, h, dual });
+  // Tight boxes: each text element's hit-box wraps its own rendered lines (plus a little padding), not the whole safe width.
+  const boxes = new Map<TextId, { x0: number; x1: number; y0: number; y1: number }>();
+  const rec = (id: TextId, mid: number, w: number, y0: number, h: number) => {
+    const a = boxes.get(id), x0 = mid - w / 2, x1 = mid + w / 2;
+    if (!a) boxes.set(id, { x0, x1, y0, y1: y0 + h }); else { a.x0 = Math.min(a.x0, x0); a.x1 = Math.max(a.x1, x1); a.y0 = Math.min(a.y0, y0); a.y1 = Math.max(a.y1, y0 + h); }
   };
-  const acc: Partial<Record<BlockKey, { y0: number; y1: number; w: number }>> = {};
-  for (const b of flow) {
-    b.draw(y);
-    if (b.id === "guest") { const w = (b.tw ?? 300) + 36; zones.push({ id: "guest", x: cx - w / 2, y: y - 8, w, h: b.h + 16 }); }
-    else if (b.id) add(b.id, y - 6, b.h + 12, b.dual);
-    for (const s of b.sub ?? []) zones.push({ id: s.id, x: zx, y: y + s.dy - 6, w: zw, h: s.h + 12 });
-    const g = grpOf(b.id);
-    if (g && b.tw) { const a = (acc[g] ??= { y0: y, y1: y + b.h, w: 0 }); a.y1 = y + b.h; a.w = Math.max(a.w, b.tw); }
+  for (const b of blocks) {
+    const id = textKey(b);
+    if (!(id && placeOf(id))) {
+      b.draw(y);
+      if (id && b.tw) rec(id, cx, b.tw, y, b.h);
+      else if (b.id) zones.push({ id: b.id, x: zx, y: y - 6, w: zw, h: b.h + 12, dual: b.dual });
+      for (const s of b.sub ?? []) zones.push({ id: s.id, x: zx, y: y + s.dy - 6, w: zw, h: s.h + 12 });
+    }
     y += b.h + gap;
   }
-  const groups: GroupBox[] = (Object.keys(acc) as BlockKey[]).map((key) => { const a = acc[key]!; return { key, x: cx - a.w / 2 - 10, y: a.y0 - 6, w: a.w + 20, h: a.y1 - a.y0 + 12, moved: false }; });
-  for (const key of ["header", "names", "body", "dateTime", "venue"] as BlockKey[]) {
-    const at = pos[key];
-    const bs = blocks.filter((b) => grpOf(b.id) === key);
+  const ORDER: TextId[] = ["guest", "blessing", "title", "names", "parents", "message", "datetime", "venue", "verse"];
+  for (const id of ORDER) {
+    const at = placeOf(id), bs = blocks.filter((b) => textKey(b) === id);
     if (!at || !bs.length) continue;
     const gg = 14 * k, H = bs.reduce((a, b) => a + b.h, 0) + (bs.length - 1) * gg, Wd = Math.max(...bs.map((b) => b.tw ?? 200));
     const xc = Math.min(CARD_W - Wd / 2 - 10, Math.max(Wd / 2 + 10, (at.x / 100) * CARD_W)), yc = Math.min(CARD_H - H / 2 - 10, Math.max(H / 2 + 10, (at.y / 100) * CARD_H));
     let yy = yc - H / 2;
-    for (const b of bs) { b.draw(yy, xc); if (b.id) add(b.id, yy - 6, b.h + 12, b.dual, xc - Wd / 2 - 10, Wd + 20, gg * 1.5); yy += b.h + gg; }
-    groups.push({ key, x: xc - Wd / 2 - 10, y: yc - H / 2 - 6, w: Wd + 20, h: H + 12, moved: true });
+    for (const b of bs) { b.draw(yy, xc); rec(id, xc, b.tw ?? Wd, yy, b.h); yy += b.h + gg; }
   }
-  if (badge && o.guest) {
-    // Positioned greeting: centred on the client's chosen spot (kept fully inside the card), drawn over the artwork,
-    // as a bordered pill or (guestGreetingBoxed = false) as plain text with a soft halo so it stays legible on any background.
-    const gt = greetingText(d, o.guest), boxed = d.guestGreetingBoxed !== false;
-    const gf = fontSpec(d.blockFont?.guest || d.fontStyle || "default", "guest", SERIF);
-    let fs = 38 * clampScale(d.contentScale) * clampScale(d.blockScale?.guest) * gf.scale;
-    const setF = () => { ctx.font = `${gf.weight ?? 700} ${fs}px ${gf.fam}`; };
-    setF(); while (ctx.measureText(gt).width > CARD_W - 150 && fs > 14) { fs -= 2; setF(); }
-    const bw = ctx.measureText(gt).width + (boxed ? 60 * (fs / 38) : 24), bh = fs * (boxed ? 1.9 : 1.5);
-    const bx = Math.min(CARD_W - bw / 2 - 10, Math.max(bw / 2 + 10, (badge.x / 100) * CARD_W));
-    const by = Math.min(CARD_H - bh / 2 - 10, Math.max(bh / 2 + 10, (badge.y / 100) * CARD_H));
-    if (boxed) {
-      ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
-      ctx.fillStyle = `${p.bg1}EE`; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.fill(); ctx.restore();
-      ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.stroke();
-    }
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; setF();
-    if (!boxed) { ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = `${p.bg1}CC`; ctx.strokeText(gt, bx, by + fs * 0.04); }
-    ctx.fillStyle = d.textStyle?.guest?.color ?? p.ink; ctx.fillText(gt, bx, by + fs * 0.04);
-    zones.push({ id: "guest", x: bx - bw / 2, y: by - bh / 2, w: bw, h: bh });
+  const groups: GroupBox[] = [];
+  const padX = 14, padY = Math.max(1, Math.min(6, gap / 2));
+  for (const id of ORDER) {
+    const a = boxes.get(id);
+    if (!a) continue;
+    const zone = { id, x: a.x0 - padX, y: a.y0 - padY, w: a.x1 - a.x0 + 2 * padX, h: a.y1 - a.y0 + 2 * padY };
+    zones.push(zone); groups.push({ key: id, x: zone.x, y: zone.y, w: zone.w, h: zone.h, moved: !!placeOf(id) });
   }
   // Custom layers (text boxes, images, decorations) sit on top of everything, in stacking order.
   const layerBoxes: LayerBox[] = [];

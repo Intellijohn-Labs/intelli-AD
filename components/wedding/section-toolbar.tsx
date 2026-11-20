@@ -6,12 +6,11 @@ import { EVENTS, FONT_STYLES, fontLabel, greetingTemplate, TEXT_SCALE_MAX, TEXT_
 import { blockOfZone, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { cn } from "@/lib/utils";
 
-const SECTION: Record<BlockId, string> = { guest: "Greeting", header: "Header / blessing", names: "Names", body: "Message", dateTime: "Date & time", venue: "Venue / footer" };
 const fieldCls = "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-[#D12014] focus:ring-1 focus:ring-[#D12014] dark:border-slate-600 dark:bg-[#0A0B0D] dark:text-slate-100";
 const btn = "h-7 min-w-8 rounded-md border border-slate-300 px-1.5 text-sm font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5";
 /** The element being edited (size is per element; font and position belong to its block, which can hold several elements). */
 const ELEMENT: Record<TextId, string> = { guest: "Greeting", blessing: "Blessing", title: "Event title", names: "Names", parents: "Family line", message: "Wording", datetime: "Date & time", venue: "Venue", verse: "Closing verse" };
-const clampScale = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(v * 20) / 20));
+const clampScale = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(v * 100) / 100));
 
 /**
  * The contextual toolbar for the text section the client clicked on the card: edit its wording, set its font and size (for just this
@@ -22,9 +21,9 @@ export function SectionToolbar({ zone, zones, groups, details, cfg, onStyle, onC
   onChange: (p: Partial<WeddingDetails>) => void;
   /** Colour / alignment / letter spacing / line height for this element; a null patch value clears that setting. */
   onStyle: (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => void;
-  onMoveBadge: (x: number, y: number) => void; onMoveBlock: (key: Exclude<BlockId, "guest">, x: number, y: number) => void;
+  onMoveBadge: (x: number, y: number) => void; onMoveBlock: (key: Exclude<TextId, "guest">, x: number, y: number) => void;
   onScale: (key: TextId, v: number) => void; onMaster: (v: number) => void;
-  onFont: (key: BlockId, f: FontStyle | "") => void; onAllFont: (f: FontStyle) => void; onDone: () => void;
+  onFont: (key: TextId, f: FontStyle | "") => void; onAllFont: (f: FontStyle) => void; onDone: () => void;
 }) {
   const key = blockOfZone(zone);
   const [scope, setScope] = useState<"section" | "all">("section");
@@ -69,7 +68,7 @@ export function SectionToolbar({ zone, zones, groups, details, cfg, onStyle, onC
       <div className="space-y-2">
         {zone === "guest" && (
           <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Greeting wording: {"{Name}"} and {"{Place}"} are filled in for every guest
-            <input type="text" autoFocus value={greetingTemplate(details)} maxLength={120} placeholder="Dear {Name} & Family" onChange={(e) => onChange({ guestGreetingFormat: "custom", guestGreetingTemplate: e.target.value })} className={`mt-0.5 ${fieldCls}`} />
+            <input type="text" value={greetingTemplate(details)} maxLength={120} placeholder="Dear {Name} & Family" onChange={(e) => onChange({ guestGreetingFormat: "custom", guestGreetingTemplate: e.target.value })} className={`mt-0.5 ${fieldCls}`} />
           </label>
         )}
         {zone === "blessing" && area("Blessing / top verse", details.blessing, "blessing", "Leave empty for the template's default blessing")}
@@ -83,7 +82,18 @@ export function SectionToolbar({ zone, zones, groups, details, cfg, onStyle, onC
         {zone === "names" && <div className={cfg.useName2 ? "grid grid-cols-2 gap-2" : ""}>{input(cfg.labels.name1, details.groom, "groom", cfg.sample.groom)}{cfg.useName2 && input(cfg.labels.name2, details.bride, "bride", cfg.sample.bride || "")}</div>}
         {zone === "parents" && <div className="space-y-2">{input(cfg.labels.host1, details.groomParents, "groomParents")}{cfg.useHost2 && input(cfg.labels.host2, details.brideParents, "brideParents")}</div>}
         {zone === "message" && area("Invitation message", details.message, "message", "Leave empty for the default wording")}
-        {zone === "datetime" && <div className="grid grid-cols-2 gap-2">{input("Date", details.date, "date", "", "date")}{input(cfg.labels.time, details.time, "time", cfg.sample.time)}</div>}
+        {zone === "datetime" && (
+          <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Date
+                {/* Until a date is picked the card shows the sample date, so the picker shows that same date (dimmed) and says so. */}
+                <input type="date" value={details.date || cfg.sample.date || ""} onChange={(e) => onChange({ date: e.target.value })} className={`mt-0.5 ${fieldCls} ${details.date ? "" : "text-slate-500 dark:text-slate-400"}`} />
+              </label>
+              {input(cfg.labels.time, details.time, "time", cfg.sample.time)}
+            </div>
+            {!details.date && <p className="text-[10px] text-amber-700 dark:text-amber-300">Sample date shown on the card. Pick your own date to replace it.</p>}
+          </div>
+        )}
         {zone === "venue" && input(cfg.labels.venue, details.venue, "venue", "Venue & place")}
         {zone === "verse" && area("Closing verse / footnote", details.verse, "verse")}
       </div>

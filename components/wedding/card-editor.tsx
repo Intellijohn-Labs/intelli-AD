@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { TEXT_SCALE_MAX, TEXT_SCALE_MIN, type BlockId, type TextId, type WeddingDetails } from "@/lib/wedding";
+import { TEXT_SCALE_MAX, TEXT_SCALE_MIN, type TextId, type WeddingDetails } from "@/lib/wedding";
 import { blockOfZone, type CardZone, type GroupBox } from "@/lib/wedding-render";
 
 const LABEL: Record<CardZone["id"], string> = {
@@ -16,35 +16,37 @@ const pct = (v: number, total: number) => `${(v / total) * 100}%`;
  * Transparent hit-zones over the live preview image. Nothing is drawn until a section is hovered (dashed outline) or selected (solid ring);
  * a click selects the section (the studio then shows its toolbar), a drag moves it, arrow keys nudge it. DOM only: never part of the PNG.
  */
-export function CardEditOverlay({ zones, groups, details, selected, onSelect, onPickPhoto, onRemovePhoto, onMoveBadge, onMoveBlock, onScaleText }: {
+export function CardEditOverlay({ zones, groups, details, selected, onSelect, onPickPhoto, onRemovePhoto, onMoveBadge, onMoveBlock, onScaleText, onEditText }: {
   zones: CardZone[]; groups: GroupBox[]; details: WeddingDetails;
   selected: CardZone["id"] | null; onSelect: (id: CardZone["id"]) => void;
   onPickPhoto: (index: number) => void; onRemovePhoto: (index: number) => void;
-  onMoveBadge: (x: number, y: number) => void; onMoveBlock: (key: Exclude<BlockId, "guest">, x: number, y: number) => void;
+  onMoveBadge: (x: number, y: number) => void; onMoveBlock: (key: Exclude<TextId, "guest">, x: number, y: number) => void;
   onScaleText: (id: TextId, scale: number) => void;
+  /** Double-click on a text: move the keyboard into that text's editing field (a single click only selects, so arrow keys and Delete keep working). */
+  onEditText?: (id: TextId) => void;
 }) {
   // Every text section can be dragged (mouse / touch / pen) or nudged with the arrow keys; a press that barely moves is a click and selects
   // it instead. Dotted guides show while moving.
   const frame = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ key: BlockId; dx: number; dy: number; sx: number; sy: number; moved: boolean; w: number; h: number } | null>(null);
+  const dragRef = useRef<{ key: TextId; dx: number; dy: number; sx: number; sy: number; moved: boolean; w: number; h: number } | null>(null);
   const suppressClick = useRef(false);
   const [guide, setGuide] = useState<{ x: number; y: number } | null>(null);
 
   /** Where a movable thing sits now (card px): its saved position if it has one, else the box it was last drawn in. */
-  const boxOf = (key: BlockId, z: CardZone) => {
+  const boxOf = (key: TextId, z: CardZone) => {
     const g = key === "guest" ? null : groups.find((x) => x.key === key);
     const saved = key === "guest" ? (details.guestBadgeX != null && details.guestBadgeY != null ? { x: details.guestBadgeX, y: details.guestBadgeY } : null) : details.blockPos?.[key] ?? null;
     const w = g?.w ?? z.w, h = g?.h ?? z.h;
     return { w, h, cx: saved ? (saved.x / 100) * CARD_W : (g ? g.x + g.w / 2 : z.x + z.w / 2), cy: saved ? (saved.y / 100) * CARD_H : (g ? g.y + g.h / 2 : z.y + z.h / 2) };
   };
-  const moveTo = (key: BlockId, w: number, h: number, cx: number, cy: number) => {
+  const moveTo = (key: TextId, w: number, h: number, cx: number, cy: number) => {
     const x = Math.min(CARD_W - w / 2, Math.max(w / 2, cx)), y = Math.min(CARD_H - h / 2, Math.max(h / 2, cy));
     const px = Math.round((x / CARD_W) * 1000) / 10, py = Math.round((y / CARD_H) * 1000) / 10;
     setGuide({ x, y });
     if (key === "guest") onMoveBadge(px, py); else onMoveBlock(key, px, py);
   };
   // Corner handle on the selected text: dragging it outward / inward resizes that text (synced with the toolbar slider).
-  const resizeRef = useRef<{ sx: number; scale0: number; w: number } | null>(null);
+  const resizeRef = useRef<{ sx: number; scale0: number } | null>(null);
   const scaleOfZone = (id: TextId) => details.blockScale?.[id] ?? 1;
   const toCard = (e: React.PointerEvent) => { const r = frame.current!.getBoundingClientRect(); return { px: ((e.clientX - r.left) / r.width) * CARD_W, py: ((e.clientY - r.top) / r.height) * CARD_H }; };
 
@@ -87,6 +89,7 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
               moveTo(mk, b.w, b.h, b.cx + (k === "ArrowRight" ? st : k === "ArrowLeft" ? -st : 0), b.cy + (k === "ArrowDown" ? st : k === "ArrowUp" ? -st : 0));
               window.setTimeout(() => setGuide(null), 400);
             } : undefined}
+            onDoubleClick={mk ? () => onEditText?.(z.id as TextId) : undefined}
             onClick={(e) => {
               if (suppressClick.current) return;
               if (z.id === "photo") { const r = e.currentTarget.getBoundingClientRect(); onPickPhoto(z.dual && e.clientX - r.left > r.width / 2 ? 1 : 0); return; }
@@ -98,17 +101,18 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
             {on && mk && (
               <span
                 role="slider" aria-label="Resize text: drag the corner" aria-valuemin={TEXT_SCALE_MIN * 100} aria-valuemax={TEXT_SCALE_MAX * 100} aria-valuenow={Math.round(scaleOfZone(z.id as TextId) * 100)} tabIndex={-1}
-                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resizeRef.current = { sx: e.clientX, scale0: scaleOfZone(z.id as TextId), w: Math.max(40, z.w) }; }}
+                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resizeRef.current = { sx: e.clientX, scale0: scaleOfZone(z.id as TextId) }; }}
                 onPointerMove={(e) => {
                   const r0 = resizeRef.current; if (!r0) return;
-                  const rect = frame.current!.getBoundingClientRect(), dx = ((e.clientX - r0.sx) / rect.width) * CARD_W;
-                  onScaleText(z.id as TextId, Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(r0.scale0 * ((r0.w + 2 * dx) / r0.w) * 20) / 20))); // the text grows on both sides of its centre, so 1 px of drag = 2 px of width
+                  // Calibrated on screen pixels (so it feels the same at any zoom and for any text width): 0.4 % of the starting size per px, i.e. about 1 % per 2.5 px of drag.
+                  const dxPx = e.clientX - r0.sx;
+                  onScaleText(z.id as TextId, Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, r0.scale0 * (1 + dxPx * 0.004))));
                 }}
                 onPointerUp={() => { resizeRef.current = null; }} onPointerCancel={() => { resizeRef.current = null; }} onClick={(e) => e.stopPropagation()}
                 className="absolute -right-2 -bottom-2 z-20 h-4 w-4 cursor-nwse-resize touch-none rounded-full border-2 border-white bg-[#D12014] shadow"
               />
             )}
-            <span className="pointer-events-none absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[#D12014] px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{LABEL[z.id]}</span>
+            {!guide && <span className="pointer-events-none absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[#D12014] px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{LABEL[z.id]}</span>}
           </button>
         );
       })}
