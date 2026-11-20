@@ -133,9 +133,9 @@ const META: Record<string, Meta> = {
  * Each `art` box is the clear area of that image, measured on the final 1080 x 1500 card, so no text line reaches a border,
  * garland, deity or other artwork; ink / accent colours are picked for the tone of that clear area.
  */
-const HW = (id: string, over: Partial<RawTemplate> & Pick<RawTemplate, "name" | "ml" | "tagline" | "pal" | "blessing">, box: [number, number, number, number], panel = false): RawTemplate => ({
+const HW = (id: string, over: Partial<RawTemplate> & Pick<RawTemplate, "name" | "ml" | "tagline" | "pal" | "blessing">, box: [number, number, number, number], panel = false, folder = "hindu-wedding"): RawTemplate => ({
   id, layout: "classic", motif: "art", shape: "oval", ...over,
-  art: { src: `/templates/hindu-wedding/${id}.jpg`, left: box[0], right: box[1], top: box[2], bottom: box[3], ...(panel ? { panel: true } : {}) },
+  art: { src: `/templates/${folder}/${id}.jpg`, left: box[0], right: box[1], top: box[2], bottom: box[3], ...(panel ? { panel: true } : {}) },
 });
 const GANESHA: [string, string] = ["Sri Ganapathaye Namah", "ശ്രീ ഗണപതയേ നമഃ"], SHIVA: [string, string] = ["Om Namah Shivaya", "ഓം നമഃ ശിവായ"];
 const HINDU_RAW: RawTemplate[] = [
@@ -155,6 +155,25 @@ const HINDU_RAW: RawTemplate[] = [
 ];
 const HINDU_TEMPLATES = HINDU_RAW;
 
+/** Later additions across categories (one public/templates/<category>/ folder each); same safe-box rules as above. */
+const NEW_IMAGE_RAW: RawTemplate[] = [
+  HW("haldi-yellow-drapes-bride", { name: "Haldi Yellow Drapes & Bride", ml: "ഹൽദി", tagline: "Marigold garlands, sheer drapes & a radiant bride", pal: P("#FFF6D6", "#FBE7A1", "#4A2A00", "#7A4A12", "#B45309", "#2F6B2F"), blessing: ["Come, celebrate with colours and joy", "നിറങ്ങളുടെ ആഘോഷത്തിലേക്ക്"] }, [320, 330, 250, 860], false, "haldi"),
+  HW("hindu-red-gold-palace-door", { name: "Royal Red & Gold Palace Door", ml: "രാജകീയ കവാടം", tagline: "Carved gold doorway over deep crimson", pal: P("#8E1B1B", "#6B1010", "#FFF3D6", "#F1DDB0", "#F0CF7A", "#F7DC8D"), blessing: GANESHA }, [290, 290, 880, 170]),
+  HW("hindu-peacock-arch-couple", { name: "Peacock Palace Arch & Couple", ml: "മയിൽ കൊട്ടാരം", tagline: "Fairy-lit arches, peacock & palms", pal: P("#FFF8EA", "#F8E6C4", "#3E1A0A", "#6B4A2B", "#9A6410", "#8C1C2B"), blessing: GANESHA }, [260, 260, 330, 670], true),
+  HW("hindu-mandap-hanging-flowers", { name: "Floral Mandap Bride & Groom", ml: "പുഷ്പ മണ്ഡപം", tagline: "Hanging blooms over a wedding mandap", pal: P("#FFFFFF", "#FFF8EE", "#3E1A10", "#7A4A2B", "#A06A12", "#C0392B"), blessing: GANESHA }, [140, 340, 280, 860]),
+  HW("nikah-cream-arch-lanterns", { name: "Nikah Cream Arch & Lanterns", ml: "നിക്കാഹ് കമാനം", tagline: "Ivory arch, crescent & golden lanterns", pal: P("#FBF6EA", "#F2E8D2", "#2E3A2E", "#5F6B5A", "#8A6A1C", "#1F7A5A"), blessing: ["Bismillahir Rahmanir Raheem", "ബിസ്മില്ലാഹിർറഹ്മാനിർറഹീം"] }, [300, 280, 300, 660], false, "nikah"),
+  HW("reception-stage-couple", { name: "Grand Reception Stage Couple", ml: "റിസപ്ഷൻ വേദി", tagline: "Warm bronze, floral stage & soft spotlights", pal: P("#7A6246", "#5E4A33", "#FFF4DC", "#EBDDBF", "#F0D58A", "#F7E5AD"), blessing: ["Join us for an evening of celebration", "ആഘോഷസന്ധ്യയിലേക്ക്"] }, [160, 160, 160, 550], false, "reception"),
+  HW("wedding-sunset-arch-couple", { name: "Sunset Gold Arch & Couple", ml: "സൂര്യാസ്തമയ കമാനം", tagline: "Golden-hour balcony, ornate gold arch", pal: P("#FFF1E0", "#FCE4C8", "#4A1710", "#7A4A2B", "#9A5A10", "#8C1C2B"), blessing: GANESHA }, [470, 130, 330, 370], false, "wedding"),
+  HW("wedding-palm-arch-dance", { name: "Palm Garden Arch & First Dance", ml: "പാം ഗാർഡൻ", tagline: "Botanical print, palms & a graceful dance", pal: P("#FBF4DE", "#F3EACB", "#2E3A22", "#5F6B4A", "#8A6A1C", "#B03060"), blessing: ["Two hearts, one beautiful journey", "രണ്ട് മനസ്സുകൾ, ഒരു സുന്ദര യാത്ര"] }, [220, 290, 340, 620], false, "wedding"),
+];
+const IMG_META: Record<string, Meta> = {
+  "haldi-yellow-drapes-bride": { category: "events", defaultEvent: "haldi", events: ["haldi"], premium: true },
+  "nikah-cream-arch-lanterns": { category: "wedding", faith: "muslim", defaultEvent: "nikah", events: ["nikah", "engagement"], premium: true },
+  "reception-stage-couple": { category: "events", defaultEvent: "reception", events: ["reception"], premium: true },
+  "wedding-sunset-arch-couple": { category: "wedding", faith: "modern", defaultEvent: "wedding", events: ["wedding", "engagement", "reception"], premium: true },
+  "wedding-palm-arch-dance": { category: "wedding", faith: "modern", defaultEvent: "wedding", events: ["wedding", "engagement", "reception"], premium: true },
+};
+
 /** Illustrated, image-based balloon celebration designs. Artwork: scripts/generate-template-art.py -> public/templates. */
 const ART = (id: string) => ({ src: `/templates/${id}.svg`, left: 150, right: 150, top: 520, bottom: 140 });
 const ART_TEMPLATES: RawTemplate[] = [
@@ -166,7 +185,7 @@ const ART_META: Record<string, Meta> = {
   "balloon-luxury": { category: "birthday", defaultEvent: "birthday", events: ["birthday", "anniversary"], premium: true },
   "balloon-kids": { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true },
 };
-export const TEMPLATES: WeddingTemplate[] = [...HINDU_TEMPLATES, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id] ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
+export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);

@@ -34,6 +34,24 @@ JOBS = {
     "hindu-royal-ganesha-couple": ("Hindu Wedding Invite Card  Royal Indian Wedding Invitation  AI Wedding Invitation Design d.jpeg", (0.1, 0.5), 1.1),
 }
 
+# Later additions, one output folder per category. scale "fit" = scale to the card height and reflect-pad the sides
+# (for tall 9:16 art whose side decoration mirrors cleanly); otherwise cover + remove a strip from the plain band.
+# Only images with a clear text area belong here: finished designs with names / dates baked in are not registered.
+CATEGORY_JOBS = {
+    "hindu-wedding": {
+        "hindu-peacock-arch-couple": ("Hindu Wedding Invitation Card Design for Elegant Celebrations.jpeg", (0.25, 0.55), "fit"),
+        "hindu-red-gold-palace-door": ("Indian Wedding Invitation Card Template for Elegant Events.jpeg", (0.6, 0.9), "fit"),
+        "hindu-mandap-hanging-flowers": ("_ (12).jpeg", (0.2, 0.55), "fit"),
+    },
+    "haldi": {"haldi-yellow-drapes-bride": ("Bride Haldi Ceremony Invitation Template 💛 _ Indian Wedding Function.jpeg", (0.15, 0.55), "fit")},
+    "nikah": {"nikah-cream-arch-lanterns": ("Islamic Wedding Invitations Template - Elegant Muslim Nikah Design with Gold & Ivory.jpeg", (0.3, 0.5))},
+    "reception": {"reception-stage-couple": ("_ (9).jpeg", (0.15, 0.5), "fit")},
+    "wedding": {
+        "wedding-sunset-arch-couple": ("Invitation Template.jpeg", (0.3, 0.55)),
+        "wedding-palm-arch-dance": ("_ (10).jpeg", (0.2, 0.5)),
+    },
+}
+
 
 def clean_baked_text(im: Image.Image) -> Image.Image:
     """Replaces the baked-in blessing / names / date block of the 736x1472 'royal' card with its own soft background."""
@@ -56,7 +74,7 @@ def clean_baked_text(im: Image.Image) -> Image.Image:
 
 def retarget(im: Image.Image, band, scale=None) -> Image.Image:
     w, h = im.size
-    s = scale or max(W / w, H / h)
+    s = H / h if scale == "fit" else (scale or max(W / w, H / h))
     im = im.resize((round(w * s), round(h * s)), Image.LANCZOS).filter(ImageFilter.UnsharpMask(1.2, 60, 2))
     if im.width < W:  # reflect-pad the sides (decorative pillars / garlands mirror cleanly)
         pad = W - im.width
@@ -86,6 +104,14 @@ def retarget(im: Image.Image, band, scale=None) -> Image.Image:
 
 
 os.makedirs(OUT, exist_ok=True)
+for folder, jobs in CATEGORY_JOBS.items():
+    out = os.path.join(ROOT, "public", "templates", folder)
+    os.makedirs(out, exist_ok=True)
+    for slug, (fn, band, *opt) in jobs.items():
+        print(folder, slug)
+        r = retarget(Image.open(os.path.join(SRC, fn)).convert("RGB"), band, *opt)
+        assert r.size == (W, H), r.size
+        r.save(os.path.join(out, slug + ".jpg"), quality=90, optimize=True, progressive=True)
 for slug, (fn, band, *opt) in JOBS.items():
     im = Image.open(os.path.join(SRC, fn)).convert("RGB")
     print(slug, im.size)
