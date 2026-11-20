@@ -9,7 +9,7 @@ import { CardEditOverlay } from "./card-editor";
 import { SectionToolbar } from "./section-toolbar";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -204,10 +204,17 @@ export function WeddingStudio() {
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const cardHash = useMemo(() => JSON.stringify([templateId, rd, video?.name, video?.size]), [templateId, rd, video]);
 
-  /** The personalised card as an in-memory image (a crisp static PNG). It is uploaded, never saved to this device. */
+  /**
+   * The personalised card as an in-memory JPEG (1080 px wide, quality 0.88: razor-sharp for WhatsApp at roughly 0.3 - 0.9 MB, where the
+   * uncompressed PNG ran past 4 MB and was refused as "too large"). It is uploaded, never saved to this device. If an unusually busy
+   * design is still big, the quality steps down so the request always fits under the host's 4.5 MB body limit.
+   */
   const cardBlob = async (g: Guest, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<Blob> => {
     const base = await renderWeddingCard({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, photo: photos[0], photo2: photos[1], width: 1080 });
-    return await new Promise<Blob>((res, rej) => base.toBlob((bl) => (bl ? res(bl) : rej(new Error("render failed"))), "image/png"));
+    const encode = (q: number) => new Promise<Blob>((res, rej) => base.toBlob((bl) => (bl ? res(bl) : rej(new Error("render failed"))), "image/jpeg", q));
+    let blob = await encode(0.88);
+    for (const q of [0.78, 0.68]) { if (blob.size <= 3.8 * 1024 * 1024) break; blob = await encode(q); }
+    return blob;
   };
 
   /** Makes sure this card exists as an online invitation page (the personalised link guests get); null when online storage isn't available. */
@@ -226,8 +233,8 @@ export function WeddingStudio() {
     try {
       const blob = await cardBlob(g, photos);
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: g.phone, message: whatsappMessage(rd, g), eventTitle: EVENT_TITLE[rd.eventType].en, senderName: (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
-      fd.append("card", blob, effect === "none" ? "card.png" : "card.gif");
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), message: whatsappMessage(rd, g), eventTitle: EVENT_TITLE[rd.eventType].en, senderName: (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("card", blob, "card.jpg");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string };
       if (j.status) { setStatus(g.id, j.status); if (j.status === "failed") toast(`${g.name}: ${j.error ?? "Waau Panel couldn't send this invitation."}`); return true; }

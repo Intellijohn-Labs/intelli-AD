@@ -6,8 +6,9 @@ import { normalizePhone, validPhone } from "@/lib/wedding";
 
 export const maxDuration = 30;
 
-// Vercel rejects request bodies over ~4.5 MB; a personalised card PNG / GIF is well under this.
-const MAX_CARD_BYTES = 3.5 * 1024 * 1024;
+// Cards are 1080 px JPEGs (about 0.3 - 0.9 MB). The ceiling is 8 MB; note that Vercel itself rejects request bodies over ~4.5 MB before this
+// route runs, which is why the studio encodes JPEG and steps the quality down rather than sending a large PNG.
+const MAX_CARD_BYTES = 8 * 1024 * 1024;
 const BUCKET = "invitation-cards";
 const DEMO_COOKIE = "intelliad_session";
 
@@ -33,7 +34,8 @@ function throttled(id: string) {
   return recent.length > RATE_LIMIT;
 }
 
-function kind(b: Buffer): { ext: "png" | "gif"; mime: "image/png" | "image/gif" } | null {
+function kind(b: Buffer): { ext: "jpg" | "png" | "gif"; mime: "image/jpeg" | "image/png" | "image/gif" } | null {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: "jpg", mime: "image/jpeg" };
   if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return { ext: "png", mime: "image/png" };
   if (b.subarray(0, 4).toString("latin1") === "GIF8") return { ext: "gif", mime: "image/gif" };
   return null;
@@ -122,7 +124,7 @@ export async function POST(req: Request) {
   if (card.size > MAX_CARD_BYTES) return NextResponse.json({ error: "The card image is too large." }, { status: 413 });
   const bytes = Buffer.from(await card.arrayBuffer());
   const type = kind(bytes);
-  if (!type) return NextResponse.json({ error: "The card must be a PNG or GIF image." }, { status: 400 });
+  if (!type) return NextResponse.json({ error: "The card must be a JPEG, PNG or GIF image." }, { status: 400 });
 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Server storage isn't configured (SUPABASE_SERVICE_ROLE_KEY)." }, { status: 503 });

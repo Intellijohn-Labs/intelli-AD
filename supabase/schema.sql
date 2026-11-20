@@ -279,7 +279,7 @@ alter table public.invitation_dispatches enable row level security;
 create index if not exists invitation_dispatches_status_idx on public.invitation_dispatches (status, created_at);
 -- Personalised card images / GIFs (uploaded by the server only; public so the WhatsApp provider can fetch the media URL).
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('invitation-cards', 'invitation-cards', true, 5242880, array['image/png', 'image/gif'])
+values ('invitation-cards', 'invitation-cards', true, 8388608, array['image/jpeg', 'image/png', 'image/gif'])
 on conflict (id) do update
   set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 NOTIFY pgrst, 'reload schema';
