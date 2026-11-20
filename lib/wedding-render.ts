@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, formatDate, greetingText, type BlockKey, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { eventConfig, EVENT_TITLE, FONT_STACKS, formatDate, greetingText, type BlockId, type BlockKey, type FontStyle, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -137,6 +137,26 @@ const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, 
 
 /** A clickable region of the card in the 1080 x 1500 logical space (used only by the interactive studio preview). */
 type ZoneId = CardZone["id"];
+/** The canvas font stack for a block: the card's template font unless a style (card-wide or per block) overrides it. */
+function fontFor(style: FontStyle, id: string | undefined, base: string): string {
+  if (style === "default") return base;
+  if (style === "script") return id === "guest" || id === "names" || id === "blessing" ? FONT_STACKS.script : FONT_STACKS.royal;
+  if (style === "royal") return base === SANS ? SANS : FONT_STACKS.royal; // keep the small sans lines (parents, time, venue label) readable
+  return FONT_STACKS[style];
+}
+
+/** Makes sure the chosen display fonts are decoded before text is measured (same 4 s cap as the Malayalam faces). */
+async function loadCardFonts(styles: Set<FontStyle>, sample: string) {
+  if (typeof document === "undefined" || !document.fonts) return;
+  const specs: string[] = [];
+  if (styles.has("royal") || styles.has("script")) specs.push('500 40px "Playfair Display"', '700 40px "Playfair Display"', '800 40px "Playfair Display"');
+  if (styles.has("script")) specs.push('400 40px "Great Vibes"', '400 40px "Chilanka"');
+  if (styles.has("sans")) specs.push('500 40px "Inter"', '700 40px "Inter"', '800 40px "Inter"');
+  if (styles.has("ml-classic")) specs.push('500 40px "Cormorant Garamond"', '600 40px "Cormorant Garamond"', '700 40px "Cormorant Garamond"');
+  if (!specs.length) return;
+  try { await Promise.race([Promise.all(specs.map((sp) => document.fonts.load(sp, sample || "Aa"))), new Promise((res) => setTimeout(res, 4000))]); } catch { /* system fallback */ }
+}
+
 /** A movable text group as drawn: where it sits now (logical 1080 x 1500 px) and whether the client has positioned it. */
 export interface GroupBox { key: BlockKey; x: number; y: number; w: number; h: number; moved: boolean }
 export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
@@ -146,6 +166,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const p: Palette = { ...t.pal, ...(HEX.test(d.accent) ? { accent: d.accent } : {}) };
   const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, o.guest ? greetingText(d, o.guest) : "", t.blessing[1]].join(" ");
   await loadPrintFonts(all + " അആഇ");
+  await loadCardFonts(new Set<FontStyle>([d.fontStyle ?? "default", ...Object.values(d.blockFont ?? {}) as FontStyle[]]), all);
   const scale = o.width / CARD_W;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(CARD_W * scale); canvas.height = Math.round(CARD_H * scale);
@@ -175,28 +196,40 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
+  const grpOf = (id?: ZoneId): BlockKey | undefined => (id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : undefined);
   type Block = { tw?: number; h: number; draw: (y: number, x?: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
   // Image templates have a hard safe box: when the full text can't fit even at a small size, low-priority lines are dropped
   // in stages (lvl 1: second-language extras, 2: message + parents, 3: blessing) instead of overflowing onto the artwork.
-  const build = (k: number, lvl = 0): Block[] => {
+  const build = (k: number, lvl = 0, scaled = true): Block[] => {
     const blocks: Block[] = [];
-    const text = (s: string, size: number, weight: number, opt: { id?: ZoneId; color?: string; italic?: boolean; caps?: boolean; ls?: number; fam?: string; lh?: number } = {}) => {
+    const text = (s: string, size: number, weight0: number, opt: { id?: ZoneId; color?: string; italic?: boolean; caps?: boolean; ls?: number; fam?: string; lh?: number; pill?: boolean } = {}) => {
       const str = s.trim();
       if (!str) return;
-      const fs = size * k, lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
-      ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
+      // Per-block size (blockScale, applied on top of the whole-card fit) and font (blockFont, else the card's fontStyle).
+      const bid: BlockId | undefined = opt.id === "guest" ? "guest" : grpOf(opt.id);
+      const fam = fontFor((bid && d.blockFont?.[bid]) || d.fontStyle || "default", opt.id, opt.fam ?? family);
+      const script = fam.startsWith('"Great Vibes"'), weight = script ? 400 : weight0, caps = opt.caps && !script;
+      const fs = size * k * (scaled && bid ? d.blockScale?.[bid] ?? 1 : 1) * (script ? 1.2 : 1), lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
+      ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
-      const lines = wrap(ctx, opt.caps && !hasMl(str) ? str.toUpperCase() : str, cw);
+      const lines = wrap(ctx, caps && !hasMl(str) ? str.toUpperCase() : str, cw);
       const tw = Math.max(...lines.map((l) => ctx.measureText(l).width)); // widest line (with letter spacing): the block's real width
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
       blocks.push({
-        id: opt.id, tw,
-        h: lines.length * fs * lh,
+        id: opt.id, tw: opt.pill ? tw + 2 * fs * 0.9 : tw,
+        h: lines.length * fs * lh + (opt.pill ? fs * 0.9 : 0),
         draw: (y, x = cx) => {
-          ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
+          const padY = opt.pill ? fs * 0.45 : 0;
+          if (opt.pill) { // bordered pill behind the text (the greeting's "boxed" style)
+            const bw = tw + 2 * fs * 0.9, bh = lines.length * fs * lh + 2 * padY;
+            ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3; ctx.fillStyle = `${p.bg1}EE`;
+            ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.fill(); ctx.restore();
+            ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.stroke();
+          }
+          ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
-          ctx.fillStyle = opt.color ?? p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          lines.forEach((l, i) => ctx.fillText(l, x, y + (i + 0.5) * fs * lh));
+          ctx.fillStyle = opt.pill ? p.ink : opt.color ?? p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          lines.forEach((l, i) => ctx.fillText(l, x, y + padY + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
         },
       });
@@ -210,7 +243,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     // The greeting sits in the text flow until the client positions it (guestBadgeX / Y), then it is drawn as a pill after the flow.
     if (o.guest?.name && badge === null) {
       const gt = greetingText(d, o.guest);
-      text(gt, 38, 700, { id: "guest", color: p.accent, italic: !hasMl(gt) });
+      text(gt, 38, 700, { id: "guest", color: p.accent, italic: !hasMl(gt) && d.guestGreetingBoxed === false, pill: d.guestGreetingBoxed !== false });
     }
     const bless = d.blessing.trim();
     if (lvl >= 3) { /* no blessing line */ }
@@ -314,25 +347,29 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const gapOf = (kk: number) => 24 * kk;
   const total = (bs: Block[], kk: number) => bs.reduce((a, b) => a + b.h, 0) + Math.max(0, bs.length - 1) * gapOf(kk);
   // Text groups the client dragged (d.blockPos) leave the safe-zone flow and are drawn as their own stacks; the rest keep the flow.
-  const grpOf = (id?: ZoneId): BlockKey | undefined => (id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : undefined);
   const pos = d.blockPos ?? {};
   const inFlow = (bs: Block[]) => bs.filter((b) => { const g = grpOf(b.id); return !(g && pos[g]); });
   // Sizes are fitted for the whole card, so dragging a block never changes how large any text is.
-  let k = 1.1, blocks = build(k);
+  let lvlFit = 0;
+  let k = 1.1, blocks = build(k, 0, false);
   if (!t.art) {
-    while (total(blocks, k) > avail && k > 0.45) { k *= 0.96; blocks = build(k); }
+    while (total(blocks, k) > avail && k > 0.45) { k *= 0.96; blocks = build(k, 0, false); }
   } else {
     // Strict fit: shrink to a readable floor, then drop the next-least-important lines; the last stage may shrink further.
     for (let lvl = 0; lvl <= 3; lvl++) {
-      k = 1.1; blocks = build(k, lvl);
+      k = 1.1; blocks = build(k, lvl, false);
       const floor = lvl === 3 ? 0.2 : 0.62;
-      while (total(blocks, k) > avail && k > floor) { k *= 0.97; blocks = build(k, lvl); }
-      if (total(blocks, k) <= avail) break;
+      while (total(blocks, k) > avail && k > floor) { k *= 0.97; blocks = build(k, lvl, false); }
+      if (total(blocks, k) <= avail) { lvlFit = lvl; break; }
+      lvlFit = lvl;
     }
   }
+  blocks = build(k, lvlFit, true); // sizes fitted without blockScale, then the client's per-block scale is applied on top
   const flow = inFlow(blocks);
   const extra = Math.max(0, avail - total(flow, k));
-  const gap = gapOf(k) + (flow.length > 1 ? Math.min(extra / (flow.length - 1), 46) : 0);
+  const flowH = flow.reduce((a, b) => a + b.h, 0);
+  // Scaled-up blocks can outgrow the safe box: tighten the gaps (never below 4 px) before anything spills past it.
+  const gap = total(flow, k) > avail && flow.length > 1 ? Math.max(4, (avail - flowH) / (flow.length - 1)) : gapOf(k) + (flow.length > 1 ? Math.min(extra / (flow.length - 1), 46) : 0);
   const used = flow.reduce((a, b) => a + b.h, 0) + Math.max(0, flow.length - 1) * gap;
   let y = top + Math.max(0, (avail - used) / 2);
   const zones: CardZone[] = [];
@@ -364,17 +401,24 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     groups.push({ key, x: xc - Wd / 2 - 10, y: yc - H / 2 - 6, w: Wd + 20, h: H + 12, moved: true });
   }
   if (badge && o.guest) {
-    // Positioned greeting: a pill centred on the client's chosen spot (kept fully inside the card), drawn over the artwork.
-    const gt = greetingText(d, o.guest);
-    let fs = 38; const setF = () => { ctx.font = `700 ${fs}px ${SERIF}`; };
-    setF(); while (ctx.measureText(gt).width > CARD_W - 150 && fs > 18) { fs -= 2; setF(); }
-    const bw = ctx.measureText(gt).width + 60, bh = fs * 1.9;
+    // Positioned greeting: centred on the client's chosen spot (kept fully inside the card), drawn over the artwork,
+    // as a bordered pill or (guestGreetingBoxed = false) as plain text with a soft halo so it stays legible on any background.
+    const gt = greetingText(d, o.guest), boxed = d.guestGreetingBoxed !== false;
+    const fam = fontFor(d.blockFont?.guest || d.fontStyle || "default", "guest", SERIF), script = fam.startsWith('"Great Vibes"');
+    let fs = 38 * (d.blockScale?.guest ?? 1) * (script ? 1.2 : 1);
+    const setF = () => { ctx.font = `${script ? 400 : 700} ${fs}px ${fam}`; };
+    setF(); while (ctx.measureText(gt).width > CARD_W - 150 && fs > 14) { fs -= 2; setF(); }
+    const bw = ctx.measureText(gt).width + (boxed ? 60 * (fs / 38) : 24), bh = fs * (boxed ? 1.9 : 1.5);
     const bx = Math.min(CARD_W - bw / 2 - 10, Math.max(bw / 2 + 10, (badge.x / 100) * CARD_W));
     const by = Math.min(CARD_H - bh / 2 - 10, Math.max(bh / 2 + 10, (badge.y / 100) * CARD_H));
-    ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
-    ctx.fillStyle = `${p.bg1}EE`; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.fill(); ctx.restore();
-    ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.stroke();
-    ctx.fillStyle = p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle"; setF(); ctx.fillText(gt, bx, by + fs * 0.04);
+    if (boxed) {
+      ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+      ctx.fillStyle = `${p.bg1}EE`; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, bh / 2); ctx.stroke();
+    }
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; setF();
+    if (!boxed) { ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = `${p.bg1}CC`; ctx.strokeText(gt, bx, by + fs * 0.04); }
+    ctx.fillStyle = p.ink; ctx.fillText(gt, bx, by + fs * 0.04);
     zones.push({ id: "guest", x: bx - bw / 2, y: by - bh / 2, w: bw, h: bh });
   }
   o.onZones?.(zones);

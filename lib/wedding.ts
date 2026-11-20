@@ -13,6 +13,9 @@ export type Faith = "hindu" | "christian" | "muslim" | "modern";
 export type GreetingFormat = "dear-name-place" | "dear-family" | "dear-family-place" | "to-family" | "ml-family" | "custom";
 /** Independently movable text groups on the card (the greeting badge has its own guestBadgeX / Y). */
 export type BlockKey = "header" | "names" | "body" | "dateTime" | "venue";
+/** Everything on the card that can be moved, resized or given its own font: the greeting plus the five text groups. */
+export type BlockId = "guest" | BlockKey;
+export type FontStyle = "default" | "royal" | "script" | "sans" | "ml-classic";
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
 
 export interface WeddingDetails {
@@ -47,6 +50,14 @@ export interface WeddingDetails {
   guestGreetingTemplate: string;
   /** Centre of each dragged text group as 0-100 % of card width / height; a group with no entry stays in the template's safe-zone flow. */
   blockPos: Partial<Record<BlockKey, { x: number; y: number }>>;
+  /** true = the greeting sits in a rounded bordered pill; false = plain text straight on the card. */
+  guestGreetingBoxed: boolean;
+  /** Typography for the whole card (a block can override it with blockFont). */
+  fontStyle: FontStyle;
+  /** Text size multiplier per block (0.5 - 1.8, 1 = template default). */
+  blockScale: Partial<Record<BlockId, number>>;
+  /** Per-block font override; a block with no entry follows fontStyle. */
+  blockFont: Partial<Record<BlockId, FontStyle>>;
 }
 
 export interface Palette { bg1: string; bg2: string; ink: string; sub: string; accent: string; accent2: string }
@@ -248,7 +259,7 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
@@ -264,6 +275,22 @@ export const GREETING_FORMATS: { id: GreetingFormat; label: string }[] = [
 ];
 /** Shown on the live preview until a real guest is added. */
 export const SAMPLE_GUEST = { name: "Arun", place: "Kochi" };
+
+export const FONT_STYLES: { id: FontStyle; label: string; hint: string }[] = [
+  { id: "default", label: "Template default", hint: "The typography this design was made for" },
+  { id: "royal", label: "Royal Serif", hint: "Playfair Display · Noto Serif Malayalam" },
+  { id: "script", label: "Calligraphy Script", hint: "Great Vibes for names · Chilanka for Malayalam" },
+  { id: "sans", label: "Modern Sans", hint: "Inter · Noto Sans Malayalam" },
+  { id: "ml-classic", label: "Malayalam Classic", hint: "Cormorant Garamond · Noto Serif Malayalam" },
+];
+const ML_SERIF = '"Noto Serif Malayalam", "Noto Serif", Georgia, serif';
+/** Canvas / CSS font stacks for each style (Google Fonts are linked in app/layout.tsx; Malayalam always has its own fallback face). */
+export const FONT_STACKS: Record<Exclude<FontStyle, "default">, string> = {
+  royal: `"Playfair Display", ${ML_SERIF}`,
+  script: '"Great Vibes", "Chilanka", "Noto Serif Malayalam", cursive',
+  sans: 'Inter, "Noto Sans Malayalam", system-ui, sans-serif',
+  "ml-classic": `"Cormorant Garamond", ${ML_SERIF}`,
+};
 
 /** Wording of each preset ({Place} is dropped, with its separator, when a guest has no place). */
 export const GREETING_TEMPLATES: Record<Exclude<GreetingFormat, "custom">, string> = {
