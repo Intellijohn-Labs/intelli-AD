@@ -340,6 +340,60 @@ export function normalizePhone(raw: string): string {
 }
 export const validPhone = (raw: string) => { const d = normalizePhone(raw); return d.length >= 11 && d.length <= 15; };
 
+/** Minimal RFC-4180 CSV reader (quoted cells, "" escapes, CRLF, BOM); the delimiter (comma, semicolon or tab) is detected from the first line. */
+export function parseCsv(text: string): string[][] {
+  const src = text.replace(/^\uFEFF/, "");
+  const first = src.split(/\r?\n/, 1)[0] ?? "";
+  const delim = [",", ";", "\t"].map((d) => [d, first.split(d).length] as const).sort((x, y) => y[1] - x[1])[0][0];
+  const rows: string[][] = [];
+  let row: string[] = [], cell = "", q = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === '"') { if (src[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; continue; }
+    if (c === '"') q = true;
+    else if (c === delim) { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && src[i + 1] === "\n") i++; row.push(cell); cell = ""; if (row.some((x) => x.trim())) rows.push(row); row = []; }
+    else cell += c;
+  }
+  row.push(cell);
+  if (row.some((x) => x.trim())) rows.push(row);
+  return rows.map((r) => r.map((x) => x.trim()));
+}
+
+export const SAMPLE_GUESTS_CSV = "Name,Place,Phone\nSuresh Kumar,Thrissur,+91 98470 12345\nMary Joseph,Kottayam,9946012345\nAbdul Rahman,Kozhikode,+91 94470 55555\n";
+
+export interface GuestImportResult { guests: Guest[]; added: number; duplicates: number; invalid: number; blank: number; truncated: boolean }
+const IMPORT_CAP = 5000;
+
+/**
+ * Turns a CSV (header Name / Place / Phone in any order, or headerless rows) into guests: phones are normalised to +91 form,
+ * rows with an unusable number are skipped, and a phone already in the list (or earlier in the file) is dropped as a duplicate.
+ */
+export function guestsFromCsv(text: string, existing: Guest[]): GuestImportResult {
+  const rows = parseCsv(text);
+  const isPhone = (c: string) => /^\+?[\d\s()-]{8,}$/.test(c);
+  const head = (rows[0] ?? []).map((c) => c.toLowerCase());
+  const col = (re: RegExp) => head.findIndex((c) => re.test(c));
+  const iName = col(/name|guest/), iPhone = col(/phone|mobile|whats|contact|number/), iPlace = col(/place|address|city|town|location/);
+  const hasHeader = iPhone >= 0 && iName >= 0 && !rows[0].some(isPhone);
+  const seen = new Set(existing.map((g) => normalizePhone(g.phone)).filter(Boolean));
+  const out: Guest[] = [];
+  let duplicates = 0, invalid = 0, blank = 0, truncated = false;
+  for (const cells of hasHeader ? rows.slice(1) : rows) {
+    if (out.length >= IMPORT_CAP) { truncated = true; break; }
+    let name: string, place: string, phone: string;
+    if (hasHeader) { name = cells[iName] ?? ""; phone = cells[iPhone] ?? ""; place = iPlace >= 0 ? cells[iPlace] ?? "" : ""; }
+    else { const pi = cells.findIndex(isPhone); phone = pi >= 0 ? cells[pi] : ""; const rest = cells.filter((_, i) => i !== pi).filter(Boolean); name = rest[0] ?? ""; place = rest[1] ?? ""; }
+    if (!name.trim() && !phone.trim()) { blank++; continue; }
+    if (!name.trim() || !validPhone(phone)) { invalid++; continue; } // also catches Excel's 9.8E+11 exports
+    const n = normalizePhone(phone);
+    if (seen.has(n)) { duplicates++; continue; }
+    seen.add(n);
+    out.push({ id: newId(), name: name.trim().slice(0, 120), place: place.trim().slice(0, 160), phone: `+${n}`, status: "pending" });
+  }
+  return { guests: out, added: out.length, duplicates, invalid, blank, truncated };
+}
+
 /** Parses pasted guest rows: "Name, Place, Phone" / tab separated / "Name - Phone", one per line. */
 export function parseGuests(text: string): Guest[] {
   const out: Guest[] = [];

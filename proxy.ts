@@ -74,7 +74,7 @@ export async function proxy(request: NextRequest) {
   const onLogin = pathname === "/login" || pathname.startsWith("/login/");
   const inAgency = pathname === "/agency" || pathname.startsWith("/agency/");
   if (pathname.startsWith("/auth/")) return response; // email-confirmation callback
-  if (pathname === "/wedding-cards" || pathname === "/wedding-cards/" || pathname === "/invitation-cards" || pathname === "/invitation-cards/" || pathname === "/api/ai/generate-wedding-copy" || pathname === "/api/invitations/templates/status") return response; // the wedding studio is open to everyone
+  if (pathname === "/wedding-cards" || pathname === "/wedding-cards/" || pathname === "/invitation-cards" || pathname === "/invitation-cards/" || pathname === "/api/ai/generate-wedding-copy" || pathname === "/api/invitations/templates/status" || pathname === "/api/invitations/waau-status") return response; // the wedding studio is open to everyone
   if (pathname.startsWith("/wedding-cards/invite/") || pathname.startsWith("/invitation-cards/invite/")) return response; // guests open a shared invitation without signing in
 
   // Partners go straight to their workspace; customers land on Home, unless they opened the partner tab to switch accounts.

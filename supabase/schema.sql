@@ -296,3 +296,11 @@ create table if not exists public.invitation_template_settings (
   updated_at timestamptz not null default now()
 );
 alter table public.invitation_template_settings enable row level security;
+
+
+-- ── n8n orchestration: richer delivery results written by POST /api/invitations/waau-status ─────────────────────
+-- n8n (or any worker) reports each WhatsApp message as it completes. provider_response keeps the provider's raw reply,
+-- error_message the human-readable failure; the older "error" column is kept in sync for existing queries.
+alter table public.invitation_dispatches add column if not exists provider_response jsonb;
+alter table public.invitation_dispatches add column if not exists error_message text;
+NOTIFY pgrst, 'reload schema';

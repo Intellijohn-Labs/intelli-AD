@@ -18,15 +18,19 @@ const meta = z.object({
   phone: z.string().trim().max(32),
   message: z.string().trim().min(1).max(2000),
   inviteUrl: z.string().trim().max(600).default(""),
+  eventTitle: z.string().trim().max(160).default(""),
+  senderName: z.string().trim().max(160).default(""),
 });
 
 const hits = new Map<string, number[]>();
+// 1,000+ guests are sent one request each, so the ceiling is configurable (and higher by default when n8n takes the load).
+const RATE_LIMIT = Number(process.env.INVITATION_DISPATCH_RATE_LIMIT) || (process.env.N8N_WAAU_WEBHOOK_URL ? 2500 : 250);
 function throttled(id: string) {
   const now = Date.now();
   const recent = (hits.get(id) ?? []).filter((t) => now - t < 600_000);
   recent.push(now);
   hits.set(id, recent);
-  return recent.length > 250; // one request per guest: a few hundred guests per 10 minutes
+  return recent.length > RATE_LIMIT;
 }
 
 function kind(b: Buffer): { ext: "png" | "gif"; mime: "image/png" | "image/gif" } | null {
@@ -58,6 +62,39 @@ async function sendViaWaau(p: { to: string; message: string; mediaUrl: string; m
     return { ok: true, ref };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Waau Panel request failed" };
+  }
+}
+
+type N8nItem = { id: string; guestName: string; guestPlace: string; guestPhone: string; message: string; cardUrl: string; inviteUrl: string };
+
+/**
+ * Hands the dispatch to the n8n workflow behind N8N_WAAU_WEBHOOK_URL: { eventTitle, senderName, supabaseCallbackUrl, items }.
+ * `x-webhook-secret` carries N8N_WEBHOOK_SECRET when set. n8n normally answers 2xx immediately and reports each message later
+ * through POST /api/invitations/waau-status; if it answers synchronously with a delivery confirmation the row is marked sent.
+ */
+async function sendViaN8n(payload: { eventTitle: string; senderName: string; supabaseCallbackUrl: string; items: N8nItem[] }): Promise<{ ok: true; delivered: boolean; response: unknown } | { ok: false; error: string }> {
+  const url = process.env.N8N_WAAU_WEBHOOK_URL, secret = process.env.N8N_WEBHOOK_SECRET;
+  if (!url) return { ok: false, error: "not-configured" };
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(secret ? { "x-webhook-secret": secret } : {}) },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const raw = await res.text().catch(() => "");
+    if (!res.ok) return { ok: false, error: `n8n ${res.status}: ${raw.slice(0, 200)}` };
+    let response: unknown = raw ? { raw: raw.slice(0, 1000) } : null;
+    let delivered = false;
+    try {
+      const j = JSON.parse(raw) as Record<string, unknown>;
+      response = j;
+      const st = String(j?.status ?? "").toLowerCase();
+      delivered = st === "sent" || st === "delivered" || j?.delivered === true || j?.sent === true;
+    } catch { /* plain-text acknowledgement */ }
+    return { ok: true, delivered, response };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? `n8n: ${e.message}` : "n8n request failed" };
   }
 }
 
@@ -109,14 +146,39 @@ export async function POST(req: Request) {
   }
   const id = ins.data.id as string;
 
-  const configured = !!(process.env.WAAU_API_URL && process.env.WAAU_API_KEY);
-  if (!configured) return NextResponse.json({ id, status: "queued", configured: false, assetUrl }, { headers: { "Cache-Control": "no-store" } });
+  const now = () => new Date().toISOString();
+  const waauConfigured = !!(process.env.WAAU_API_URL && process.env.WAAU_API_KEY);
+  if (!process.env.N8N_WAAU_WEBHOOK_URL && !waauConfigured) return NextResponse.json({ id, status: "queued", configured: false, assetUrl }, { headers: { "Cache-Control": "no-store" } });
 
+  // 1) n8n orchestration (preferred when configured).
+  let n8nError = "";
+  if (process.env.N8N_WAAU_WEBHOOK_URL) {
+    const proto = req.headers.get("x-forwarded-proto") ?? "https";
+    const base = (process.env.NEXT_PUBLIC_SITE_URL || (host ? `${proto}://${host}` : "")).replace(/\/$/, "");
+    const r = await sendViaN8n({
+      eventTitle: parsed.eventTitle, senderName: parsed.senderName, supabaseCallbackUrl: `${base}/api/invitations/waau-status`,
+      items: [{ id, guestName: parsed.name, guestPlace: parsed.place, guestPhone: phone, message: parsed.message, cardUrl: assetUrl, inviteUrl: parsed.inviteUrl }],
+    });
+    if (r.ok) {
+      const patch = r.delivered ? { status: "sent", sent_at: now(), provider_response: r.response, updated_at: now() } : { status: "queued", provider_response: r.response, updated_at: now() };
+      await admin.from("invitation_dispatches").update(patch).eq("id", id);
+      return NextResponse.json({ id, status: r.delivered ? "sent" : "queued", configured: true, via: "n8n", assetUrl }, { headers: { "Cache-Control": "no-store" } });
+    }
+    n8nError = r.error;
+    if (!waauConfigured) {
+      await admin.from("invitation_dispatches").update({ status: "failed", error: n8nError.slice(0, 500), error_message: n8nError.slice(0, 500), updated_at: now() }).eq("id", id);
+      return NextResponse.json({ id, status: "failed", configured: true, via: "n8n", assetUrl, error: n8nError }, { status: 502 });
+    }
+    console.error("[invitations/waau-dispatch] n8n failed, falling back to the direct Waau Panel API:", n8nError);
+  }
+
+  // 2) Direct Waau Panel API (the only route when n8n isn't configured, the fallback when it is and failed).
   const sent = await sendViaWaau({ to: phone, message: parsed.message, mediaUrl: assetUrl, mediaType: type.ext === "gif" ? "gif" : "image", filename: `${parsed.name.replace(/\W+/g, "-")}-Invitation.${type.ext}`, reference: id });
   if (sent.ok) {
-    await admin.from("invitation_dispatches").update({ status: "sent", provider_ref: sent.ref, sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
-    return NextResponse.json({ id, status: "sent", configured: true, assetUrl }, { headers: { "Cache-Control": "no-store" } });
+    await admin.from("invitation_dispatches").update({ status: "sent", provider_ref: sent.ref, sent_at: now(), updated_at: now() }).eq("id", id);
+    return NextResponse.json({ id, status: "sent", configured: true, via: "waau", assetUrl }, { headers: { "Cache-Control": "no-store" } });
   }
-  await admin.from("invitation_dispatches").update({ status: "failed", error: sent.error.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", id);
-  return NextResponse.json({ id, status: "failed", configured: true, assetUrl, error: sent.error }, { status: 502 });
+  const why = (n8nError ? `${n8nError} | ` : "") + sent.error;
+  await admin.from("invitation_dispatches").update({ status: "failed", error: why.slice(0, 500), error_message: why.slice(0, 500), updated_at: now() }).eq("id", id);
+  return NextResponse.json({ id, status: "failed", configured: true, via: "waau", assetUrl, error: sent.error }, { status: 502 });
 }

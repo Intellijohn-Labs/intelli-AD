@@ -8,7 +8,7 @@ import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -224,7 +224,7 @@ export function WeddingStudio() {
     try {
       const blob = await cardBlob(g, photos);
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: g.phone, message: whatsappMessage(rd, g), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: g.phone, message: whatsappMessage(rd, g), eventTitle: EVENT_TITLE[rd.eventType].en, senderName: (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
       fd.append("card", blob, effect === "none" ? "card.png" : "card.gif");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string };

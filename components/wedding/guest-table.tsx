@@ -1,9 +1,10 @@
 "use client";
 
-import { Eye, Loader2, Plus, Send, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { Download, Eye, FileUp, Loader2, Plus, Send, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { Input, Textarea } from "@/components/ui/field";
-import { newId, parseGuests, validPhone, type Guest } from "@/lib/wedding";
+import { guestsFromCsv, newId, parseGuests, SAMPLE_GUESTS_CSV, validPhone, type Guest } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 
 /** Editable guest list: add / paste-import / edit / delete rows, per-row preview + Send via Waau Panel, and Pending / Queued / Sent status. */
@@ -15,9 +16,30 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   onSend: (g: Guest) => void;
   onPreview: (g: Guest) => void;
 }) {
+  const toast = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [limit, setLimit] = useState(50); // long lists render a page at a time so 1,000+ guests stay responsive
+  const shown = guests.slice(0, limit);
   const [paste, setPaste] = useState("");
   const [showPaste, setShowPaste] = useState(false);
   const patch = (id: string, p: Partial<Guest>) => onChange(guests.map((g) => (g.id === id ? { ...g, ...p } : g)));
+  const downloadSample = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([SAMPLE_GUESTS_CSV], { type: "text/csv;charset=utf-8" }));
+    a.download = "guest-list-sample.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  const importCsv = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { toast.error("That file is over 3 MB. Split the list into smaller CSV files."); return; }
+    if (!/\.(csv|tsv|txt)$/i.test(file.name)) { toast.error("Upload a .csv file (in Excel: File > Save As > CSV)."); return; }
+    const res = guestsFromCsv(await file.text(), guests);
+    if (!res.added) { toast.error(`No new guests found${res.duplicates ? `: ${res.duplicates} duplicate number${res.duplicates === 1 ? "" : "s"}` : ""}${res.invalid ? `, ${res.invalid} without a valid number` : ""}.`); return; }
+    onChange([...guests, ...res.guests]);
+    const skipped = [res.duplicates && `${res.duplicates} duplicate${res.duplicates === 1 ? "" : "s"}`, res.invalid && `${res.invalid} invalid`, res.truncated && "list capped at 5,000"].filter(Boolean).join(", ");
+    toast(`Imported ${res.added} guest${res.added === 1 ? "" : "s"}${skipped ? ` (skipped ${skipped})` : ""}.`);
+  };
   const importPaste = () => {
     const rows = parseGuests(paste);
     if (rows.length) onChange([...guests, ...rows]);
@@ -31,6 +53,9 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => onChange([...guests, { id: newId(), name: "", place: "", phone: "", status: "pending" }])} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#17181C] dark:bg-[#D12014] dark:hover:bg-[#E83E32]"><Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add guest</button>
+        <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><FileUp className="h-3.5 w-3.5" aria-hidden="true" /> Bulk upload CSV</button>
+        <button type="button" onClick={downloadSample} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Download className="h-3.5 w-3.5" aria-hidden="true" /> Download sample CSV</button>
+        <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,text/csv" className="sr-only" aria-label="Upload a CSV guest list" onChange={(e) => { void importCsv(e.target.files?.[0]); e.target.value = ""; }} />
         <button type="button" onClick={() => setShowPaste((s) => !s)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Upload className="h-3.5 w-3.5" aria-hidden="true" /> Paste / import many</button>
         {guests.length > 0 && <button type="button" onClick={() => { if (confirm("Remove every guest from the list?")) onChange([]); }} className="text-xs font-semibold text-slate-600 underline dark:text-slate-300">Clear all</button>}
       </div>
@@ -46,7 +71,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
       ) : (
         <>
         <ul className="space-y-3 sm:hidden">
-          {guests.map((g, i) => {
+          {shown.map((g, i) => {
             const bad = g.phone.trim() !== "" && !validPhone(g.phone);
             const disabled = busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued";
             return (
@@ -75,7 +100,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
               <tr><th className="px-2 py-2">#</th><th className="px-2 py-2">Guest name</th><th className="px-2 py-2">Address / place</th><th className="px-2 py-2">WhatsApp number</th><th className="px-2 py-2">Status</th><th className="px-2 py-2 text-right">Actions</th></tr>
             </thead>
             <tbody>
-              {guests.map((g, i) => {
+              {shown.map((g, i) => {
                 const bad = g.phone.trim() !== "" && !validPhone(g.phone);
                 return (
                   <tr key={g.id} className="border-t border-slate-200 dark:border-slate-700">
@@ -99,6 +124,15 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
             </tbody>
           </table>
         </div>
+        {guests.length > shown.length && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-200">
+            <span>Showing {shown.length} of {guests.length} guests. All {guests.length} are included when you send.</span>
+            <span className="flex gap-2">
+              <button type="button" onClick={() => setLimit((n) => n + 100)} className="rounded-md border border-slate-300 px-3 py-1 font-bold hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">Show 100 more</button>
+              <button type="button" onClick={() => setLimit(guests.length)} className="rounded-md border border-slate-300 px-3 py-1 font-bold hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">Show all</button>
+            </span>
+          </div>
+        )}
         </>
       )}
     </div>
