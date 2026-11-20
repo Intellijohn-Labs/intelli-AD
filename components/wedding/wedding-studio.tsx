@@ -6,9 +6,9 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
-import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone } from "@/lib/wedding-render";
+import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, GREETING_FORMATS, greetingText, SAMPLE_GUEST, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockKey, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -33,6 +33,8 @@ export function WeddingStudio() {
   const [publishedHash, setPublishedHash] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
   const [zones, setZones] = useState<CardZone[]>([]);
+  const [groups, setGroups] = useState<GroupBox[]>([]);
+  const [nudge, setNudge] = useState<"guest" | BlockKey>("guest");
   const cardPhotoRef = useRef<HTMLInputElement>(null);
   const cardPhotoIdx = useRef(0);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
@@ -93,10 +95,17 @@ export function WeddingStudio() {
   const firstGuest = guests.find((g) => g.name.trim());
   const previewGuest = useMemo(() => (firstGuest ? { name: firstGuest.name, place: firstGuest.place } : SAMPLE_GUEST), [firstGuest?.name, firstGuest?.place]); // eslint-disable-line react-hooks/exhaustive-deps
   const guestZone = zones.find((z) => z.id === "guest");
-  const curX = d.guestBadgeX ?? (guestZone ? Math.round(((guestZone.x + guestZone.w / 2) / 1080) * 1000) / 10 : 50);
-  const curY = d.guestBadgeY ?? (guestZone ? Math.round(((guestZone.y + guestZone.h / 2) / 1500) * 1000) / 10 : 10);
   const clamp = (v: number) => Math.min(100, Math.max(0, Math.round(v * 10) / 10));
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
+  const moveBlock = (key: BlockKey, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
+  const NUDGE_LABEL: Record<"guest" | BlockKey, string> = { guest: "Greeting", header: "Header / blessing", names: "Names", body: "Message", dateTime: "Date & time", venue: "Venue / footer" };
+  const nudgeBox = nudge === "guest" ? (guestZone ? { x: guestZone.x, y: guestZone.y, w: guestZone.w, h: guestZone.h } : null) : groups.find((g) => g.key === nudge) ?? null;
+  const nudgeSaved = nudge === "guest" ? (d.guestBadgeX != null && d.guestBadgeY != null ? { x: d.guestBadgeX, y: d.guestBadgeY } : null) : d.blockPos?.[nudge] ?? null;
+  const curX = nudgeSaved?.x ?? (nudgeBox ? Math.round(((nudgeBox.x + nudgeBox.w / 2) / 1080) * 1000) / 10 : 50);
+  const curY = nudgeSaved?.y ?? (nudgeBox ? Math.round(((nudgeBox.y + nudgeBox.h / 2) / 1500) * 1000) / 10 : 10);
+  const moveSel = (x: number, y: number) => (nudge === "guest" ? moveBadge(x, y) : moveBlock(nudge, x, y));
+  const anyMoved = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0;
+  const resetSel = () => (nudge === "guest" ? set({ guestBadgeX: null, guestBadgeY: null }) : setD((cur) => { const bp = { ...cur.blockPos }; delete bp[nudge]; return { ...cur, blockPos: bp }; }));
 
   // Live preview of the chosen template with the couple's details.
   useEffect(() => {
@@ -105,7 +114,7 @@ export function WeddingStudio() {
     const t = setTimeout(async () => {
       const img = d.photos[0] ? await loadImage(d.photos[0]) : null;
       const img2 = d.photos[1] ? await loadImage(d.photos[1]) : null;
-      const c = await renderWeddingCard({ template: tpl, details: rd, guest: previewGuest, photo: img, photo2: img2, width: 560, onZones: (z) => { if (live) setZones(z); } });
+      const c = await renderWeddingCard({ template: tpl, details: rd, guest: previewGuest, photo: img, photo2: img2, width: 560, onZones: (z) => { if (live) setZones(z); }, onGroups: (g) => { if (live) setGroups(g); } });
       if (live) setPreview(c.toDataURL("image/png"));
     }, 60);
     return () => { live = false; clearTimeout(t); };
@@ -264,16 +273,16 @@ export function WeddingStudio() {
             <section className={panel} aria-label="Templates">
               <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Guest greeting (&ldquo;To&rdquo; format)</h3>
-                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">How each guest&apos;s name appears on their card. Shown live on the preview; drag it into any open spot.</p>
+                <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">How each guest&apos;s name appears on their card. Shown live on the preview: click it there to edit the wording, drag it into any open spot.</p>
                 <div role="radiogroup" aria-label="Guest greeting format" className="grid gap-2 sm:grid-cols-2">
                   {GREETING_FORMATS.map((f) => (
                     <button key={f.id} type="button" role="radio" aria-checked={d.guestGreetingFormat === f.id} onClick={() => set({ guestGreetingFormat: f.id as GreetingFormat })} className={cn("rounded-lg border px-3 py-2 text-left text-xs transition-colors", d.guestGreetingFormat === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
                       <span className="block font-bold text-slate-900 dark:text-white">{f.label}</span>
-                      <span className="block text-slate-600 dark:text-slate-300">{greetingText({ guestGreetingFormat: f.id, guestCustomPrefix: d.guestCustomPrefix || "With love to" }, SAMPLE_GUEST)}</span>
+                      <span className="block text-slate-600 dark:text-slate-300">{greetingText({ guestGreetingFormat: f.id, guestGreetingTemplate: d.guestGreetingTemplate || "With love to {Name}, {Place}", guestCustomPrefix: d.guestCustomPrefix }, SAMPLE_GUEST)}</span>
                     </button>
                   ))}
                 </div>
-                {d.guestGreetingFormat === "custom" && <Field id="w-prefix" label="Custom prefix" className="mt-2"><Input id="w-prefix" value={d.guestCustomPrefix} maxLength={40} placeholder="e.g. With love to" onChange={(e) => set({ guestCustomPrefix: e.target.value })} /></Field>}
+                {d.guestGreetingFormat === "custom" && <Field id="w-prefix" label="Custom greeting (use {Name} and {Place})" className="mt-2"><Input id="w-prefix" value={d.guestGreetingTemplate} maxLength={120} placeholder="e.g. With love to {Name}, {Place}" onChange={(e) => set({ guestGreetingTemplate: e.target.value })} /></Field>}
               </div>
               <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
               <div role="tablist" aria-label="Template categories" className="-mx-1 mb-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -394,12 +403,12 @@ export function WeddingStudio() {
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
               {d.mapsUrl || d.venue ? <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300"><MapPin className="h-3 w-3" aria-hidden="true" /> Maps button on invite</span> : null}
             </div>
-            <p className="text-center text-[11px] text-slate-600 dark:text-slate-300">Click any text on the card to edit directly</p>
+            <p className="text-center text-[11px] text-slate-600 dark:text-slate-300">Click any text on the card to edit it, or drag it anywhere</p>
             <div className="relative mx-auto w-full max-w-[420px]">
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} />}
+                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} groups={groups} onMoveBlock={moveBlock} />}
               </div>
               <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
                 const f = e.target.files?.[0]; e.target.value = "";
@@ -410,22 +419,27 @@ export function WeddingStudio() {
                 const next = [...d.photos]; next[i] = u; set({ photos: next.slice(0, 4) });
               }} />
             </div>
-            <div className="mx-auto w-full max-w-[420px] rounded-lg border border-slate-200 p-2.5 dark:border-slate-700" aria-label="Guest greeting position">
+            <div className="mx-auto w-full max-w-[420px] rounded-lg border border-slate-200 p-2.5 dark:border-slate-700" aria-label="Card layout">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Greeting position <span className="font-normal text-slate-600 dark:text-slate-300">· {d.guestBadgeX == null ? "in the text flow" : "placed on the card"}</span></p>
-                <button type="button" onClick={() => set({ guestBadgeX: null, guestBadgeY: null })} disabled={d.guestBadgeX == null} className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset</button>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Layout <span className="font-normal text-slate-600 dark:text-slate-300">· {anyMoved ? "custom positions" : "template default"}</span></p>
+                <button type="button" onClick={() => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {} })} disabled={!anyMoved} className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset layout</button>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <label htmlFor="w-nudge" className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Fine-tune</label>
+                <Select id="w-nudge" value={nudge} onChange={(e) => setNudge(e.target.value as "guest" | BlockKey)}>{(Object.keys(NUDGE_LABEL) as ("guest" | BlockKey)[]).map((k) => <option key={k} value={k}>{NUDGE_LABEL[k]}</option>)}</Select>
+                <button type="button" onClick={resetSel} disabled={!nudgeSaved} className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">Reset</button>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {([["X", curX, (v: number) => moveBadge(v, curY)], ["Y", curY, (v: number) => moveBadge(curX, v)]] as const).map(([axis, val, apply]) => (
+                {([["X", curX, (v: number) => moveSel(v, curY)], ["Y", curY, (v: number) => moveSel(curX, v)]] as const).map(([axis, val, apply]) => (
                   <div key={axis} className="flex items-center gap-1">
                     <span className="w-4 text-[11px] font-bold text-slate-600 dark:text-slate-300">{axis}</span>
-                    <button type="button" aria-label={`Move greeting ${axis === "X" ? "left" : "up"}`} onClick={() => apply(val - 1)} className="h-7 w-7 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">−</button>
-                    <input type="number" min={0} max={100} step={0.5} aria-label={`Greeting ${axis} position, percent`} value={val} onChange={(e) => { const n = Number(e.target.value); if (Number.isFinite(n)) apply(n); }} className="h-7 w-full min-w-0 rounded-md border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-900 dark:border-slate-600 dark:bg-[#0A0B0D] dark:text-white" />
-                    <button type="button" aria-label={`Move greeting ${axis === "X" ? "right" : "down"}`} onClick={() => apply(val + 1)} className="h-7 w-7 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">+</button>
+                    <button type="button" aria-label={`Move ${NUDGE_LABEL[nudge]} ${axis === "X" ? "left" : "up"}`} onClick={() => apply(val - 1)} className="h-7 w-7 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">−</button>
+                    <input type="number" min={0} max={100} step={0.5} aria-label={`${NUDGE_LABEL[nudge]} ${axis} position, percent`} value={val} onChange={(e) => { const n = Number(e.target.value); if (Number.isFinite(n)) apply(n); }} className="h-7 w-full min-w-0 rounded-md border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-900 dark:border-slate-600 dark:bg-[#0A0B0D] dark:text-white" />
+                    <button type="button" aria-label={`Move ${NUDGE_LABEL[nudge]} ${axis === "X" ? "right" : "down"}`} onClick={() => apply(val + 1)} className="h-7 w-7 rounded-md border border-slate-300 text-sm font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">+</button>
                   </div>
                 ))}
               </div>
-              <p className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300">Drag the dotted greeting on the card (or use the arrow keys). Every guest&apos;s card uses this exact spot.</p>
+              <p className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-300">Drag any text block on the card (or focus it and use the arrow keys). Every guest&apos;s card uses this exact layout.</p>
             </div>
             {videoPreview && <video src={videoPreview} controls playsInline className="mx-auto w-full max-w-[420px] rounded-lg bg-black" aria-label="Invitation video preview" />}
             {mapsLink(d) && <a href={mapsLink(d)} target="_blank" rel="noopener noreferrer" className="mx-auto flex max-w-[420px] items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><MapPin className="h-4 w-4" aria-hidden="true" /> Open venue in Google Maps</a>}

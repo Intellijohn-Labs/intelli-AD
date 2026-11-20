@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, formatDate, greetingText, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { eventConfig, EVENT_TITLE, formatDate, greetingText, type BlockKey, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -137,9 +137,11 @@ const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, 
 
 /** A clickable region of the card in the 1080 x 1500 logical space (used only by the interactive studio preview). */
 type ZoneId = CardZone["id"];
+/** A movable text group as drawn: where it sits now (logical 1080 x 1500 px) and whether the client has positioned it. */
+export interface GroupBox { key: BlockKey; x: number; y: number; w: number; h: number; moved: boolean }
 export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
 
-export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void }): Promise<HTMLCanvasElement> {
+export async function renderWeddingCard(o: { template: WeddingTemplate; details: WeddingDetails; guest?: { name: string; place: string } | null; photo?: HTMLImageElement | null; photo2?: HTMLImageElement | null; width: number; onZones?: (z: CardZone[]) => void; onGroups?: (g: GroupBox[]) => void }): Promise<HTMLCanvasElement> {
   const { template: t, details: d } = o;
   const p: Palette = { ...t.pal, ...(HEX.test(d.accent) ? { accent: d.accent } : {}) };
   const all = [d.bride, d.groom, d.brideParents, d.groomParents, d.venue, d.message, d.blessing, d.verse, o.guest?.name, o.guest?.place, o.guest ? greetingText(d, o.guest) : "", t.blessing[1]].join(" ");
@@ -173,7 +175,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
-  type Block = { tw?: number; h: number; draw: (y: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
+  type Block = { tw?: number; h: number; draw: (y: number, x?: number) => void; id?: ZoneId; sub?: { id: ZoneId; dy: number; h: number }[]; dual?: boolean };
   // Image templates have a hard safe box: when the full text can't fit even at a small size, low-priority lines are dropped
   // in stages (lvl 1: second-language extras, 2: message + parents, 3: blessing) instead of overflowing onto the artwork.
   const build = (k: number, lvl = 0): Block[] => {
@@ -185,17 +187,16 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
       const lines = wrap(ctx, opt.caps && !hasMl(str) ? str.toUpperCase() : str, cw);
+      const tw = Math.max(...lines.map((l) => ctx.measureText(l).width)); // widest line (with letter spacing): the block's real width
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
-      ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
-      const tw = opt.id === "guest" ? Math.max(...lines.map((l) => ctx.measureText(l).width)) : undefined;
       blocks.push({
         id: opt.id, tw,
         h: lines.length * fs * lh,
-        draw: (y) => {
+        draw: (y, x = cx) => {
           ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${opt.fam ?? family}`;
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
           ctx.fillStyle = opt.color ?? p.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          lines.forEach((l, i) => ctx.fillText(l, cx, y + (i + 0.5) * fs * lh));
+          lines.forEach((l, i) => ctx.fillText(l, x, y + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
         },
       });
@@ -312,6 +313,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const top = t.art ? t.art.top : M * 0.8 + topOff, avail = t.art ? CARD_H - t.art.top - t.art.bottom : CARD_H - 2 * M * 0.8 - topOff - botOff;
   const gapOf = (kk: number) => 24 * kk;
   const total = (bs: Block[], kk: number) => bs.reduce((a, b) => a + b.h, 0) + Math.max(0, bs.length - 1) * gapOf(kk);
+  // Text groups the client dragged (d.blockPos) leave the safe-zone flow and are drawn as their own stacks; the rest keep the flow.
+  const grpOf = (id?: ZoneId): BlockKey | undefined => (id === "blessing" || id === "title" ? "header" : id === "names" ? "names" : id === "parents" || id === "message" ? "body" : id === "datetime" ? "dateTime" : id === "venue" || id === "verse" ? "venue" : undefined);
+  const pos = d.blockPos ?? {};
+  const inFlow = (bs: Block[]) => bs.filter((b) => { const g = grpOf(b.id); return !(g && pos[g]); });
+  // Sizes are fitted for the whole card, so dragging a block never changes how large any text is.
   let k = 1.1, blocks = build(k);
   if (!t.art) {
     while (total(blocks, k) > avail && k > 0.45) { k *= 0.96; blocks = build(k); }
@@ -324,23 +330,38 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       if (total(blocks, k) <= avail) break;
     }
   }
-  const extra = Math.max(0, avail - total(blocks, k));
-  const gap = gapOf(k) + (blocks.length > 1 ? Math.min(extra / (blocks.length - 1), 46) : 0);
-  const used = blocks.reduce((a, b) => a + b.h, 0) + (blocks.length - 1) * gap;
+  const flow = inFlow(blocks);
+  const extra = Math.max(0, avail - total(flow, k));
+  const gap = gapOf(k) + (flow.length > 1 ? Math.min(extra / (flow.length - 1), 46) : 0);
+  const used = flow.reduce((a, b) => a + b.h, 0) + Math.max(0, flow.length - 1) * gap;
   let y = top + Math.max(0, (avail - used) / 2);
   const zones: CardZone[] = [];
   const zx = t.art ? sl : M * 0.7, zw = t.art ? cw : CARD_W - 2 * M * 0.7;
-  const add = (id: ZoneId, y0: number, h: number, dual?: boolean) => {
+  const add = (id: ZoneId, y0: number, h: number, dual?: boolean, x = zx, w = zw, merge = gap * 1.5) => {
     const last = zones[zones.length - 1];
-    if (last && last.id === id && last.h >= 0 && y0 - (last.y + last.h) < gap * 1.5) { last.h = y0 + h - last.y; return; }
-    zones.push({ id, x: zx, y: y0, w: zw, h, dual });
+    if (last && last.id === id && last.h >= 0 && y0 - (last.y + last.h) < merge) { last.h = y0 + h - last.y; return; }
+    zones.push({ id, x, y: y0, w, h, dual });
   };
-  for (const b of blocks) {
+  const acc: Partial<Record<BlockKey, { y0: number; y1: number; w: number }>> = {};
+  for (const b of flow) {
     b.draw(y);
     if (b.id === "guest") { const w = (b.tw ?? 300) + 36; zones.push({ id: "guest", x: cx - w / 2, y: y - 8, w, h: b.h + 16 }); }
     else if (b.id) add(b.id, y - 6, b.h + 12, b.dual);
     for (const s of b.sub ?? []) zones.push({ id: s.id, x: zx, y: y + s.dy - 6, w: zw, h: s.h + 12 });
+    const g = grpOf(b.id);
+    if (g && b.tw) { const a = (acc[g] ??= { y0: y, y1: y + b.h, w: 0 }); a.y1 = y + b.h; a.w = Math.max(a.w, b.tw); }
     y += b.h + gap;
+  }
+  const groups: GroupBox[] = (Object.keys(acc) as BlockKey[]).map((key) => { const a = acc[key]!; return { key, x: cx - a.w / 2 - 10, y: a.y0 - 6, w: a.w + 20, h: a.y1 - a.y0 + 12, moved: false }; });
+  for (const key of ["header", "names", "body", "dateTime", "venue"] as BlockKey[]) {
+    const at = pos[key];
+    const bs = blocks.filter((b) => grpOf(b.id) === key);
+    if (!at || !bs.length) continue;
+    const gg = 14 * k, H = bs.reduce((a, b) => a + b.h, 0) + (bs.length - 1) * gg, Wd = Math.max(...bs.map((b) => b.tw ?? 200));
+    const xc = Math.min(CARD_W - Wd / 2 - 10, Math.max(Wd / 2 + 10, (at.x / 100) * CARD_W)), yc = Math.min(CARD_H - H / 2 - 10, Math.max(H / 2 + 10, (at.y / 100) * CARD_H));
+    let yy = yc - H / 2;
+    for (const b of bs) { b.draw(yy, xc); if (b.id) add(b.id, yy - 6, b.h + 12, b.dual, xc - Wd / 2 - 10, Wd + 20, gg * 1.5); yy += b.h + gg; }
+    groups.push({ key, x: xc - Wd / 2 - 10, y: yc - H / 2 - 6, w: Wd + 20, h: H + 12, moved: true });
   }
   if (badge && o.guest) {
     // Positioned greeting: a pill centred on the client's chosen spot (kept fully inside the card), drawn over the artwork.
@@ -357,6 +378,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     zones.push({ id: "guest", x: bx - bw / 2, y: by - bh / 2, w: bw, h: bh });
   }
   o.onZones?.(zones);
+  o.onGroups?.(groups);
   return canvas;
 }
 
