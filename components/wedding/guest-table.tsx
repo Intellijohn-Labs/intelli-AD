@@ -24,6 +24,9 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
     setPaste(""); setShowPaste(false);
   };
 
+  const statusCls = (st: Guest["status"]) => cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap", st === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : st === "queued" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" : st === "failed" ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200");
+  const statusText = (st: Guest["status"]) => (st === "sent" ? "Sent via Waau Panel" : st === "queued" ? "Queued in Waau Panel" : st === "failed" ? "Failed" : "Pending");
+
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -41,7 +44,32 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
       {guests.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300">No guests yet. Add rows or paste your list, then share each personalised card on WhatsApp.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+        <>
+        <ul className="space-y-3 sm:hidden">
+          {guests.map((g, i) => {
+            const bad = g.phone.trim() !== "" && !validPhone(g.phone);
+            const disabled = busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued";
+            return (
+              <li key={g.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Guest {i + 1}</span>
+                  <span className={statusCls(g.status)}>{statusText(g.status)}</span>
+                </div>
+                <div className="space-y-2">
+                  <Input aria-label={`Guest ${i + 1} name`} placeholder="Guest name" value={g.name} onChange={(e) => patch(g.id, { name: e.target.value })} />
+                  <Input aria-label={`Guest ${i + 1} place`} placeholder="Address / place" value={g.place} onChange={(e) => patch(g.id, { place: e.target.value })} />
+                  <Input aria-label={`Guest ${i + 1} WhatsApp number`} inputMode="tel" className={cn(bad && "border-red-500")} value={g.phone} onChange={(e) => patch(g.id, { phone: e.target.value, status: "pending" })} placeholder="WhatsApp number, e.g. 98470 12345" aria-invalid={bad || undefined} />
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button type="button" onClick={() => onSend(g)} disabled={disabled} aria-label={`Send via Waau Panel to ${g.name || `guest ${i + 1}`}`} className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md bg-[#25D366] px-3 py-2 text-sm font-bold text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} {g.status === "failed" ? "Retry" : "Send via Waau Panel"}</button>
+                  <button type="button" onClick={() => onPreview(g)} aria-label={`Preview card for ${g.name || `guest ${i + 1}`}`} className="rounded-md border border-slate-300 p-2.5 text-slate-700 dark:border-slate-600 dark:text-slate-200"><Eye className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => onChange(guests.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md border border-red-200 p-2.5 text-red-700 dark:border-red-500/30 dark:text-red-300"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-lg border border-slate-200 sm:block dark:border-slate-700">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-600 dark:bg-white/5 dark:text-slate-300">
               <tr><th className="px-2 py-2">#</th><th className="px-2 py-2">Guest name</th><th className="px-2 py-2">Address / place</th><th className="px-2 py-2">WhatsApp number</th><th className="px-2 py-2">Status</th><th className="px-2 py-2 text-right">Actions</th></tr>
@@ -71,6 +99,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

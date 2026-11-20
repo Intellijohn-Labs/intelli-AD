@@ -45,7 +45,8 @@ export function WeddingStudio() {
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const tpl = getTemplate(templateId);
-  const set = (p: Partial<WeddingDetails>) => setD((cur) => ({ ...cur, ...p }));
+  const msgEdited = useRef(false);
+  const set = (p: Partial<WeddingDetails>) => { if ("message" in p) msgEdited.current = p.message !== ""; setD((cur) => ({ ...cur, ...p })); };
 
   // Restore this browser's saved work.
   useEffect(() => {
@@ -66,10 +67,10 @@ export function WeddingStudio() {
   const suits = (t: WeddingTemplate, ev: EventType) => templateSuits(t, ev);
   const pickEvent = (ev: EventType) => {
     const g = eventConfig(ev).group;
-    set({ eventType: ev }); setFilter(g === "events" ? "events" : g);
+    set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); setFilter(g === "events" ? "events" : g);
     if (!suits(tpl, ev)) { const next = TEMPLATES.find((t) => t.defaultEvent === ev) ?? TEMPLATES.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); setFilter(g === "events" ? "events" : g); } }
   };
-  const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set({ eventType: t.defaultEvent }); };
+  const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
   const shown = TEMPLATES.filter((t) => filter === "all" || (filter === "animated" ? t.animated : t.category === filter));
 
   // Live preview of the chosen template with the couple's details.
@@ -142,7 +143,7 @@ export function WeddingStudio() {
       const res = await fetch("/api/ai/generate-wedding-copy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventType: d.eventType, lang: d.lang, bride: d.bride, groom: d.groom, brideParents: d.brideParents, groomParents: d.groomParents, date: d.date, venue: d.venue, note: d.message, template: tpl.name, themeHint: tpl.tagline }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { setAiError(j.error ?? "The AI couldn't write the wording. You can type it yourself below."); return; }
-      set({ blessing: j.blessing || d.blessing, message: j.message || d.message, verse: j.verse || d.verse, accent: j.accentColor || d.accent });
+      set({ blessing: j.blessing || d.blessing, message: j.message || d.message, verse: j.verse || d.verse, accent: j.accentColor || d.accent }); msgEdited.current = false;
       toast("AI wording and accent colour added. Edit anything you like.");
     } catch { setAiError("Couldn't reach the AI service. You can type the wording yourself."); }
     finally { setAiBusy(false); }
@@ -243,7 +244,7 @@ export function WeddingStudio() {
                 ))}
               </div>
               <div className={cn("mb-4 rounded-lg border p-3", filter === "animated" ? "border-[#B8860B] bg-[#B8860B]/10" : "border-slate-200 dark:border-slate-700")}>
-                <p className="mb-2 text-xs font-bold text-slate-900 dark:text-white">✨ Animated GIF motion <span className="font-normal text-slate-600 dark:text-slate-300">· moves in the live preview; download it as a .gif from the preview or guest list</span></p>
+                <p className="mb-2 text-xs font-bold text-slate-900 dark:text-white">✨ Animated GIF motion <span className="font-normal text-slate-600 dark:text-slate-300">· moves in the live preview and dispatches as an animated GIF via Waau Panel</span></p>
                 <div role="radiogroup" aria-label="Animated GIF motion" className="flex flex-wrap gap-2">
                   {EFFECTS.map((e) => (
                     <button key={e.id} type="button" role="radio" aria-checked={effect === e.id} onClick={() => setEffect(e.id)} className={cn("rounded-full border px-3 py-1 text-xs font-semibold", effect === e.id ? "border-[#B8860B] bg-[#B8860B] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{e.label}</button>
