@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Loader2, MapPin, Send, Sparkles, Video, X } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, Send, Sparkles, Trash2, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
@@ -122,6 +122,8 @@ export function WeddingStudio() {
     return () => { live = false; };
   }, [guestPreview, tpl, rd, d.photos]);
 
+  const removePhoto = (i: number) => set({ photos: d.photos.filter((_, j) => j !== i) });
+  const clearPhotos = () => set({ photos: [] });
   const addPhotos = async (files: FileList | null) => {
     if (!files) return;
     const out: string[] = [];
@@ -297,15 +299,18 @@ export function WeddingStudio() {
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">Upload 1 combined couple photo or 2 individual portraits (both appear side-by-side on the card; up to 4 appear on the guest invite page).</p>
                 <div className="flex flex-wrap gap-3">
                   {d.photos.map((p, i) => (
-                    <div key={i} className="relative h-28 w-24 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p} alt={`Couple photo ${i + 1}`} className="h-full w-full object-cover" />
-                      <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => set({ photos: d.photos.filter((_, j) => j !== i) })} className="absolute top-1 right-1 rounded-full bg-black/70 p-0.5 text-white"><X className="h-3.5 w-3.5" /></button>
+                    <div key={i} className="w-24">
+                      <div className="relative h-28 w-24 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p} alt={`Couple photo ${i + 1}`} className="h-full w-full object-cover" />
+                      </div>
+                      <button type="button" onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`} className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border border-red-300 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/10"><X className="h-3 w-3" aria-hidden="true" /> Remove photo</button>
                     </div>
                   ))}
                   {d.photos.length < 4 && <button type="button" onClick={() => photoRef.current?.click()} className="flex h-28 w-24 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-400 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5"><ImagePlus className="h-5 w-5" aria-hidden="true" /> Add photo</button>}
                   <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="sr-only" onChange={(e) => { void addPhotos(e.target.files); e.target.value = ""; }} />
                 </div>
+                {d.photos.length > 0 && <button type="button" onClick={clearPhotos} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Clear all photos</button>}
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Invitation video / teaser</h2>
@@ -354,7 +359,7 @@ export function WeddingStudio() {
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} />}
+                {preview && <CardEditOverlay zones={zones} details={d} cfg={cfg} onChange={set} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} />}
               </div>
               <input ref={cardPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload photo for the card" onChange={async (e) => {
                 const f = e.target.files?.[0]; e.target.value = "";

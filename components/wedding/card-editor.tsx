@@ -15,7 +15,7 @@ const fieldCls = "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1
  * Transparent hit-zones over the live preview image. Clicking one opens a small inline editor bound to the same
  * details state as the Details tab, so edits re-render the card and persist. Only used by the studio preview.
  */
-export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto }: { zones: CardZone[]; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onPickPhoto: (index: number) => void }) {
+export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto, onRemovePhoto }: { zones: CardZone[]; details: WeddingDetails; cfg: EventConfig; onChange: (p: Partial<WeddingDetails>) => void; onRemovePhoto: (index: number) => void; onPickPhoto: (index: number) => void }) {
   const [open, setOpen] = useState<CardZone["id"] | null>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const zone = zones.find((z) => z.id === open) ?? null;
@@ -68,6 +68,14 @@ export function CardEditOverlay({ zones, details, cfg, onChange, onPickPhoto }: 
           <span className="pointer-events-none absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[#D12014] px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">{LABEL[z.id]}</span>
         </button>
       ))}
+      {/* ✕ pills over each uploaded photo slot: DOM only, never part of the rendered / exported PNG. */}
+      {zones.filter((z) => z.id === "photo").flatMap((z) => (z.dual ? [0, 1] : [0]).filter((i) => details.photos[i]).map((i) => {
+        // Zones span the content width, the photo(s) sit centred: one pill centred, or one either side of the centre line.
+        const tx = z.dual ? (i === 0 ? "-100%" : "0%") : "-50%", left = z.dual ? CARD_W / 2 + (i === 0 ? -8 : 8) : CARD_W / 2;
+        return (
+          <button key={`rm-${i}`} type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => onRemovePhoto(i)} style={{ left: pct(left, CARD_W), top: pct(z.y + 8, CARD_H), transform: `translateX(${tx})` }} className="absolute z-10 inline-flex items-center gap-0.5 rounded-full bg-black/75 px-2 py-1 text-[11px] font-bold text-white shadow hover:bg-[#D12014] focus-visible:ring-2 focus-visible:ring-white"><span aria-hidden="true">✕</span> Remove</button>
+        );
+      }))}
       {zone && (
         <div
           ref={popRef}
