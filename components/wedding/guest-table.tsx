@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 /** Editable guest list: add / paste-import / edit / delete rows, per-row preview + Send via Waau Panel, and Pending / Queued / Sent status. */
 export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   guests: Guest[];
-  onChange: (g: Guest[]) => void;
+  /** The studio's setGuests: always called with an updater so an edit never overwrites status updates (or other edits) that landed since the last render. */
+  onChange: React.Dispatch<React.SetStateAction<Guest[]>>;
   /** Id of the guest whose card is being rendered right now. */
   busyId: string | null;
   onSend: (g: Guest) => void;
@@ -22,7 +23,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   const shown = guests.slice(0, limit);
   const [paste, setPaste] = useState("");
   const [showPaste, setShowPaste] = useState(false);
-  const patch = (id: string, p: Partial<Guest>) => onChange(guests.map((g) => (g.id === id ? { ...g, ...p } : g)));
+  const patch = (id: string, p: Partial<Guest>) => onChange((cur) => cur.map((g) => (g.id === id ? { ...g, ...p } : g)));
   const downloadSample = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([SAMPLE_GUESTS_CSV], { type: "text/csv;charset=utf-8" }));
@@ -36,13 +37,13 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
     if (!/\.(csv|tsv|txt)$/i.test(file.name)) { toast.error("Upload a .csv file (in Excel: File > Save As > CSV)."); return; }
     const res = guestsFromCsv(await file.text(), guests);
     if (!res.added) { toast.error(`No new guests found${res.duplicates ? `: ${res.duplicates} duplicate number${res.duplicates === 1 ? "" : "s"}` : ""}${res.invalid ? `, ${res.invalid} without a valid number` : ""}.`); return; }
-    onChange([...guests, ...res.guests]);
+    onChange((cur) => [...cur, ...res.guests]);
     const skipped = [res.duplicates && `${res.duplicates} duplicate${res.duplicates === 1 ? "" : "s"}`, res.invalid && `${res.invalid} invalid`, res.truncated && "list capped at 5,000"].filter(Boolean).join(", ");
     toast(`Imported ${res.added} guest${res.added === 1 ? "" : "s"}${skipped ? ` (skipped ${skipped})` : ""}.`);
   };
   const importPaste = () => {
     const rows = parseGuests(paste);
-    if (rows.length) onChange([...guests, ...rows]);
+    if (rows.length) onChange((cur) => [...cur, ...rows]);
     setPaste(""); setShowPaste(false);
   };
 
@@ -52,7 +53,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => onChange([...guests, { id: newId(), name: "", place: "", phone: "", status: "pending" }])} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#17181C] dark:bg-[#D12014] dark:hover:bg-[#E83E32]"><Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add guest</button>
+        <button type="button" onClick={() => onChange((cur) => [...cur, { id: newId(), name: "", place: "", phone: "", status: "pending" }])} className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#17181C] dark:bg-[#D12014] dark:hover:bg-[#E83E32]"><Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add guest</button>
         <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><FileUp className="h-3.5 w-3.5" aria-hidden="true" /> Bulk upload CSV</button>
         <button type="button" onClick={downloadSample} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Download className="h-3.5 w-3.5" aria-hidden="true" /> Download sample CSV</button>
         <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,text/csv" className="sr-only" aria-label="Upload a CSV guest list" onChange={(e) => { void importCsv(e.target.files?.[0]); e.target.value = ""; }} />
@@ -88,7 +89,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
                 <div className="mt-3 flex items-center gap-2">
                   <button type="button" onClick={() => onSend(g)} disabled={disabled} aria-label={`Send via Waau Panel to ${g.name || `guest ${i + 1}`}`} className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-md bg-[#25D366] px-3 py-2 text-sm font-bold text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} {g.status === "failed" ? "Retry" : "Send via Waau Panel"}</button>
                   <button type="button" onClick={() => onPreview(g)} aria-label={`Preview card for ${g.name || `guest ${i + 1}`}`} className="rounded-md border border-slate-300 p-2.5 text-slate-700 dark:border-slate-600 dark:text-slate-200"><Eye className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => onChange(guests.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md border border-red-200 p-2.5 text-red-700 dark:border-red-500/30 dark:text-red-300"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => onChange((cur) => cur.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md border border-red-200 p-2.5 text-red-700 dark:border-red-500/30 dark:text-red-300"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </li>
             );
@@ -115,7 +116,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => onPreview(g)} title="Preview / download this guest's card" aria-label={`Preview card for ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"><Eye className="h-4 w-4" /></button>
                         <button type="button" onClick={() => onSend(g)} disabled={busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued"} title={!g.name.trim() ? "Enter the guest's name first" : !validPhone(g.phone) ? "Enter a valid WhatsApp number" : g.status === "sent" || g.status === "queued" ? "Already handed to Waau Panel" : "Send this guest's personalised card via Waau Panel"} aria-label={`Send via Waau Panel to ${g.name || `guest ${i + 1}`}`} className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-2 py-1 text-xs font-bold whitespace-nowrap text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />} {g.status === "failed" ? "Retry" : "Send via Waau Panel"}</button>
-                        <button type="button" onClick={() => onChange(guests.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => onChange((cur) => cur.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>

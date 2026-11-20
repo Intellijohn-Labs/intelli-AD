@@ -17,6 +17,10 @@ export type BlockKey = "header" | "names" | "body" | "dateTime" | "venue";
 export type BlockId = "guest" | BlockKey;
 export type FontId = "playfair" | "cormorant" | "great-vibes" | "alex-brush" | "cinzel" | "lora" | "montserrat" | "poppins" | "dancing-script" | "libre-baskerville" | "noto-serif-ml" | "manjari" | "gayathri";
 /** "default" = the template's own type; royal / script / sans / ml-classic are the earlier presets (kept so saved cards still render); the rest are single fonts. */
+/** One editable text element on the card; each can be sized on its own (blessing and event title are separate, as are family line and message). */
+export type TextId = "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse";
+/** Text-size multiplier range offered by every size control (50 % - 250 %). */
+export const TEXT_SCALE_MIN = 0.5, TEXT_SCALE_MAX = 2.5;
 export type FontStyle = "default" | "royal" | "script" | "sans" | "ml-classic" | FontId;
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
 
@@ -56,9 +60,9 @@ export interface WeddingDetails {
   guestGreetingBoxed: boolean;
   /** Typography for the whole card (a block can override it with blockFont). */
   fontStyle: FontStyle;
-  /** Text size multiplier per block (0.5 - 1.8, 1 = template default). */
-  blockScale: Partial<Record<BlockId, number>>;
-  /** Master text size for every block at once (0.7 - 1.8, 1 = template default); multiplies each block's own blockScale. */
+  /** Size multiplier per text element, keyed by TextId (0.5 - 2.5, 1 = template default). Older saves keyed by group (header / body / dateTime) still apply to their members. */
+  blockScale: Partial<Record<TextId | BlockId, number>>;
+  /** Master text size for every block at once (0.5 - 2.5, 1 = template default); multiplies each element's own blockScale. */
   contentScale: number;
   /** Per-block font override; a block with no entry follows fontStyle. */
   blockFont: Partial<Record<BlockId, FontStyle>>;

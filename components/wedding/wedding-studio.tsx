@@ -9,7 +9,7 @@ import { CardEditOverlay } from "./card-editor";
 import { SectionToolbar } from "./section-toolbar";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -99,8 +99,13 @@ export function WeddingStudio() {
   const clamp = (v: number) => Math.min(100, Math.max(0, Math.round(v * 10) / 10));
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
   const moveBlock = (key: BlockKey, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
-  const scaleBlock = (key: BlockId, v: number) => setD((cur) => ({ ...cur, blockScale: { ...cur.blockScale, [key]: Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)) } }));
-  const setMaster = (v: number) => set({ contentScale: Math.min(1.8, Math.max(0.7, Math.round(v * 20) / 20)) });
+  const clampText = (v: number) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, Math.round(v * 20) / 20));
+  const scaleText = (key: TextId, v: number) => setD((cur) => {
+    const bs = { ...cur.blockScale }, n = clampText(v);
+    if (n === 1) delete bs[key]; else bs[key] = n; // 100 % is the default: no entry, so "Reset layout" only shows for real customisations
+    return { ...cur, blockScale: bs };
+  });
+  const setMaster = (v: number) => set({ contentScale: clampText(v) });
   const fontForBlock = (key: BlockId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
   // One font for every block at once: also clears the per-block overrides so nothing keeps an older choice.
   const fontForAll = (f: FontStyle) => set({ fontStyle: f, blockFont: {} });
@@ -452,7 +457,7 @@ export function WeddingStudio() {
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} />}
+                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScaleText={scaleText} />}
               </div>
               </div>
               </div>
@@ -467,7 +472,7 @@ export function WeddingStudio() {
             </div>
             {selected ? (
               <div className="mx-auto w-full max-w-[420px]">
-                <SectionToolbar zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleBlock} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
+                <SectionToolbar zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleText} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
               </div>
             ) : (
               <p className="text-center text-[11px] text-slate-500 dark:text-slate-400">Click any text on the card to edit it · drag to move</p>

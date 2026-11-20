@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, formatDate, greetingText, type BlockId, type BlockKey, type FontStyle, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type FontStyle, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -138,7 +138,15 @@ const MARGIN: Record<string, number> = { kasavu: 150, temple: 195, church: 160, 
 /** A clickable region of the card in the 1080 x 1500 logical space (used only by the interactive studio preview). */
 type ZoneId = CardZone["id"];
 /** Text-size multipliers are clamped to the range the controls offer (70 % - 180 %). */
-const clampScale = (v: number | undefined) => Math.min(1.8, Math.max(0.7, v ?? 1));
+const clampScale = (v: number | undefined) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, v ?? 1));
+/** The group key older saves used for a text element's size (blockScale.header scaled blessing + title together, and so on). */
+const LEGACY_SCALE_KEY: Partial<Record<string, BlockId>> = { blessing: "header", title: "header", parents: "body", message: "body", datetime: "dateTime" };
+/** One text element's own size: its own entry, else the legacy group entry, else 1. */
+const sizeOf = (d: WeddingDetails, id: string | undefined): number => {
+  if (!id) return 1;
+  const map = d.blockScale ?? {}, leg = LEGACY_SCALE_KEY[id];
+  return clampScale((map as Record<string, number | undefined>)[id] ?? (leg ? (map as Record<string, number | undefined>)[leg] : undefined));
+};
 
 /** A block's resolved typography: the stack, a pinned weight (single-weight fonts), a size multiplier, and whether it is a script (no caps). */
 interface FontSpec { fam: string; weight?: number; scale: number; script: boolean }
@@ -228,7 +236,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const bid: BlockId | undefined = opt.id === "guest" ? "guest" : grpOf(opt.id);
       const { fam, weight: pinned, scale: fontScale, script } = fontSpec((bid && d.blockFont?.[bid]) || d.fontStyle || "default", opt.id, opt.fam ?? family);
       const weight = pinned ?? weight0, caps = opt.caps && !script;
-      const fs = size * k * (scaled ? clampScale(d.contentScale) * (bid ? clampScale(d.blockScale?.[bid]) : 1) : 1) * fontScale, lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
+      const fs = size * k * (scaled ? clampScale(d.contentScale) * sizeOf(d, opt.id) : 1) * fontScale, lh = opt.lh ?? (hasMl(str) ? 1.55 : 1.25);
       ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
       (ctx as Ctx & { letterSpacing: string }).letterSpacing = opt.ls && !hasMl(str) ? `${opt.ls * fs}px` : "0px";
       const lines = wrap(ctx, caps && !hasMl(str) ? str.toUpperCase() : str, cw);
