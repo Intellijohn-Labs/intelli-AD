@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ImagePlus, Loader2, Maximize2, MapPin, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ImagePlus, Loader2, Maximize2, MapPin, Send, Sparkles, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
@@ -56,7 +56,24 @@ export function WeddingStudio() {
   const FONTS_COLLAPSED = 4;
   const [expandedFor, setExpandedFor] = useState<TemplateFilter | null>(null);
   const expanded = expandedFor === filter;
-  const chooseFilter = (f: TemplateFilter) => { setFilter(f); setExpandedFor(null); };
+  // The category pills scroll horizontally; the arrows page through them and the picked pill is brought into view.
+  const pillsRef = useRef<HTMLDivElement>(null);
+  const [pillEdge, setPillEdge] = useState({ start: true, end: true });
+  const syncPills = useCallback(() => {
+    const el = pillsRef.current; if (!el) return;
+    setPillEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  }, []);
+  useEffect(() => {
+    const el = pillsRef.current; if (!el) return;
+    syncPills();
+    const ro = new ResizeObserver(syncPills); ro.observe(el);
+    return () => ro.disconnect();
+  }, [syncPills, tab]);
+  const scrollPills = (dir: 1 | -1) => pillsRef.current?.scrollBy({ left: dir * Math.max(120, (pillsRef.current?.clientWidth ?? 0) * 0.7), behavior: "smooth" });
+  const chooseFilter = (f: TemplateFilter) => {
+    setFilter(f); setExpandedFor(null);
+    requestAnimationFrame(() => pillsRef.current?.querySelector<HTMLElement>(`[data-pill="${f}"]`)?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" }));
+  };
   const [cols, setCols] = useState(5); // cards per row at the current width: 2 (phone), 3 (>= 640 px), 5 (>= 1280 px), matching the grid classes
   useEffect(() => {
     const sm = window.matchMedia("(min-width: 640px)"), xl = window.matchMedia("(min-width: 1280px)");
@@ -317,10 +334,19 @@ export function WeddingStudio() {
               {/* Step 1 order: Pick a template, then the greeting format, then the card font. */}
               <div className="mb-4">
               <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
-              <div role="tablist" aria-label="Template categories" className="-mx-1 mb-3 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {TEMPLATE_FILTERS.map((f) => (
-                  <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => chooseFilter(f.id)} className={cn("shrink-0 snap-start rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
-                ))}
+              <div className="relative mb-3 flex items-center gap-1.5">
+                <button type="button" aria-label="Scroll categories left" onClick={() => scrollPills(-1)} disabled={pillEdge.start} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-600 dark:bg-[#131416] dark:text-slate-100 dark:hover:bg-white/10", pillEdge.start && pillEdge.end && "hidden")}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
+                <div className="relative min-w-0 flex-1">
+                  <div ref={pillsRef} onScroll={syncPills} role="tablist" aria-label="Template categories" className="no-scrollbar flex items-center gap-2 overflow-x-auto overscroll-x-contain scroll-smooth px-0.5 py-1">
+                    {TEMPLATE_FILTERS.map((f) => (
+                      <button key={f.id} data-pill={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => chooseFilter(f.id)} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
+                    ))}
+                  </div>
+                  {/* Edge fades hint that more categories sit off-screen. */}
+                  {!pillEdge.start && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent dark:from-[#131416]" />}
+                  {!pillEdge.end && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent dark:from-[#131416]" />}
+                </div>
+                <button type="button" aria-label="Scroll categories right" onClick={() => scrollPills(1)} disabled={pillEdge.end} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-600 dark:bg-[#131416] dark:text-slate-100 dark:hover:bg-white/10", pillEdge.start && pillEdge.end && "hidden")}><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
               </div>
               <ul id="template-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 {shown.map((x, i) => (
