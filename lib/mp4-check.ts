@@ -15,9 +15,9 @@ export function mp4Problem(head: Uint8Array): string | null {
     o += size;
   }
   if (!moov) return o + 8 <= head.length || head.length < 65_000 ? "moov atom is not at the start (not faststart)" : null;
-  for (let i = moov[0]; i + 92 <= moov[1]; i++) { // tkhd: width / height are 16.16 fixed point at the end of the box
+  for (let i = moov[0]; i - 4 + 104 <= moov[1]; i++) { // tkhd: width / height are 16.16 fixed point at the end of the box
     if (type(i) !== "tkhd") continue;
-    const base = i - 4, ver = head[i + 4], w = dv.getUint32(base + (ver === 1 ? 88 : 76)) / 65536, h = dv.getUint32(base + (ver === 1 ? 92 : 80)) / 65536;
+    const base = i - 4, ver = head[i + 4], w = dv.getUint32(base + (ver === 1 ? 96 : 84)) / 65536, h = dv.getUint32(base + (ver === 1 ? 100 : 88)) / 65536;
     if (w && h && (w % 16 || h % 16)) return `video size ${w}x${h} is not a multiple of 16`;
   }
   return null;
