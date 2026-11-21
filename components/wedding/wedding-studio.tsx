@@ -7,9 +7,11 @@ import { useToast } from "@/components/ui/toast";
 import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { SectionToolbar } from "./section-toolbar";
+import { CooldownPill } from "./cooldown-pill";
 import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
+import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
 import { publishInvitation } from "@/lib/wedding-publish";
 import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,59 @@ export function WeddingStudio() {
   const [filter, setFilter] = useState<TemplateFilter>("all");
   // The template grid shows one row until "See more"; switching category always collapses it again.
   const [logTick, setLogTick] = useState(0); // bumps the Step 4 dispatch log after each send
+  // Per-number cooldown (max 2 invitations per rolling 24 hours, Meta's marketing template cap). Send times come from the dispatch history on the server (any sender); this browser's
+  // own sends are kept in localStorage as a fallback for when the history can't be read (signed out / offline) and as an optimistic add
+  // until the next refresh. The server enforces the same rule, so this is only the live countdown.
+  const SENDS_KEY = "intelliad_invite_send_times";
+  const [serverTimes, setServerTimes] = useState<Record<string, number[]> | null>(null);
+  const [localTimes, setLocalTimes] = useState<Record<string, number[]>>({});
+  const [now, setNow] = useState(() => Date.now());
+  const [sendNote, setSendNote] = useState("");
+  // "Guest replied" overrides: when the user confirms a guest replied on WhatsApp, only sends made after that moment count towards the cap.
+  const REPLIED_KEY = "intelliad_invite_replied";
+  const [replied, setReplied] = useState<Record<string, number>>({});
+  useEffect(() => {
+    try { const raw = JSON.parse(localStorage.getItem(REPLIED_KEY) ?? "{}") as Record<string, number>, cut = Date.now() - COOLDOWN_WINDOW_MS; setReplied(Object.fromEntries(Object.entries(raw).filter(([, t]) => t > cut))); } catch { /* ignore */ }
+  }, []);
+  const hasReplied = (phone: string) => validPhone(phone) && (replied[normalizePhone(phone)] ?? 0) > Date.now() - COOLDOWN_WINDOW_MS;
+  const markReplied = (phone: string) => {
+    if (!window.confirm(REPLIED_CONFIRM)) return;
+    const p = normalizePhone(phone), t = Date.now();
+    setReplied((cur) => { const next = { ...cur, [p]: t }; try { localStorage.setItem(REPLIED_KEY, JSON.stringify(next)); } catch { /* ignore */ } return next; });
+    setNow(t); toast("Marked as replied. You can message this number again.");
+  };
+  useEffect(() => {
+    try { const raw = JSON.parse(localStorage.getItem(SENDS_KEY) ?? "{}") as Record<string, number[]>; const cut = Date.now() - COOLDOWN_WINDOW_MS; setLocalTimes(Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v.filter((t) => t > cut)]).filter(([, v]) => (v as number[]).length))); } catch { /* ignore */ }
+  }, []);
+  const noteSend = (phone: string) => {
+    const p = normalizePhone(phone), t = Date.now();
+    setLocalTimes((cur) => { const next = { ...cur, [p]: [...(cur[p] ?? []), t] }; try { localStorage.setItem(SENDS_KEY, JSON.stringify(next)); } catch { /* ignore */ } return next; });
+    setServerTimes((cur) => (cur ? { ...cur, [p]: [...(cur[p] ?? []), t] } : cur)); // optimistic until the refresh below replaces it
+  };
+  const guestPhonesKey = guests.map((g) => (validPhone(g.phone) ? normalizePhone(g.phone) : "")).filter(Boolean).join(",");
+  useEffect(() => {
+    if (tab !== "Guests & share") return;
+    let live = true;
+    const phones = guestPhonesKey ? guestPhonesKey.split(",") : [];
+    fetch("/api/invitations/dispatches/cooldowns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) })
+      .then((r) => (r.ok && (r.headers.get("content-type") ?? "").includes("json") ? r.json() : null))
+      .then((j: { times?: Record<string, number[]> } | null) => { if (live) setServerTimes(j?.times ?? null); })
+      .catch(() => { if (live) setServerTimes(null); });
+    return () => { live = false; };
+  }, [tab, guestPhonesKey, logTick]);
+  /** Milliseconds until this number can be sent to again (0 = now). */
+  const cooldownLeft = (phone: string): number => {
+    if (!validPhone(phone)) return 0;
+    const p = normalizePhone(phone), since = replied[p] ?? 0, until = cooldownUntil((serverTimes ? serverTimes[p] ?? [] : localTimes[p] ?? []).filter((t) => t > since), now);
+    return until ? Math.max(0, until - now) : 0;
+  };
+  const anyCooldown = guests.some((g) => cooldownLeft(g.phone) > 0) || (serverTimes === null && Object.values(localTimes).some((v) => v.length >= 2));
+  useEffect(() => {
+    if (!anyCooldown) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [anyCooldown]);
   const [studioOpen, setStudioOpen] = useState(false);
   const scrollBeforeStudio = useRef(0);
   const enlargeRef = useRef<HTMLButtonElement>(null);
@@ -276,11 +331,15 @@ export function WeddingStudio() {
     try {
       const blob = await cardBlob(g, photos);
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), message: whatsappMessage(rd, g), eventTitle: EVENT_TITLE[rd.eventType].en, senderName: (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), message: whatsappMessage(rd, g), eventTitle: EVENT_TITLE[rd.eventType].en, senderName: (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
       fd.append("card", blob, "card.jpg");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
-      const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string };
-      if (j.status) { setStatus(g.id, j.status); if (j.status === "failed") toast(`${g.name}: ${j.error ?? "Waau Panel couldn't send this invitation."}`); return true; }
+      const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string; code?: string; cooldownUntil?: number };
+      if (j.code === "cooldown") { // the server's guard: leave the guest as-is (not failed) and start the countdown
+        if (j.cooldownUntil) { const p = normalizePhone(g.phone); setServerTimes((cur) => ({ ...(cur ?? {}), [p]: [j.cooldownUntil! - COOLDOWN_WINDOW_MS, j.cooldownUntil! - COOLDOWN_WINDOW_MS + 1] })); }
+        setLogTick((t) => t + 1); toast(`${g.name}: ${j.error ?? "This number is in cooldown."}`); return true;
+      }
+      if (j.status) { if (j.status !== "failed") noteSend(g.phone); setStatus(g.id, j.status); if (j.status === "failed") toast(`${g.name}: ${j.error ?? "Waau Panel couldn't send this invitation."}`); return true; }
       setStatus(g.id, "failed");
       toast(j.error ?? "Couldn't send this invitation.");
       return res.status !== 401 && res.status !== 429 && res.status !== 503;
@@ -293,14 +352,21 @@ export function WeddingStudio() {
 
   const sendOne = async (g: Guest) => {
     if (busyId || batch || !g.name.trim() || !validPhone(g.phone)) return;
+    if (cooldownLeft(g.phone) > 0) { toast(`${g.name}: this number is in cooldown. You can send again in ${clock(cooldownLeft(g.phone))}.`); return; }
     setBusyId(g.id);
     try { await dispatchOne(g, await ensurePublished(), await loadPhotos()); } finally { setBusyId(null); setLogTick((t) => t + 1); }
   };
 
-  const sendable = guests.filter((g) => (g.status === "pending" || g.status === "failed") && g.name.trim() && validPhone(g.phone));
+  const candidates = guests.filter((g) => (g.status === "pending" || g.status === "failed") && g.name.trim() && validPhone(g.phone));
+  const sendable = candidates.filter((g) => cooldownLeft(g.phone) === 0);
+  const cooling = candidates.filter((g) => cooldownLeft(g.phone) > 0);
+  const shortestWait = cooling.length ? Math.min(...cooling.map((g) => cooldownLeft(g.phone))) : 0;
   const sendAll = async () => {
-    if (busyId || batch || sendable.length === 0) return;
-    const list = sendable;
+    if (busyId || batch) return;
+    const list = candidates.filter((g) => cooldownLeft(g.phone) === 0); // re-checked at click time, the countdown may have just ended
+    const skipped = candidates.length - list.length;
+    if (list.length === 0) { setSendNote(skipped ? `All ${skipped} selected guest${skipped === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.` : ""); return; }
+    setSendNote(skipped ? `Skipped ${skipped} guest${skipped === 1 ? "" : "s"} currently in cooldown timer.` : "");
     setBatch({ done: 0, total: list.length });
     try {
       const invId = await ensurePublished(), photos = await loadPhotos();
@@ -473,20 +539,26 @@ export function WeddingStudio() {
               <div>
                 <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">1. Add your guests</h2>
                 <p className="mb-3 text-xs text-slate-600 dark:text-slate-300">Add each recipient&apos;s name, place and WhatsApp number (one by one, or paste many from Excel / Sheets). Every guest gets their own card with “Dear Name, Place” on it, prepared automatically. Cards are never downloaded to your device.</p>
-                <GuestTable guests={guests} busyId={busyId} onChange={setGuests} onSend={(g) => void sendOne(g)} onPreview={setGuestPreview} />
+                <GuestTable guests={guests} busyId={busyId} onChange={setGuests} onSend={(g) => void sendOne(g)} onPreview={setGuestPreview} cooldownLeft={cooldownLeft} onReplied={markReplied} />
               </div>
               <div className="rounded-lg border border-[#25D366]/50 bg-[#25D366]/10 p-3">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">2. Dispatch via Waau Panel</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void sendAll()} disabled={sendable.length === 0 || !!batch || busyId !== null} className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({sendable.length} {sendable.length === 1 ? "guest" : "guests"})</button>
+                  <button type="button" onClick={() => void sendAll()} disabled={candidates.length === 0 || !!batch || busyId !== null} className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({sendable.length} {sendable.length === 1 ? "guest" : "guests"})</button>
                   {batch && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Preparing and sending {Math.min(batch.done + 1, batch.total)} of {batch.total}…</span>}
                 </div>
+                {(sendNote || (cooling.length > 0 && sendable.length === 0 && candidates.length > 0)) && (
+                  <p role="status" className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                    <span>{sendNote || `All ${cooling.length} unsent guest${cooling.length === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.`}</span>
+                    {cooling.length > 0 && <CooldownPill leftMs={shortestWait} />}
+                  </p>
+                )}
                 {(counts.queued > 0 || counts.sent > 0 || counts.failed > 0) && (
                   <p role="status" className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{counts.sent > 0 && <span className="mr-3">Sent via Waau Panel: {counts.sent}</span>}{counts.queued > 0 && <span className="mr-3">Queued in Waau Panel: {counts.queued}</span>}{counts.failed > 0 && <span className="text-red-700 dark:text-red-300">Failed: {counts.failed} (use Send to retry)</span>}</p>
                 )}
                 <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Each personalised card is generated, stored securely and handed to Waau Panel for WhatsApp delivery. Until Waau Panel is connected, invitations wait as “Queued in Waau Panel”. Guests without a valid WhatsApp number are skipped. You need to be signed in to send.</p>
               </div>
-              <DispatchLog refreshKey={logTick} />
+              <DispatchLog refreshKey={logTick} cooldownLeft={cooldownLeft} onReplied={markReplied} hasReplied={hasReplied} />
             </section>
           )}
         </div>

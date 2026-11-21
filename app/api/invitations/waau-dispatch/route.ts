@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deliver } from "@/lib/invitation-delivery";
+import { clock, COOLDOWN_MAX } from "@/lib/invitation-cooldown";
+import { cooldownFor, deliver } from "@/lib/invitation-delivery";
 import { getSessionUser } from "@/lib/supabase/session";
 import { normalizePhone, validPhone } from "@/lib/wedding";
 
@@ -20,6 +21,8 @@ const meta = z.object({
   phone: z.string().trim().max(32),
   message: z.string().trim().min(1).max(2000),
   inviteUrl: z.string().trim().max(600).default(""),
+  /** The user confirmed this guest has replied on WhatsApp, so Meta's per-number marketing cap no longer applies to them. */
+  guestReplied: z.boolean().default(false),
   eventTitle: z.string().trim().max(160).default(""),
   senderName: z.string().trim().max(160).default(""),
 });
@@ -72,6 +75,12 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "Server storage isn't configured (SUPABASE_SERVICE_ROLE_KEY)." }, { status: 503 });
 
   const phone = normalizePhone(parsed.phone);
+  // Same 2-per-24-hours guard as the studio, enforced here so direct API calls and retries can't skip it.
+  const until = parsed.guestReplied ? null : await cooldownFor(admin, phone);
+  if (until) {
+    const wait = until - Date.now();
+    return NextResponse.json({ code: "cooldown", cooldownUntil: until, retryAfterSec: Math.ceil(wait / 1000), error: `This number already received ${COOLDOWN_MAX} invitations in the last 24 hours. You can send again in ${clock(wait)}, or confirm the guest replied.` }, { status: 429, headers: { "Retry-After": String(Math.ceil(wait / 1000)), "Cache-Control": "no-store" } });
+  }
   const path = `dispatch/${parsed.invitationId ?? "adhoc"}/${crypto.randomUUID()}.${type.ext}`;
   const up = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: type.mime, cacheControl: "31536000", upsert: false });
   if (up.error) {

@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { COOLDOWN_WINDOW_MS, cooldownUntil } from "./invitation-cooldown";
 
 /**
  * Hands one personalised invitation to the Waau Panel WhatsApp provider.
@@ -107,4 +108,25 @@ export async function deliver(admin: SupabaseClient, i: DeliveryInput): Promise<
   const why = (n8nError ? `${n8nError} | ` : "") + sent.error;
   await admin.from("invitation_dispatches").update({ status: "failed", error: why.slice(0, 500), error_message: why.slice(0, 500), updated_at: now() }).eq("id", i.id);
   return { status: "failed", configured: true, via: "waau", error: sent.error };
+}
+
+/**
+ * Send times (ms) of the recent dispatches to each number, from any user: Meta's cap is per recipient. Failed dispatches (rejected
+ * before WhatsApp) don't count. Returns null if the table can't be read, so the caller decides whether to fail open.
+ */
+export async function recentSendTimes(admin: SupabaseClient, phones: string[]): Promise<Record<string, number[]> | null> {
+  const out: Record<string, number[]> = {};
+  const since = new Date(Date.now() - COOLDOWN_WINDOW_MS).toISOString();
+  for (let i = 0; i < phones.length; i += 150) {
+    const { data, error } = await admin.from("invitation_dispatches").select("phone, created_at").in("phone", phones.slice(i, i + 150)).in("status", ["sent", "queued"]).gte("created_at", since);
+    if (error) { console.error("[invitations] cooldown lookup failed:", error.message); return null; }
+    for (const r of data as { phone: string; created_at: string }[]) (out[r.phone] ??= []).push(new Date(r.created_at).getTime());
+  }
+  return out;
+}
+
+/** The cooldown end (ms) for one number, or null when it may be sent to now (or the lookup failed). */
+export async function cooldownFor(admin: SupabaseClient, phone: string): Promise<number | null> {
+  const t = await recentSendTimes(admin, [phone]);
+  return t ? cooldownUntil(t[phone] ?? []) : null;
 }

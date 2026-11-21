@@ -304,3 +304,7 @@ alter table public.invitation_template_settings enable row level security;
 alter table public.invitation_dispatches add column if not exists provider_response jsonb;
 alter table public.invitation_dispatches add column if not exists error_message text;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Per-number cooldown lookups (max 2 invitations per number per rolling 24 hours) ───────────────────────────────────────
+create index if not exists invitation_dispatches_phone_idx on public.invitation_dispatches (phone, created_at desc);

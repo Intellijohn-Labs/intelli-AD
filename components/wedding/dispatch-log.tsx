@@ -2,7 +2,9 @@
 
 import { Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clock } from "@/lib/invitation-cooldown";
 import { TEMPLATES } from "@/lib/wedding";
+import { CooldownPill } from "./cooldown-pill";
 import { cn } from "@/lib/utils";
 
 type Status = "sent" | "queued" | "failed";
@@ -24,7 +26,7 @@ const templateName = (id: string | null) => (id ? TEMPLATES.find((t) => t.id ===
  * The signed-in user's WhatsApp dispatch history (invitation_dispatches), independent of the guest list so it survives clearing it.
  * Refreshes by itself every few seconds while anything is still queued; `refreshKey` bumps it right after the studio sends.
  */
-export function DispatchLog({ refreshKey }: { refreshKey: number }) {
+export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }: { refreshKey: number; cooldownLeft: (phone: string) => number; onReplied: (phone: string) => void; hasReplied: (phone: string) => boolean }) {
   const [tab, setTab] = useState<Tab>("all");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [counts, setCounts] = useState<Counts>({ total: 0, sent: 0, queued: 0, failed: 0 });
@@ -56,15 +58,15 @@ export function DispatchLog({ refreshKey }: { refreshKey: number }) {
     return () => clearInterval(t);
   }, [counts.queued, error, load]);
 
-  const retry = async (ids: string[]) => {
+  const retry = async (ids: string[], phones: Record<string, string> = {}) => {
     for (let i = 0; i < ids.length; i += 5) {
-      const res = await fetch("/api/invitations/dispatches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: ids.slice(i, i + 5) }) });
+      const res = await fetch("/api/invitations/dispatches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: ids.slice(i, i + 5), repliedIds: ids.slice(i, i + 5).filter((id) => phones[id] && hasReplied(phones[id])) }) });
       if (!res.ok) { const j = (await res.json().catch(() => ({}))) as { error?: string }; throw new Error(j.error ?? "Retry failed."); }
     }
   };
   const retryOne = async (id: string) => {
     setRetrying(new Set([id])); setNote("");
-    try { await retry([id]); setNote("Retry sent."); } catch (e) { setNote(e instanceof Error ? e.message : "Retry failed."); }
+    try { await retry([id], { [id]: rows?.find((x) => x.id === id)?.phone ?? "" }); setNote("Retry requested."); } catch (e) { setNote(e instanceof Error ? e.message : "Retry failed."); }
     setRetrying(null); await load(true);
   };
   const retryAll = async () => {
@@ -72,8 +74,10 @@ export function DispatchLog({ refreshKey }: { refreshKey: number }) {
     try {
       const res = await fetch("/api/invitations/dispatches?status=failed", { cache: "no-store" });
       const j = (await res.json().catch(() => ({}))) as { rows?: Row[] };
-      const ids = (j.rows ?? []).map((r) => r.id);
-      if (ids.length) { await retry(ids); setNote(`Retried ${ids.length} failed dispatch${ids.length === 1 ? "" : "es"}.`); }
+      const all = j.rows ?? [], ready = all.filter((r) => cooldownLeft(r.phone) === 0), cooling = all.length - ready.length;
+      const ids = ready.map((r) => r.id);
+      if (ids.length) await retry(ids, Object.fromEntries(ready.map((r) => [r.id, r.phone])));
+      setNote(`${ids.length ? `Retried ${ids.length} failed dispatch${ids.length === 1 ? "" : "es"}.` : "Nothing to retry right now."}${cooling ? ` Skipped ${cooling} in cooldown timer.` : ""}`);
     } catch (e) { setNote(e instanceof Error ? e.message : "Retry failed."); }
     setRetrying(null); await load(true);
   };
@@ -130,7 +134,7 @@ export function DispatchLog({ refreshKey }: { refreshKey: number }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-slate-200 align-top dark:border-slate-700">
-                  <td className="px-3 py-2"><div className="font-semibold text-slate-900 dark:text-white">{r.guestName}</div><div className="text-xs text-slate-600 tabular-nums dark:text-slate-300">+{r.phone}</div></td>
+                  <td className="px-3 py-2"><div className="font-semibold text-slate-900 dark:text-white">{r.guestName}</div><div className="text-xs text-slate-600 tabular-nums dark:text-slate-300">+{r.phone}</div>{cooldownLeft(r.phone) > 0 && <div className="mt-1"><CooldownPill leftMs={cooldownLeft(r.phone)} onReplied={() => onReplied(r.phone)} /></div>}</td>
                   <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-200">{templateName(r.templateId)}</td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap text-slate-700 dark:text-slate-200">{when.format(new Date(r.sentAt ?? r.createdAt))}</td>
                   <td className="px-3 py-2">
@@ -139,7 +143,7 @@ export function DispatchLog({ refreshKey }: { refreshKey: number }) {
                   </td>
                   <td className="px-3 py-2 text-right">
                     {r.status === "failed" && (
-                      <button type="button" onClick={() => void retryOne(r.id)} disabled={retrying !== null} aria-label={`Retry ${r.guestName}`} className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">
+                      <button type="button" onClick={() => void retryOne(r.id)} disabled={retrying !== null || cooldownLeft(r.phone) > 0} title={cooldownLeft(r.phone) > 0 ? `In cooldown: ${clock(cooldownLeft(r.phone))} left (max 2 per 24 hours)` : undefined} aria-label={`Retry ${r.guestName}`} className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">
                         {retrying instanceof Set && retrying.has(r.id) ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <RotateCcw className="h-3 w-3" aria-hidden="true" />} Retry
                       </button>
                     )}

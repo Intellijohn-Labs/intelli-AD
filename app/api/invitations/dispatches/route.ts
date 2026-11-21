@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { deliver } from "@/lib/invitation-delivery";
+import { clock } from "@/lib/invitation-cooldown";
+import { cooldownFor, deliver } from "@/lib/invitation-delivery";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/supabase/session";
 import { eventConfig, EVENT_TITLE, type EventType } from "@/lib/wedding";
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
   return NextResponse.json({ rows: items, counts: { total: total.count ?? 0, sent: sent.count ?? 0, queued: queued.count ?? 0, failed: failed.count ?? 0 } }, { headers: NO_STORE });
 }
 
-const retryBody = z.object({ ids: z.array(z.string().uuid()).min(1).max(10) });
+const retryBody = z.object({ ids: z.array(z.string().uuid()).min(1).max(10), /** Ids whose guest the user confirmed has replied on WhatsApp: the cooldown doesn't apply to them. */ repliedIds: z.array(z.string().uuid()).max(10).default([]) });
 
 /** Retries failed dispatches of the signed-in user with the card that was already stored (no re-render needed, so it works after the guest list is cleared). */
 export async function POST(req: Request) {
@@ -80,6 +81,8 @@ export async function POST(req: Request) {
   const results: { id: string; status: string; error?: string }[] = [];
   for (const r of data as unknown as { id: string; guest_name: string; guest_place: string; phone: string; message: string; invite_url: string; asset_url: string | null; asset_type: string | null; wedding_invitations: { data?: { details?: { eventType?: EventType; groom?: string; bride?: string } } } | { data?: { details?: { eventType?: EventType; groom?: string; bride?: string } } }[] | null }[]) {
     if (!r.asset_url) { results.push({ id: r.id, status: "failed", error: "The stored card is missing, so this can't be retried." }); continue; }
+    const until = parsed.data.repliedIds.includes(r.id) ? null : await cooldownFor(admin, r.phone);
+    if (until) { results.push({ id: r.id, status: "cooldown", error: `In cooldown (2 per 24 hours): try again in ${clock(until - Date.now())}, or confirm the guest replied.` }); continue; }
     const inv = Array.isArray(r.wedding_invitations) ? r.wedding_invitations[0] : r.wedding_invitations;
     const det = inv?.data?.details;
     const cfg = det?.eventType ? eventConfig(det.eventType) : null;

@@ -3,12 +3,13 @@
 import { Download, Eye, FileUp, Loader2, Plus, Send, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { CooldownPill } from "./cooldown-pill";
 import { Input, Textarea } from "@/components/ui/field";
 import { guestsFromCsv, newId, parseGuests, SAMPLE_GUESTS_CSV, validPhone, type Guest } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 
 /** Editable guest list: add / paste-import / edit / delete rows, per-row preview + Send via Waau Panel, and Pending / Queued / Sent status. */
-export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
+export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldownLeft, onReplied }: {
   guests: Guest[];
   /** The studio's setGuests: always called with an updater so an edit never overwrites status updates (or other edits) that landed since the last render. */
   onChange: React.Dispatch<React.SetStateAction<Guest[]>>;
@@ -16,6 +17,10 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
   busyId: string | null;
   onSend: (g: Guest) => void;
   onPreview: (g: Guest) => void;
+  /** Milliseconds until this guest's number may be sent to again (0 = now): the 2-per-15-minutes cooldown. */
+  cooldownLeft: (phone: string) => number;
+  /** The user confirmed this guest replied on WhatsApp (lifts the cooldown for that number). */
+  onReplied: (phone: string) => void;
 }) {
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -74,13 +79,15 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
         <ul className="space-y-3 sm:hidden">
           {shown.map((g, i) => {
             const bad = g.phone.trim() !== "" && !validPhone(g.phone);
-            const disabled = busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued";
+            const cd = cooldownLeft(g.phone);
+            const disabled = busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued" || cd > 0;
             return (
               <li key={g.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Guest {i + 1}</span>
                   <span className={statusCls(g.status)}>{statusText(g.status)}</span>
                 </div>
+                {cd > 0 && <div className="mb-2"><CooldownPill leftMs={cd} onReplied={() => onReplied(g.phone)} /></div>}
                 <div className="space-y-2">
                   <Input aria-label={`Guest ${i + 1} name`} placeholder="Guest name" value={g.name} onChange={(e) => patch(g.id, { name: e.target.value })} />
                   <Input aria-label={`Guest ${i + 1} place`} placeholder="Address / place" value={g.place} onChange={(e) => patch(g.id, { place: e.target.value })} />
@@ -103,6 +110,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
             <tbody>
               {shown.map((g, i) => {
                 const bad = g.phone.trim() !== "" && !validPhone(g.phone);
+                const cd = cooldownLeft(g.phone);
                 return (
                   <tr key={g.id} className="border-t border-slate-200 dark:border-slate-700">
                     <td className="px-2 py-1.5 text-xs text-slate-500 dark:text-slate-300">{i + 1}</td>
@@ -111,11 +119,13 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview }: {
                     <td className="px-1 py-1"><Input aria-label={`Guest ${i + 1} WhatsApp number`} inputMode="tel" className={cn("py-1.5", bad && "border-red-500")} value={g.phone} onChange={(e) => patch(g.id, { phone: e.target.value, status: "pending" })} placeholder="98470 12345" aria-invalid={bad || undefined} /></td>
                     <td className="px-2 py-1.5">
                       <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap", g.status === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : g.status === "queued" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" : g.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200")}>{g.status === "sent" ? "Sent via Waau Panel" : g.status === "queued" ? "Queued in Waau Panel" : g.status === "failed" ? "Failed" : "Pending"}</span>
+                    
+                      {cd > 0 && <div className="mt-1"><CooldownPill leftMs={cd} onReplied={() => onReplied(g.phone)} /></div>}
                     </td>
                     <td className="px-2 py-1.5">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => onPreview(g)} title="Preview / download this guest's card" aria-label={`Preview card for ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"><Eye className="h-4 w-4" /></button>
-                        <button type="button" onClick={() => onSend(g)} disabled={busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued"} title={!g.name.trim() ? "Enter the guest's name first" : !validPhone(g.phone) ? "Enter a valid WhatsApp number" : g.status === "sent" || g.status === "queued" ? "Already handed to Waau Panel" : "Send this guest's personalised card via Waau Panel"} aria-label={`Send via Waau Panel to ${g.name || `guest ${i + 1}`}`} className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-2 py-1 text-xs font-bold whitespace-nowrap text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />} {g.status === "failed" ? "Retry" : "Send via Waau Panel"}</button>
+                        <button type="button" onClick={() => onSend(g)} disabled={busyId !== null || !g.name.trim() || !validPhone(g.phone) || g.status === "sent" || g.status === "queued" || cd > 0} title={cd > 0 ? "This number is in cooldown (max 2 per 24 hours). You can send again once the timer finishes, or after you confirm the guest replied." : !g.name.trim() ? "Enter the guest's name first" : !validPhone(g.phone) ? "Enter a valid WhatsApp number" : g.status === "sent" || g.status === "queued" ? "Already handed to Waau Panel" : "Send this guest's personalised card via Waau Panel"} aria-label={`Send via Waau Panel to ${g.name || `guest ${i + 1}`}`} className="inline-flex items-center gap-1 rounded-md bg-[#25D366] px-2 py-1 text-xs font-bold whitespace-nowrap text-[#06371a] hover:brightness-95 disabled:opacity-40">{busyId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />} {g.status === "failed" ? "Retry" : "Send via Waau Panel"}</button>
                         <button type="button" onClick={() => onChange((cur) => cur.filter((x) => x.id !== g.id))} aria-label={`Delete ${g.name || `guest ${i + 1}`}`} className="rounded-md p-1.5 text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
