@@ -482,7 +482,7 @@ export function WeddingStudio() {
                           : <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center"><ImagePlus className="h-7 w-7 text-[#D12014]" aria-hidden="true" /><span className="text-xs font-extrabold text-[#D12014]">{mode === "greeting" ? "Upload Custom Greeting Card" : "Upload Custom Card"}</span><span className="text-[10px] text-slate-600 dark:text-slate-300">PNG, JPG or WebP · we add each guest&apos;s name</span></div>}
                       </div>
                       <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{d.customCard ? "Your own card" : mode === "greeting" ? "Upload Your Own Greeting" : "Upload Your Own Card"}</p>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{d.customCard ? "Your design + a personalised greeting" : "Use your own invitation design"}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{d.customCard ? "Your design + a personalised greeting" : (mode === "greeting" ? "Use your own greeting design" : "Use your own invitation design")}</p>
                     </button>
                     {d.customCard && (
                       <div className="mt-1.5 flex gap-1.5">
