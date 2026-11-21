@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { CUSTOM_TEMPLATE_ID, VIDEO_TEMPLATE_ID, eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { CUSTOM_TEMPLATE_ID, VIDEO_TEMPLATE_ID, eventConfig, EVENT_TITLE, fillName, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -457,11 +457,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const f = t.festival!;
       // Headline (Malayalam then English, or just the typed one), the wish, the optional sender photo / logo, then "With love from <sender>".
       const typed = d.customTitle.trim();
-      if (typed) text(typed, 84, 800, { id: "title", color: p.accent });
+      if (typed) text(fillName(typed, o.guest?.name), 84, 800, { id: "title", color: p.accent });
       else both(f.title.ml, f.title.en, 84, 800, { id: "title", color: p.accent });
-      const wish = d.message.trim();
+      const wish = fillName(d.message.trim(), o.guest?.name);
       if (wish) text(wish, 36, 500, { id: "message", italic: true, color: p.ink });
-      else both(f.wish.ml, f.wish.en, 36, 500, { id: "message", italic: true });
+      else both(fillName(f.wish.ml, o.guest?.name), fillName(f.wish.en, o.guest?.name), 36, 500, { id: "message", italic: true });
       if (d.festivalPhoto) photoBlock();
       const from = d.groom.trim();
       if (from) { both("സ്നേഹപൂർവം", "With love from", 28, 600, { id: "names", color: p.sub, fam: SANS }); text(from, 64, 800, { id: "names" }); }
@@ -487,7 +487,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       ? [d.groomParents.trim() && sonOf(d.groom.trim() || "Groom", d.groomParents.trim(), true), d.brideParents.trim() && sonOf(d.bride.trim() || "Bride", d.brideParents.trim(), false)].filter(Boolean).join("\n")
       : hostLine;
     if (parents && lvl < 2) text(parents, 30, 500, { id: "parents", color: p.sub, fam: SANS });
-    const msg = d.message.trim();
+    const msg = fillName(d.message.trim(), o.guest?.name);
     if (lvl >= 2) { /* no message */ }
     else if (msg) text(msg, 32, 500, { id: "message", italic: true, color: p.ink });
     else if (t.layout !== "polaroid") both(cfg.message.ml, cfg.message.en, 32, 500, { id: "message", italic: true });

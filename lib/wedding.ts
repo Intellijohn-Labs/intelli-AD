@@ -243,12 +243,12 @@ const FEST = (id: string, name: string, ml: string, tagline: string, pal: Palett
   id, name, ml, tagline, layout: "classic", motif: "art", shape: "circle", pal, blessing: ["", ""], festival: { title, wish }, art: { src: `/templates/${id}.svg`, left: 150, right: 150, top: 520, bottom: 140 },
 });
 const FESTIVAL_RAW: RawTemplate[] = [
-  FEST("fest-onam", "Onam Pookkalam & Kasavu", "ഓണാശംസ", "Floral pookkalam, kasavu gold & lamp", P("#FFF9EA", "#F8E9C4", "#3F1A08", "#7A4A1E", "#A56A00", "#2E7D32"), { en: "Happy Onam", ml: "ഹൃദയം നിറഞ്ഞ ഓണാശംസകൾ" }, { en: "May the festival of Onam bring happiness, prosperity and togetherness to you and your family.", ml: "ഓണം നിങ്ങൾക്കും കുടുംബത്തിനും സന്തോഷവും ഐശ്വര്യവും ഒരുമയും കൊണ്ടുവരട്ടെ." }),
-  FEST("fest-vishu", "Vishu Kani Konna & Lamp", "വിഷു ആശംസ", "Golden konna blooms & the vishukkani", P("#FFFBEA", "#FBEFB8", "#4A2A00", "#7A5A12", "#B07A00", "#2E6B2E"), { en: "Happy Vishu", ml: "ഐശ്വര്യപൂർണ്ണമായ വിഷു ആശംസകൾ" }, { en: "May the Vishukkani bring you a year full of prosperity, good health and joy.", ml: "വിഷുക്കണി നിങ്ങൾക്ക് ഐശ്വര്യവും ആരോഗ്യവും സന്തോഷവും നിറഞ്ഞ ഒരു വർഷം സമ്മാനിക്കട്ടെ." }),
-  FEST("fest-christmas", "Christmas Star & Pine", "ക്രിസ്മസ് ആശംസ", "Red & pine with a golden star", P("#FFF8F0", "#F9E6D8", "#4A0A14", "#6E3A3A", "#A07400", "#1F6B3A"), { en: "Merry Christmas & Season's Greetings", ml: "ക്രിസ്മസ് ആശംസകൾ" }, { en: "Wishing you the joy, peace and love of Christmas, and a blessed new year.", ml: "ക്രിസ്മസിന്റെ സന്തോഷവും സമാധാനവും സ്നേഹവും നിങ്ങൾക്ക് നേരുന്നു." }),
-  FEST("fest-newyear", "New Year Fireworks", "പുതുവത്സരാശംസ", "Midnight navy & gold fireworks", P("#0E1B3F", "#08112B", "#F7E9BE", "#C9CFE6", "#E3BE5C", "#F6E3A1"), { en: "Happy New Year", ml: "പുതുവത്സരാശംസകൾ" }, { en: "Wishing you a new year full of health, happiness and new beginnings.", ml: "ആരോഗ്യവും സന്തോഷവും പുതിയ തുടക്കങ്ങളും നിറഞ്ഞ ഒരു പുതുവർഷം നേരുന്നു." }),
-  FEST("fest-eid", "Eid Mubarak Crescent & Lanterns", "ഈദ് മുബാറക്", "Emerald, gold crescent & fanoos", P("#073B2E", "#052F26", "#FFF4D6", "#CFE3D6", "#E8C766", "#F0DA94"), { en: "Eid Mubarak", ml: "ഈദ് മുബാറക്" }, { en: "May Allah accept your prayers and fill your home with joy, peace and blessings this Eid.", ml: "ഈ പെരുന്നാൾ നിങ്ങളുടെ വീട്ടിൽ സന്തോഷവും സമാധാനവും അനുഗ്രഹവും നിറയ്ക്കട്ടെ." }),
-  FEST("fest-diwali", "Diwali Diyas & Rangoli", "ദീപാവലി ആശംസ", "Royal maroon, diya lights & rangoli", P("#FFF6E4", "#FBE3BD", "#4A0F1A", "#7A4030", "#A86400", "#9A1B2E"), { en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ" }, { en: "May the festival of lights fill your life with happiness, prosperity and peace.", ml: "ദീപങ്ങളുടെ ഉത്സവം നിങ്ങളുടെ ജീവിതത്തിൽ സന്തോഷവും ഐശ്വര്യവും സമാധാനവും നിറയ്ക്കട്ടെ." }),
+  FEST("fest-onam", "Onam Pookkalam & Kasavu", "ഓണാശംസ", "Floral pookkalam, kasavu gold & lamp", P("#FFF9EA", "#F8E9C4", "#3F1A08", "#7A4A1E", "#A56A00", "#2E7D32"), { en: "Happy Onam", ml: "ഹൃദയം നിറഞ്ഞ ഓണാശംസകൾ" }, { en: "Dear {name}, may the festival of Onam bring happiness, prosperity and togetherness to you and your family.", ml: "പ്രിയ {name}, ഓണം നിങ്ങൾക്കും കുടുംബത്തിനും സന്തോഷവും ഐശ്വര്യവും ഒരുമയും കൊണ്ടുവരട്ടെ." }),
+  FEST("fest-vishu", "Vishu Kani Konna & Lamp", "വിഷു ആശംസ", "Golden konna blooms & the vishukkani", P("#FFFBEA", "#FBEFB8", "#4A2A00", "#7A5A12", "#B07A00", "#2E6B2E"), { en: "Happy Vishu", ml: "ഐശ്വര്യപൂർണ്ണമായ വിഷു ആശംസകൾ" }, { en: "Dear {name}, may the Vishukkani bring you a year full of prosperity, good health and joy.", ml: "പ്രിയ {name}, വിഷുക്കണി നിങ്ങൾക്ക് ഐശ്വര്യവും ആരോഗ്യവും സന്തോഷവും നിറഞ്ഞ ഒരു വർഷം സമ്മാനിക്കട്ടെ." }),
+  FEST("fest-christmas", "Christmas Star & Pine", "ക്രിസ്മസ് ആശംസ", "Red & pine with a golden star", P("#FFF8F0", "#F9E6D8", "#4A0A14", "#6E3A3A", "#A07400", "#1F6B3A"), { en: "Merry Christmas & Season's Greetings", ml: "ക്രിസ്മസ് ആശംസകൾ" }, { en: "Dear {name}, wishing you the joy, peace and love of Christmas, and a blessed new year.", ml: "പ്രിയ {name}, ക്രിസ്മസിന്റെ സന്തോഷവും സമാധാനവും സ്നേഹവും നിങ്ങൾക്ക് നേരുന്നു." }),
+  FEST("fest-newyear", "New Year Fireworks", "പുതുവത്സരാശംസ", "Midnight navy & gold fireworks", P("#0E1B3F", "#08112B", "#F7E9BE", "#C9CFE6", "#E3BE5C", "#F6E3A1"), { en: "Happy New Year", ml: "പുതുവത്സരാശംസകൾ" }, { en: "Dear {name}, wishing you a new year full of health, happiness and new beginnings.", ml: "പ്രിയ {name}, ആരോഗ്യവും സന്തോഷവും പുതിയ തുടക്കങ്ങളും നിറഞ്ഞ ഒരു പുതുവർഷം നേരുന്നു." }),
+  FEST("fest-eid", "Eid Mubarak Crescent & Lanterns", "ഈദ് മുബാറക്", "Emerald, gold crescent & fanoos", P("#073B2E", "#052F26", "#FFF4D6", "#CFE3D6", "#E8C766", "#F0DA94"), { en: "Eid Mubarak", ml: "ഈദ് മുബാറക്" }, { en: "Dear {name}, may Allah accept your prayers and fill your home with joy, peace and blessings this Eid.", ml: "പ്രിയ {name}, ഈ പെരുന്നാൾ നിങ്ങളുടെ വീട്ടിൽ സന്തോഷവും സമാധാനവും അനുഗ്രഹവും നിറയ്ക്കട്ടെ." }),
+  FEST("fest-diwali", "Diwali Diyas & Rangoli", "ദീപാവലി ആശംസ", "Royal maroon, diya lights & rangoli", P("#FFF6E4", "#FBE3BD", "#4A0F1A", "#7A4030", "#A86400", "#9A1B2E"), { en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ" }, { en: "Dear {name}, may the festival of lights fill your life with happiness, prosperity and peace.", ml: "പ്രിയ {name}, ദീപങ്ങളുടെ ഉത്സവം നിങ്ങളുടെ ജീവിതത്തിൽ സന്തോഷവും ഐശ്വര്യവും സമാധാനവും നിറയ്ക്കട്ടെ." }),
 ];
 const FESTIVAL_META: Meta = { category: "festival", defaultEvent: "festival", events: ["festival"], premium: true };
 
@@ -354,6 +354,8 @@ export const GREETING_FORMATS: { id: GreetingFormat; label: string }[] = [
   { id: "custom", label: "Custom prefix" },
 ];
 /** Shown on the live preview until a real guest is added. */
+/** Replaces {name} / {{name}} (any case, optional inner spaces) with the recipient's name ("Guest" when there is none). */
+export const fillName = (text: string, name?: string | null) => text.replace(/\{\{\s*name\s*\}\}|\{\s*name\s*\}/gi, () => (name ?? "").trim() || "Guest");
 export const SAMPLE_GUEST = { name: "Arun", place: "Kochi" };
 
 const ML_SERIF = '"Noto Serif Malayalam", "Noto Serif", Georgia, serif';
@@ -524,8 +526,8 @@ export const inviteUrl = (origin: string, id: string, g?: { name?: string; place
 export function whatsappMessage(d: WeddingDetails, g: { name: string; place: string }, festival?: { title: { en: string; ml: string }; wish: { en: string; ml: string } }): string {
   const cfg = eventConfig(d.eventType);
   if (cfg.group === "festival") { // a greeting, not an invitation: headline + wish + who it's from
-    const who = g.name || "Friend", from = d.groom.trim(), typedTitle = d.customTitle.trim(), typedWish = d.message.trim();
-    const part = (l: "en" | "ml") => `${typedTitle || festival?.title[l] || cfg.title[l]}${from ? (l === "en" ? ` from ${from}` : ` - ${from}`) : ""}!${typedWish || festival?.wish[l] || cfg.message[l] ? `\n\n${typedWish || festival?.wish[l] || cfg.message[l]}` : ""}`;
+    const who = g.name || "Friend", from = d.groom.trim(), typedTitle = fillName(d.customTitle.trim(), g.name), typedWish = fillName(d.message.trim(), g.name);
+    const part = (l: "en" | "ml") => `${typedTitle || festival?.title[l] || cfg.title[l]}${from ? (l === "en" ? ` from ${from}` : ` - ${from}`) : ""}!${typedWish || fillName(festival?.wish[l] ?? "", g.name) || cfg.message[l] ? `\n\n${typedWish || fillName(festival?.wish[l] ?? "", g.name) || cfg.message[l]}` : ""}`;
     const en = `Dear ${who},\n\n${part("en")}`, ml = `പ്രിയപ്പെട്ട ${who},\n\n${part("ml")}`;
     return d.lang === "ml" ? ml : d.lang === "both" ? `${ml}\n\n———\n\n${en}` : en;
   }

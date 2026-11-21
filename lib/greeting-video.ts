@@ -55,12 +55,12 @@ export const videoBitrate = (seconds: number) => Math.round(Math.min(4_000_000, 
 export interface VideoFestival { id: string; en: string; ml: string; quoteEn: string; quoteMl: string }
 /** Festival presets for the video greeting: headline + footer quote in English and Malayalam. */
 export const VIDEO_FESTIVALS: VideoFestival[] = [
-  { id: "vishu", en: "Happy Vishu", ml: "വിഷു ആശംസകൾ", quoteEn: "May this Vishu bring prosperity, peace, and bright new beginnings to your home.", quoteMl: "ഐശ്വര്യത്തിന്റെയും സന്തോഷത്തിന്റെയും സമൃദ്ധിയുടെയും വിഷു ആശംസകൾ!" },
-  { id: "onam", en: "Happy Onam", ml: "ഓണാശംസകൾ", quoteEn: "Wishing you and your family a harvest of happiness, harmony, and prosperity this Onam.", quoteMl: "സ്നേഹത്തിന്റെയും സമൃദ്ധിയുടെയും ഒരു നല്ല ഓണക്കാലം ആശംസിക്കുന്നു!" },
-  { id: "christmas", en: "Merry Christmas", ml: "ക്രിസ്മസ് ആശംസകൾ", quoteEn: "May the joy and peace of Christmas fill your home with warmth and happiness.", quoteMl: "സ്നേഹത്തിന്റെയും സമാധാനത്തിന്റെയും തിരുപ്പിറവി ആശംസകൾ!" },
-  { id: "newyear", en: "Happy New Year", ml: "പുതുവത്സരാശംസകൾ", quoteEn: "Wishing you a year filled with good health, new milestones, and endless joy.", quoteMl: "സന്തോഷവും വിജയവും നിറഞ്ഞ ഒരു പുതുവത്സരം ആശംസിക്കുന്നു!" },
-  { id: "eid", en: "Eid Mubarak", ml: "ഈദ് മുബാറക്", quoteEn: "May this blessed Eid bring peace, joy, and abundant blessings to you and your loved ones.", quoteMl: "സ്നേഹത്തിന്റെയും സന്തോഷത്തിന്റെയും ഈദ് മുബാറക്!" },
-  { id: "diwali", en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ", quoteEn: "May the festival of lights illuminate your life with joy, peace, and prosperity.", quoteMl: "വെളിച്ചത്തിന്റെയും സന്തോഷത്തിന്റെയും ദീപാവലി ആശംസകൾ!" },
+  { id: "vishu", en: "Happy Vishu", ml: "വിഷു ആശംസകൾ", quoteEn: "Dear {name}, may this Vishu bring prosperity, peace, and bright new beginnings to your home.", quoteMl: "പ്രിയ {name}, ഐശ്വര്യത്തിന്റെയും സന്തോഷത്തിന്റെയും സമൃദ്ധിയുടെയും വിഷു ആശംസകൾ!" },
+  { id: "onam", en: "Happy Onam", ml: "ഓണാശംസകൾ", quoteEn: "Dear {name}, wishing you and your family a harvest of happiness, harmony, and prosperity this Onam.", quoteMl: "പ്രിയ {name}, സ്നേഹത്തിന്റെയും സമൃദ്ധിയുടെയും ഒരു നല്ല ഓണക്കാലം ആശംസിക്കുന്നു!" },
+  { id: "christmas", en: "Merry Christmas", ml: "ക്രിസ്മസ് ആശംസകൾ", quoteEn: "{name}, may the joy and peace of Christmas fill your home with warmth and happiness.", quoteMl: "പ്രിയ {name}, സ്നേഹത്തിന്റെയും സമാധാനത്തിന്റെയും തിരുപ്പിറവി ആശംസകൾ!" },
+  { id: "newyear", en: "Happy New Year", ml: "പുതുവത്സരാശംസകൾ", quoteEn: "Wishing you, {name}, a year filled with good health, new milestones, and endless joy.", quoteMl: "{name}, സന്തോഷവും വിജയവും നിറഞ്ഞ ഒരു പുതുവത്സരം ആശംസിക്കുന്നു!" },
+  { id: "eid", en: "Eid Mubarak", ml: "ഈദ് മുബാറക്", quoteEn: "{name}, may this blessed Eid bring peace, joy, and abundant blessings to you and your loved ones.", quoteMl: "പ്രിയ {name}, സ്നേഹത്തിന്റെയും സന്തോഷത്തിന്റെയും ഈദ് മുബാറക്!" },
+  { id: "diwali", en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ", quoteEn: "{name}, may the festival of lights illuminate your life with joy, peace, and prosperity.", quoteMl: "പ്രിയ {name}, വെളിച്ചത്തിന്റെയും സന്തോഷത്തിന്റെയും ദീപാവലി ആശംസകൾ!" },
 ];
 
 export interface QuoteStyle { text: string; scale: number; color: string; font: "sans" | "serif" | "manjari"; backdrop: boolean }
