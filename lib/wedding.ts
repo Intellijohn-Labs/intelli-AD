@@ -73,6 +73,14 @@ export interface WeddingDetails {
   blockScale: Partial<Record<TextId | BlockId, number>>;
   /** Master text size for every block at once (0.5 - 2.5, 1 = template default); multiplies each element's own blockScale. */
   contentScale: number;
+  /** The client's own invitation image (downscaled data URL; an uploaded URL once published). Used when the "Your own card" template is picked. */
+  customCard: string | null;
+  /** Custom card only: print the guest's "Dear ..." line on it (on by default). */
+  showGuestName: boolean;
+  /** Custom card only: also print the event title, names, date and venue on the image (off by default: the uploaded design already has them). */
+  printCustomDetails: boolean;
+  /** Custom card only: the event title used for the WhatsApp message and invite page (the host / sender name is the first name field). */
+  customTitle: string;
   /** Per-element colour / alignment / letter spacing / line height. */
   textStyle: Partial<Record<TextId, TextStyle>>;
   /** Custom text boxes, uploaded images and decorative elements placed in the fullscreen studio. */
@@ -235,7 +243,12 @@ const ART_META: Record<string, Meta> = {
   "balloon-luxury": { category: "birthday", defaultEvent: "birthday", events: ["birthday", "anniversary"], premium: true },
   "balloon-kids": { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true },
 };
-export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
+/** "Your own card": the client's uploaded image is the whole background. It has no gallery entry of its own (the picker shows an upload card instead). */
+export const CUSTOM_TEMPLATE_ID = "custom-upload";
+const CUSTOM_RAW: RawTemplate[] = [{ id: CUSTOM_TEMPLATE_ID, name: "Your own card", ml: "സ്വന്തം കാർഡ്", tagline: "Upload your design; each guest's name is added", layout: "classic", motif: "minimal", shape: "rect", pal: P("#FFFFFF", "#F3F3F3", "#1F1F24", "#55555F", "#B8860B", "#8C1C2B"), blessing: ["", ""] }];
+const CUSTOM_META: Meta = { category: "events", defaultEvent: "wedding", events: [] }; // events: [] so no event type ever auto-selects it
+
+export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES, ...CUSTOM_RAW].map((t) => ({ ...t, ...((t.id === CUSTOM_TEMPLATE_ID ? CUSTOM_META : undefined) ?? META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);
@@ -292,7 +305,7 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], blockFont: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
@@ -476,8 +489,9 @@ export const inviteUrl = (origin: string, id: string, g?: { name?: string; place
 /** The WhatsApp text for one guest (language follows the card). */
 export function whatsappMessage(d: WeddingDetails, g: { name: string; place: string }): string {
   const cfg = eventConfig(d.eventType);
-  const title = cfg.title;
-  const names = (cfg.couple ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ");
+  const custom = !!d.customCard && !!d.customTitle.trim();
+  const title = custom ? { en: d.customTitle.trim(), ml: d.customTitle.trim() } : cfg.title;
+  const names = (cfg.couple && !custom ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ");
   const date = formatDate(d.date, d.lang);
   const who = g.name || "Friend";
   const maps = mapsLink(d);

@@ -34,10 +34,12 @@ export async function publishInvitation(templateId: string, details: WeddingDeta
       const blob = await (await fetch(l.src)).blob();
       return { ...l, src: await upload(`${folder}/layer-${i}.${blob.type.includes("png") ? "png" : "jpg"}`, blob) };
     }));
+    let customCard = details.customCard;
+    if (customCard && customCard.startsWith("data:")) { const blob = await (await fetch(customCard)).blob(); customCard = await upload(`${folder}/custom-card.jpg`, blob); }
     let videoUrl: string | null = null;
     if (video) videoUrl = await upload(`${folder}/video.${video.type.includes("webm") ? "webm" : "mp4"}`, video);
     const id = newId();
-    const { error } = await sb.from("wedding_invitations").insert({ id, template_id: templateId, data: { details: { ...details, photos, layers }, videoUrl, effect } });
+    const { error } = await sb.from("wedding_invitations").insert({ id, template_id: templateId, data: { details: { ...details, photos, layers, customCard }, videoUrl, effect } });
     if (error) throw new Error(error.message);
     return { id, local: false, videoUrl };
   } catch (e) {

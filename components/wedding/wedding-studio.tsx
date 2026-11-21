@@ -13,7 +13,7 @@ import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { CUSTOM_TEMPLATE_ID, EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -149,7 +149,7 @@ export function WeddingStudio() {
   useEffect(() => {
     const s = loadStudio();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setTemplateId(s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
+    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setTemplateId(s.template === CUSTOM_TEMPLATE_ID && !s.details?.customCard ? TEMPLATES.find((t) => t.id !== CUSTOM_TEMPLATE_ID)!.id : s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
     setHydrated(true);
   }, []);
   useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId, publishedHash, effect }); }, [hydrated, templateId, d, guests, effect, inviteId, publishedHash]);
@@ -157,7 +157,13 @@ export function WeddingStudio() {
 
   // The details every render uses (preview, guest PNGs, ZIP): the couple's own, with sample text only where a field is empty.
   const cfg = eventConfig(d.eventType);
-  const rd = useMemo(() => ({ ...sampleFor(d.eventType), ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) }) as WeddingDetails, [d]);
+  const isCustomMode = templateId === CUSTOM_TEMPLATE_ID && !!d.customCard;
+  const rd = useMemo(() => {
+    // An uploaded card shows only what the client typed (no sample names, date or venue leaking into the WhatsApp text); other templates fill blanks with samples.
+    const base = { ...sampleFor(d.eventType), ...(isCustomMode ? { groom: "", bride: "", groomParents: "", brideParents: "", date: "", time: "", venue: "", message: "" } : {}) };
+    const merged = { ...base, ...Object.fromEntries(Object.entries(d).filter(([, v]) => (Array.isArray(v) ? v.length : v !== ""))) } as WeddingDetails;
+    return isCustomMode ? merged : { ...merged, customCard: null }; // presets never carry (or publish) the uploaded image
+  }, [d, isCustomMode]);
 
   // A template suits an event when it is in the event's group (wedding events also use the shared "events" designs).
   const suits = (t: WeddingTemplate, ev: EventType) => templateSuits(t, ev);
@@ -174,7 +180,7 @@ export function WeddingStudio() {
   const active = useMemo(() => TEMPLATES.filter((t) => !hidden.has(t.id)), [hidden]);
   useEffect(() => {
     if (!hydrated || !hidden.has(templateId)) return;
-    const next = active.find((t) => suits(t, d.eventType)) ?? active[0];
+    const next = active.find((t) => suits(t, d.eventType)) ?? active.find((t) => t.id !== CUSTOM_TEMPLATE_ID);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (next) setTemplateId(next.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,10 +188,10 @@ export function WeddingStudio() {
   const pickEvent = (ev: EventType) => {
     const g = eventConfig(ev).group;
     set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); chooseFilter(g === "events" ? "events" : g);
-    if (!suits(tpl, ev)) { const next = active.find((t) => t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); chooseFilter(g === "events" ? "events" : g); } }
+    if (!suits(tpl, ev)) { const next = active.find((t) => t.id !== CUSTOM_TEMPLATE_ID && t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); chooseFilter(g === "events" ? "events" : g); } }
   };
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
-  const shown = active.filter((t) => filter === "all" || t.category === filter);
+  const shown = active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID && (filter === "all" || t.category === filter));
 
   // The preview shows the first real guest's greeting, or a sample one, so it can be styled and positioned before any guest exists.
   const firstGuest = guests.find((g) => g.name.trim());
@@ -274,6 +280,20 @@ export function WeddingStudio() {
     return () => { live = false; };
   }, [guestPreview, tpl, rd, d.photos]);
 
+  const customRef = useRef<HTMLInputElement>(null);
+  const addCustomCard = async (f: File | undefined) => {
+    if (!f) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { toast("Please choose a PNG, JPG or WebP image."); return; }
+    if (f.size > 15 * 1024 * 1024) { toast("That image is over 15 MB. Please use a smaller file."); return; }
+    const u = await photoToDataUrl(f, 1600);
+    if (!u) { toast("Couldn't read that image."); return; }
+    set({ customCard: u }); setTemplateId(CUSTOM_TEMPLATE_ID); setSelected(null);
+    toast("Card uploaded. Drag the guest name to the blank space on your design.");
+  };
+  const removeCustomCard = () => {
+    set({ customCard: null });
+    if (templateId === CUSTOM_TEMPLATE_ID) { const next = active.find((t) => t.id !== CUSTOM_TEMPLATE_ID); if (next) setTemplateId(next.id); }
+  };
   const removePhoto = (i: number) => set({ photos: d.photos.filter((_, j) => j !== i) });
   const clearPhotos = () => set({ photos: [] });
   const addPhotos = async (files: FileList | null) => {
@@ -331,7 +351,7 @@ export function WeddingStudio() {
     try {
       const blob = await cardBlob(g, photos);
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), message: whatsappMessage(rd, g), eventTitle: EVENT_TITLE[rd.eventType].en, senderName: (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), message: whatsappMessage(rd, g), eventTitle: isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
       fd.append("card", blob, "card.jpg");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string; code?: string; cooldownUntil?: number };
@@ -415,9 +435,30 @@ export function WeddingStudio() {
                 <button type="button" aria-label="Scroll categories right" onClick={() => scrollPills(1)} disabled={pillEdge.end} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-600 dark:bg-[#131416] dark:text-slate-100 dark:hover:bg-white/10", pillEdge.start && pillEdge.end && "hidden")}><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
               </div>
               <ul id="template-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                <li>
+                  {/* "Upload Custom Card" always leads the picker; once an image is uploaded it becomes the selectable "Your own card" entry. */}
+                  <div className={cn("relative flex h-full flex-col rounded-lg border p-1.5", templateId === CUSTOM_TEMPLATE_ID && d.customCard ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-dashed border-[#D12014]/60 bg-[#D12014]/[0.03]")}>
+                    <button type="button" aria-pressed={templateId === CUSTOM_TEMPLATE_ID && !!d.customCard} aria-label={d.customCard ? "Use your uploaded card" : "Upload custom card"} onClick={() => (d.customCard ? (setTemplateId(CUSTOM_TEMPLATE_ID), setSelected(null)) : customRef.current?.click())} className="w-full text-left">
+                      <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
+                        {d.customCard
+                          ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={d.customCard} alt="Your uploaded card" draggable={false} className="h-full w-full object-cover" />
+                          : <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center"><ImagePlus className="h-7 w-7 text-[#D12014]" aria-hidden="true" /><span className="text-xs font-extrabold text-[#D12014]">Upload Custom Card</span><span className="text-[10px] text-slate-600 dark:text-slate-300">PNG, JPG or WebP · we add each guest&apos;s name</span></div>}
+                      </div>
+                      <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{d.customCard ? "Your own card" : "Upload Your Own Card"}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300">{d.customCard ? "Your design + a personalised greeting" : "Use your own invitation design"}</p>
+                    </button>
+                    {d.customCard && (
+                      <div className="mt-1.5 flex gap-1.5">
+                        <button type="button" onClick={() => customRef.current?.click()} className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">Replace</button>
+                        <button type="button" onClick={removeCustomCard} className="flex-1 rounded-md border border-red-300 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/10">Remove</button>
+                      </div>
+                    )}
+                    <input ref={customRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload your own invitation card" onChange={(e) => { void addCustomCard(e.target.files?.[0]); e.target.value = ""; }} />
+                  </div>
+                </li>
                 {shown.map((x, i) => (
-                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards); a selected template further down stays selected.
-                  <li key={x.id} className={!expanded && i >= 2 ? (i >= 5 ? "hidden" : i >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
+                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards, the upload card being the first); a selected template further down stays selected.
+                  <li key={x.id} className={!expanded && i + 1 >= 2 ? (i + 1 >= 5 ? "hidden" : i + 1 >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
                     <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
                       {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
                       
@@ -431,10 +472,10 @@ export function WeddingStudio() {
                 ))}
               </ul>
               {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
-              {shown.length > cols && (
+              {shown.length + 1 > cols && (
                 <div className="mt-4 flex justify-center">
                   <button type="button" aria-expanded={expanded} aria-controls="template-grid" onClick={() => setExpandedFor(expanded ? null : filter)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-transparent dark:text-slate-100 dark:hover:bg-white/5">
-                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
+                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length + 1 - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
                   </button>
                 </div>
               )}
@@ -485,17 +526,30 @@ export function WeddingStudio() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => pickEvent(e.target.value as EventType)}>{EVENTS.map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>
                 <Field id="w-lang" label="Language"><Select id="w-lang" value={d.lang} onChange={(e) => set({ lang: e.target.value as WLang })}><option value="en">English</option><option value="ml">Malayalam (മലയാളം)</option><option value="both">Bilingual (ML + EN)</option></Select></Field>
-                <Field id="w-groom" label={cfg.labels.name1}><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} placeholder={cfg.sample.groom} /></Field>
-                {cfg.useName2 && <Field id="w-bride" label={cfg.labels.name2}><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} placeholder={cfg.sample.bride || undefined} /></Field>}
-                <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>
-                {cfg.useHost2 && <Field id="w-bp" label={cfg.labels.host2}><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>}
-                <Field id="w-date" label="Date" hint={d.date ? undefined : "Sample date shown on the card. Pick your own date to replace it."}><Input id="w-date" type="date" value={d.date || cfg.sample.date || ""} className={d.date ? undefined : "text-slate-500"} onChange={(e) => set({ date: e.target.value })} /></Field>
+                <Field id="w-groom" label={isCustomMode ? "Host / Sender name" : cfg.labels.name1} hint={isCustomMode ? "Sent to guests in the WhatsApp message (variable {{3}}). Printed on the card only if you turn on “Print event details” above." : undefined}><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} placeholder={cfg.sample.groom} /></Field>
+                {!isCustomMode && cfg.useName2 && <Field id="w-bride" label={cfg.labels.name2}><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} placeholder={cfg.sample.bride || undefined} /></Field>}
+                {!isCustomMode && <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>}
+                {!isCustomMode && cfg.useHost2 && <Field id="w-bp" label={cfg.labels.host2}><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>}
+                {isCustomMode && (
+                  <div className="space-y-3 rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3 sm:col-span-2">
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={d.customCard ?? ""} alt="" className="h-20 w-14 rounded border border-slate-300 object-cover dark:border-slate-600" />
+                      <div className="min-w-0 flex-1"><p className="text-sm font-bold text-slate-900 dark:text-white">Your own card</p><p className="text-xs text-slate-700 dark:text-slate-200">Your design is the whole card. Each guest gets their name added; drag it in the live preview to the blank space.</p></div>
+                      <button type="button" onClick={() => customRef.current?.click()} className="shrink-0 rounded-md border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-800 hover:bg-white dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">Replace</button>
+                    </div>
+                    <label className="flex items-start gap-2 text-sm font-semibold text-slate-900 dark:text-white"><input type="checkbox" checked={d.showGuestName !== false} onChange={(e) => set({ showGuestName: e.target.checked })} className="mt-0.5 h-4 w-4 accent-[#D12014]" /><span>Show Guest Name on Card<span className="block text-xs font-normal text-slate-700 dark:text-slate-200">Prints the greeting (&ldquo;Dear {"{Name}"}&rdquo;) on each guest&apos;s card. Change its wording in Step 1.</span></span></label>
+                    <label className="flex items-start gap-2 text-sm font-semibold text-slate-900 dark:text-white"><input type="checkbox" checked={!!d.printCustomDetails} onChange={(e) => set({ printCustomDetails: e.target.checked })} className="mt-0.5 h-4 w-4 accent-[#D12014]" /><span>Also print event details on the card<span className="block text-xs font-normal text-slate-700 dark:text-slate-200">Off by default: your design already has them. Turn on to add the title, host, date and venue below as text.</span></span></label>
+                  </div>
+                )}
+                {isCustomMode && <Field id="w-ctitle" label="Event title" hint="Used in the WhatsApp message (variable {{2}})." className="sm:col-span-2"><Input id="w-ctitle" value={d.customTitle} onChange={(e) => set({ customTitle: e.target.value })} placeholder={EVENT_TITLE[d.eventType].en} /></Field>}
+                <Field id="w-date" label="Date" hint={d.date || isCustomMode ? undefined : "Sample date shown on the card. Pick your own date to replace it."}><Input id="w-date" type="date" value={d.date || (isCustomMode ? "" : cfg.sample.date || "")} className={d.date ? undefined : "text-slate-500"} onChange={(e) => set({ date: e.target.value })} /></Field>
                 <Field id="w-time" label={cfg.labels.time}><Input id="w-time" value={d.time} onChange={(e) => set({ time: e.target.value })} placeholder={cfg.sample.time} /></Field>
                 <Field id="w-venue" label={cfg.labels.venue} className="sm:col-span-2"><Input id="w-venue" value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder={cfg.sample.venue} /></Field>
                 <Field id="w-maps" label="Google Maps link" hint="Optional. Guests get an “Open in Google Maps” button. Without a link, the venue name is searched." className="sm:col-span-2"><Input id="w-maps" type="url" value={d.mapsUrl} onChange={(e) => set({ mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/…" /></Field>
                 <Field id="w-msg" label="Invitation message / note" className="sm:col-span-2"><Textarea id="w-msg" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} /></Field>
               </div>
-              <div className="rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
+              {(!isCustomMode || d.printCustomDetails) && <div className="rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <button type="button" onClick={() => void generate()} disabled={aiBusy} className="inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {aiBusy ? "Writing…" : "AI: write wording & verses"}</button>
                   <span className="text-xs text-slate-700 dark:text-slate-200">Poetic Malayalam / English wording and blessing verses generated from your details.</span>
@@ -505,7 +559,7 @@ export function WeddingStudio() {
                   <Field id="w-bless" label="Blessing line"><Input id="w-bless" value={d.blessing} onChange={(e) => set({ blessing: e.target.value })} placeholder={tpl.blessing[d.lang === "ml" ? 1 : 0]} /></Field>
                   <Field id="w-verse" label="Closing verse"><Input id="w-verse" value={d.verse} onChange={(e) => set({ verse: e.target.value })} /></Field>
                 </div>
-              </div>
+              </div>}
               <button type="button" onClick={() => setTab("Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: photos</button>
             </section>
           )}
@@ -611,7 +665,7 @@ export function WeddingStudio() {
       {studioOpen && (
         <StudioFullscreen
           d={d} rd={rd} tpl={tpl} cfg={cfg} previewGuest={previewGuest} setD={setD} set={set}
-          templates={active} thumbs={thumbs} onPickTemplate={pickTemplate}
+          templates={active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID)} thumbs={thumbs} onPickTemplate={pickTemplate}
           moveBadge={moveBadge} moveBlock={moveBlock} scaleText={scaleText} setMaster={setMaster} fontForBlock={fontForBlock} fontForAll={fontForAll} styleText={styleText}
           layoutCustom={layoutCustom} resetLayout={resetLayout} onClose={closeStudio}
         />

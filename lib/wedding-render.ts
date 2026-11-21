@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { CUSTOM_TEMPLATE_ID, eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -184,6 +184,27 @@ async function loadCardFonts(styles: Set<FontStyle>, sample: string) {
   try { await Promise.race([Promise.all(specs.map((sp) => document.fonts.load(sp, sample || "Aa"))), new Promise((res) => setTimeout(res, 4000))]); } catch { /* system fallback */ }
 }
 
+/**
+ * Paints the client's uploaded card as the whole 1080 x 1500 canvas without distorting it. A card close to the canvas ratio simply fills
+ * it; any other shape is shown whole (nothing cropped) over a blurred, enlarged copy of itself, so there are no empty bars.
+ */
+function drawCustomCard(ctx: Ctx, img: HTMLImageElement | null) {
+  const W = CARD_W, H = CARD_H;
+  if (!img) { ctx.fillStyle = "#F3F3F3"; ctx.fillRect(0, 0, W, H); return; }
+  const ratio = img.width / img.height, target = W / H;
+  const cover = Math.max(W / img.width, H / img.height);
+  if (Math.abs(ratio / target - 1) < 0.03) { ctx.drawImage(img, (W - img.width * cover) / 2, (H - img.height * cover) / 2, img.width * cover, img.height * cover); return; }
+  // blurred backdrop: shrink hard, then enlarge with smoothing (works in every browser, unlike ctx.filter)
+  const tiny = document.createElement("canvas"); tiny.width = 27; tiny.height = 38;
+  const tc = tiny.getContext("2d")!; tc.imageSmoothingQuality = "high";
+  tc.drawImage(img, (27 - img.width * Math.max(27 / img.width, 38 / img.height)) / 2, (38 - img.height * Math.max(27 / img.width, 38 / img.height)) / 2, img.width * Math.max(27 / img.width, 38 / img.height), img.height * Math.max(27 / img.width, 38 / img.height));
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"; ctx.drawImage(tiny, 0, 0, W, H);
+  ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fillRect(0, 0, W, H);
+  const fit = Math.min(W / img.width, H / img.height);
+  const w = img.width * fit, h = img.height * fit;
+  ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 24; ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); ctx.restore();
+}
+
 /** Where a custom layer sits on the card (logical 1080 x 1500 px), for the studio's selection / drag / resize handles. */
 export interface LayerBox { id: string; x: number; y: number; w: number; h: number }
 const ELEMENT_ASPECT: Record<string, number> = { "divider-diamond": 0.08, "divider-dots": 0.05, "frame-double": 1.28, star: 1, heart: 0.92, flower: 1 };
@@ -261,6 +282,14 @@ export function blockOfZone(id: CardZone["id"]): TextId | null {
   return id === "photo" ? null : id;
 }
 
+/** Outline for text-only greetings: dark under light text, the card's light tone under dark text, so the text stays readable on any artwork. */
+function haloFor(textColor: string, light: string): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(textColor);
+  if (!m) return `${light}CC`;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "rgba(20,16,24,0.62)" : `${light}CC`;
+}
+
 /** A movable text group as drawn: where it sits now (logical 1080 x 1500 px) and whether the client has positioned it. */
 export interface GroupBox { key: TextId; x: number; y: number; w: number; h: number; moved: boolean }
 export interface CardZone { id: "guest" | "blessing" | "title" | "names" | "parents" | "message" | "datetime" | "venue" | "verse" | "photo"; x: number; y: number; w: number; h: number; dual?: boolean }
@@ -280,8 +309,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const initial = (n: string) => (Array.from(n.trim())[0] ?? "").toUpperCase();
   const layers = d.layers ?? [];
   const layerImgs = await Promise.all(layers.map((l) => (l.type === "image" ? layerImage(l.src) : Promise.resolve(null))));
+  const custom = t.id === CUSTOM_TEMPLATE_ID;
+  const customImg = custom && d.customCard ? await layerImage(d.customCard) : null;
   const artImg = t.art ? await loadArt(t.art.src) : null;
-  if (artImg) ctx.drawImage(artImg, 0, 0, CARD_W, CARD_H);
+  if (custom) drawCustomCard(ctx, customImg);
+  else if (artImg) ctx.drawImage(artImg, 0, 0, CARD_W, CARD_H);
   else if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
   if (t.art?.panel) {
     const pad = 34, x = t.art.left - pad, y = t.art.top - pad, w = CARD_W - t.art.left - t.art.right + 2 * pad, h = CARD_H - t.art.top - t.art.bottom + 2 * pad;
@@ -291,14 +323,15 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const cfg = eventConfig(d.eventType);
 
   const lang = d.lang;
-  const badge = o.guest?.name && d.guestBadgeX != null && d.guestBadgeY != null ? { x: Math.min(100, Math.max(0, d.guestBadgeX)), y: Math.min(100, Math.max(0, d.guestBadgeY)) } : null;
+  // On an uploaded card the greeting starts low and centred (where most designs keep a blank band) and is meant to be dragged to the right spot.
+  const badge = o.guest?.name && d.guestBadgeX != null && d.guestBadgeY != null ? { x: Math.min(100, Math.max(0, d.guestBadgeX)), y: Math.min(100, Math.max(0, d.guestBadgeY)) } : o.guest?.name && custom ? { x: 50, y: 86 } : null;
   const wantMl = lang !== "en", wantEn = lang !== "ml";
   const M = MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
   // Image templates carry an exact safe box; every text line is confined to it (cw wide, centred on cx).
   const sl = t.art?.left ?? M, sr = t.art?.right ?? M;
   const cw = CARD_W - sl - sr - (t.art ? 24 : 0), cx = (sl + CARD_W - sr) / 2;
   const family = t.layout === "minimal" ? SANS : SERIF;
-  const title = EVENT_TITLE[d.eventType];
+  const title = custom && d.customTitle.trim() ? { en: d.customTitle.trim(), ml: d.customTitle.trim() } : EVENT_TITLE[d.eventType];
   const en = (s: string) => (hasMl(s) ? s : s);
   void en;
 
@@ -336,7 +369,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = lsEm && !hasMl(str) ? `${lsEm * fs}px` : "0px";
           const align = opt.pill ? "center" : ts.align ?? "center", tx = align === "left" ? x - tw / 2 : align === "right" ? x + tw / 2 : x; // lines align inside the block's own width
           ctx.fillStyle = ts.color ?? (opt.pill ? p.ink : opt.color ?? p.ink); ctx.textAlign = align; ctx.textBaseline = "middle";
-          if (opt.id === "guest" && !opt.pill) { ctx.save(); ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = `${p.bg1}CC`; lines.forEach((l, i) => ctx.strokeText(l, tx, y + padY + (i + 0.5) * fs * lh)); ctx.restore(); }
+          if (opt.id === "guest" && !opt.pill) { ctx.save(); ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = haloFor(ts.color ?? opt.color ?? p.ink, p.bg1); lines.forEach((l, i) => ctx.strokeText(l, tx, y + padY + (i + 0.5) * fs * lh)); ctx.restore(); }
           lines.forEach((l, i) => ctx.fillText(l, tx, y + padY + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
         },
@@ -349,10 +382,11 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     };
 
     // The greeting is an ordinary block: it keeps exactly the same typography, colour and box whether it sits in the flow or has been dragged.
-    if (o.guest?.name) {
+    if (o.guest?.name && !(custom && d.showGuestName === false)) {
       const gt = greetingText(d, o.guest);
       text(gt, 38, 700, { id: "guest", color: p.accent, italic: !hasMl(gt) && d.guestGreetingBoxed === false, pill: d.guestGreetingBoxed !== false });
     }
+    if (custom && !d.printCustomDetails) return blocks; // the uploaded design already carries the event details: only the guest's name goes on it
     const bless = d.blessing.trim();
     if (lvl >= 3) { /* no blessing line */ }
     else if (bless) text(bless, 30, 500, { id: "blessing", color: p.sub, italic: true });
@@ -362,7 +396,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     both(title.ml, title.en, 34, 700, { id: "title", color: p.accent, caps: true, ls: 0.16 });
 
     // couple + photo
-    const photo = o.photo ?? null;
+    const photo = custom ? null : o.photo ?? null;
     const photo2 = photo && o.photo2 ? o.photo2 : null;
     const photoBlock = () => {
       if (t.layout === "polaroid") {
@@ -556,7 +590,8 @@ export async function photoToDataUrl(file: Blob, max = 1000): Promise<string | n
     const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-    c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
-    return c.toDataURL("image/jpeg", 0.85);
+    const cx = c.getContext("2d")!; cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, c.width, c.height); // a transparent PNG would turn black as a JPEG
+    cx.drawImage(bmp, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.88);
   } catch { return null; }
 }

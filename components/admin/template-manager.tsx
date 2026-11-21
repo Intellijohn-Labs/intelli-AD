@@ -3,7 +3,7 @@
 import { AlertTriangle, ArchiveRestore, Loader2, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { sampleFor, TEMPLATES, type TemplateCategory, type WeddingTemplate } from "@/lib/wedding";
+import { CUSTOM_TEMPLATE_ID, sampleFor, TEMPLATES as ALL_TEMPLATES, type TemplateCategory, type WeddingTemplate } from "@/lib/wedding";
 import { renderWeddingCard } from "@/lib/wedding-render";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,8 @@ const FILTERS: { id: "all" | TemplateCategory; label: string }[] = [
   { id: "all", label: "All" }, { id: "wedding", label: "Wedding" }, { id: "birthday", label: "Birthday" },
   { id: "housewarming", label: "Housewarming" }, { id: "baby", label: "Baby & Kids" }, { id: "events", label: "Events" }, { id: "inauguration", label: "Inauguration" },
 ];
+/** The "Your own card" placeholder has no design of its own to enable or hide. */
+const TEMPLATES = ALL_TEMPLATES.filter((t) => t.id !== CUSTOM_TEMPLATE_ID);
 const CATEGORY_LABEL: Record<TemplateCategory, string> = { wedding: "Wedding", birthday: "Birthday", housewarming: "Housewarming", baby: "Baby & Kids", events: "Events", inauguration: "Inauguration" };
 
 type Flags = { enabled: boolean; deleted: boolean };
