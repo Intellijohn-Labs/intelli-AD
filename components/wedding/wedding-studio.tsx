@@ -15,7 +15,7 @@ import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
-import { outputSize, pickMp4Mime, probeVideo, renderGuestVideo, VIDEO_ACCEPT, type VideoInfo } from "@/lib/greeting-video";
+import { outputSize, pickMp4Mime, probeVideo, renderGuestVideo, renderQuoteSprite, VIDEO_ACCEPT, VIDEO_FESTIVALS, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
 import { createClient } from "@/lib/supabase/client";
 import { publishInvitation } from "@/lib/wedding-publish";
 import { CUSTOM_TEMPLATE_ID, isPseudoTemplate, VIDEO_TEMPLATE_ID, EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
@@ -56,6 +56,7 @@ export function WeddingStudio() {
   const [zones, setZones] = useState<CardZone[]>([]);
   const [groups, setGroups] = useState<GroupBox[]>([]);
   const [zoom, setZoom] = useState(1); // preview canvas zoom only; the exported PNG is always rendered at full resolution
+  const [quoteSel, setQuoteSel] = useState(false); // video greetings: the footer quote's style controls are open
   const [selected, setSelected] = useState<CardZone["id"] | null>(null); // the text section whose toolbar is open (null = clean preview)
   const cardPhotoRef = useRef<HTMLInputElement>(null);
   const cardPhotoIdx = useRef(0);
@@ -243,6 +244,13 @@ export function WeddingStudio() {
   const firstGuest = guests.find((g) => g.name.trim());
   const previewGuest = useMemo(() => (firstGuest ? { name: firstGuest.name, place: firstGuest.place } : SAMPLE_GUEST), [firstGuest?.name, firstGuest?.place]); // eslint-disable-line react-hooks/exhaustive-deps
   const clamp = (v: number) => Math.min(100, Math.max(0, Math.round(v * 10) / 10));
+  const applyVideoFestival = (id: string, lang: "en" | "ml") => {
+    const f = VIDEO_FESTIVALS.find((x) => x.id === id);
+    if (!f) { set({ videoFestival: "custom", videoQuoteLang: lang }); return; }
+    set({ videoFestival: id, videoQuoteLang: lang, customTitle: lang === "ml" ? f.ml : f.en, videoQuote: lang === "ml" ? f.quoteMl : f.quoteEn });
+  };
+  const moveQuote = (x: number, y: number) => set({ videoQuoteX: clamp(x), videoQuoteY: clamp(y) });
+  const quoteStyle: QuoteStyle = { text: d.videoQuote, scale: d.videoQuoteScale, color: d.videoQuoteColor, font: d.videoQuoteFont, backdrop: d.videoQuoteBackdrop };
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
   const moveBlock = (key: Exclude<TextId, "guest">, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
   const styleText = (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => setD((cur) => {
@@ -422,8 +430,9 @@ export function WeddingStudio() {
         const sprite = await renderGreetingSprite({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, width: w });
         if (!sprite) throw new Error("Couldn't draw the guest name on the video.");
         const logo = d.festivalPhoto && d.photos[0] ? await loadImage(d.photos[0]) : null;
+        const qsp = await renderQuoteSprite(quoteStyle, w);
         setVideoProgress({ name: g.name, pct: 0 });
-        const out = await renderGuestVideo({ src: video.url, info: video.info, sprite: sprite.canvas, x: d.guestBadgeX ?? 50, y: d.guestBadgeY ?? 84, logo, onProgress: (f) => setVideoProgress({ name: g.name, pct: f }) });
+        const out = await renderGuestVideo({ src: video.url, info: video.info, sprite: sprite.canvas, x: d.guestBadgeX ?? 50, y: d.guestBadgeY ?? 84, quote: qsp ? { sprite: qsp.canvas, x: d.videoQuoteX ?? 50, y: d.videoQuoteY ?? 92 } : null, logo, onProgress: (f) => setVideoProgress({ name: g.name, pct: f }) });
         const sb = createClient();
         if (!sb) throw new Error("Storage isn't configured.");
         const up = await sb.storage.from("invitation-cards").uploadToSignedUrl(pj.path, pj.token, out.video, { contentType: "video/mp4" });
@@ -658,6 +667,24 @@ export function WeddingStudio() {
                 )}
                 {isFestival && (
                   <>
+                    {isVideoMode && (
+                      <div className="space-y-3 rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3 sm:col-span-2" data-video-festival-panel>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Field id="w-vfest" label="Festival theme / occasion" hint="Fills the greeting title and a footer quote that is burned onto every guest's video.">
+                            <Select id="w-vfest" value={d.videoFestival} onChange={(e) => applyVideoFestival(e.target.value, d.videoQuoteLang)}>{VIDEO_FESTIVALS.map((f) => <option key={f.id} value={f.id}>{f.en} · {f.ml}</option>)}<option value="custom">Custom</option></Select>
+                          </Field>
+                          <div role="group" aria-label="Quote language">
+                            <p className="mb-1 text-sm font-semibold text-slate-900 dark:text-white">Quote language</p>
+                            <div className="inline-flex rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
+                              {([["en", "English"], ["ml", "Malayalam"]] as const).map(([v, label]) => <button key={v} type="button" aria-pressed={d.videoQuoteLang === v} onClick={() => applyVideoFestival(d.videoFestival, v)} className={cn("rounded-md px-3 py-1.5 text-sm font-bold", d.videoQuoteLang === v ? "bg-[#D12014] text-white" : "text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10")}>{label}</button>)}
+                            </div>
+                          </div>
+                        </div>
+                        <Field id="w-vquote" label="Footer greeting quote" hint="Shown near the bottom of the video. Leave blank to hide it. Click it on the video to change its font, colour and size, or drag it.">
+                          <Textarea id="w-vquote" rows={2} value={d.videoQuote} onChange={(e) => set({ videoQuote: e.target.value })} placeholder="Pick a festival above, or type your own quote" />
+                        </Field>
+                      </div>
+                    )}
                     <Field id="w-gtitle" label="Greeting title" hint="Printed large on the card and used as the WhatsApp message headline." className="sm:col-span-2"><Input id="w-gtitle" value={d.customTitle} onChange={(e) => set({ customTitle: e.target.value })} placeholder={tpl.festival?.title.en ?? "Happy Onam"} /></Field>
                     <Field id="w-wish" label="Wish message" hint={d.message ? undefined : "Showing this festival's own wish until you write yours."} className="sm:col-span-2">
                       <Textarea id="w-wish" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} placeholder={tpl.festival?.wish.en ?? ""} />
@@ -769,7 +796,7 @@ export function WeddingStudio() {
               </div>
             </div>
             {isVideoMode && video ? (
-              <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={previewGuest} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} selected={selected === "guest"} onSelect={() => setSelected("guest")} onMove={moveBadge} />
+              <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={previewGuest} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} selected={selected === "guest"} onSelect={() => { setQuoteSel(false); setSelected("guest"); }} onMove={moveBadge} quoteStyle={quoteStyle} qx={d.videoQuoteX ?? 50} qy={d.videoQuoteY ?? 92} quoteSelected={quoteSel} onSelectQuote={() => { setSelected(null); setQuoteSel(true); }} onMoveQuote={moveQuote} />
             ) : (
             <div className="relative mx-auto w-full max-w-[420px]">
               <div className={cn("rounded-lg", zoom > 1 && "max-h-[80vh] overflow-auto overscroll-contain")} aria-label={zoom > 1 ? "Zoomed preview (scroll to pan)" : undefined}>
@@ -791,7 +818,18 @@ export function WeddingStudio() {
               }} />
             </div>
             )}
-            {selected ? (
+            {isVideoMode && quoteSel && !selected ? (
+              <div className="mx-auto w-full max-w-[420px] space-y-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700" data-quote-toolbar>
+                <div className="flex items-center justify-between"><p className="font-bold text-slate-900 dark:text-white">Footer quote</p><button type="button" onClick={() => setQuoteSel(false)} className="rounded-md px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10">Done</button></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-semibold text-slate-800 dark:text-slate-100">Font<Select id="w-qfont" value={d.videoQuoteFont} onChange={(e) => set({ videoQuoteFont: e.target.value as "sans" | "serif" | "manjari" })}><option value="sans">Noto Sans Malayalam</option><option value="serif">Noto Serif Malayalam</option><option value="manjari">Manjari</option></Select></label>
+                  <label className="text-xs font-semibold text-slate-800 dark:text-slate-100">Colour<input type="color" aria-label="Quote colour" value={d.videoQuoteColor} onChange={(e) => set({ videoQuoteColor: e.target.value })} className="mt-1 block h-10 w-full cursor-pointer rounded-lg border border-slate-300 dark:border-slate-600" /></label>
+                </div>
+                <label className="block text-xs font-semibold text-slate-800 dark:text-slate-100">Size {Math.round(d.videoQuoteScale * 100)}%<input type="range" aria-label="Quote size" min={60} max={160} value={Math.round(d.videoQuoteScale * 100)} onChange={(e) => set({ videoQuoteScale: Number(e.target.value) / 100 })} className="block h-1.5 w-full accent-[#D12014]" /></label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-100"><input type="checkbox" checked={d.videoQuoteBackdrop} onChange={(e) => set({ videoQuoteBackdrop: e.target.checked })} className="h-4 w-4 accent-[#D12014]" /> Dark backdrop behind the quote</label>
+                <button type="button" onClick={() => set({ videoQuoteX: null, videoQuoteY: null })} className="text-xs font-bold text-[#D12014] underline">Reset position</button>
+              </div>
+            ) : selected ? (
               <div className="mx-auto w-full max-w-[420px]">
                 <SectionToolbar onStyle={styleText} zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleText} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
               </div>
@@ -816,7 +854,7 @@ export function WeddingStudio() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-stone-950/75 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setGuestPreview(null); }}>
           <div role="dialog" aria-modal="true" aria-label="Personalised card" className="flex max-h-[94vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between"><h2 className="text-sm font-bold text-slate-900 dark:text-white">Card for {guestPreview.name || "this guest"}</h2><button type="button" aria-label="Close" onClick={() => setGuestPreview(null)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></div>
-            {isVideoMode && video ? <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={guestPreview} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} interactive={false} /> : <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>}
+            {isVideoMode && video ? <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={guestPreview} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} interactive={false} quoteStyle={quoteStyle} qx={d.videoQuoteX ?? 50} qy={d.videoQuoteY ?? 92} /> : <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>}
             <button type="button" onClick={() => { void sendOne(guestPreview); }} disabled={!!busyId || !!batch || !guestPreview.name.trim() || !validPhone(guestPreview.phone)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-extrabold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Send via Waau Panel</button>
           </div>
         </div>

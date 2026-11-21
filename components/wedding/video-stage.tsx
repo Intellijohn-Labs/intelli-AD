@@ -2,7 +2,7 @@
 
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { VideoInfo } from "@/lib/greeting-video";
+import { renderQuoteSprite, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
 import { renderGreetingSprite } from "@/lib/wedding-render";
 import type { WeddingDetails, WeddingTemplate } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
@@ -14,9 +14,11 @@ export interface SpritePreview { url: string; w1080: number }
  * overlay you can drag (a plain click selects it so its font, colour, size and box can be edited). The overlay is sized as a % of the stage width,
  * exactly how the rendered MP4 scales it, so what you see is where it lands on every frame.
  */
-export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, onMove, interactive = true }: {
+export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, onMove, interactive = true, quote, qx = 50, qy = 92, quoteSelected, onSelectQuote, onMoveQuote }: {
   src: string; info: VideoInfo; sprite: SpritePreview | null; x: number; y: number; logo?: string | null;
   selected?: boolean; onSelect?: () => void; onMove?: (x: number, y: number) => void; interactive?: boolean;
+  /** Footer quote overlay (draggable like the greeting). */
+  quote?: SpritePreview | null; qx?: number; qy?: number; quoteSelected?: boolean; onSelectQuote?: () => void; onMoveQuote?: (x: number, y: number) => void;
 }) {
   const vref = useRef<HTMLVideoElement>(null), stage = useRef<HTMLDivElement>(null);
   const drag = useRef<{ dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
@@ -24,8 +26,9 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
   useEffect(() => { const v = vref.current; if (v) v.muted = muted; }, [muted]);
   const portrait = info.height >= info.width;
   const at = (e: React.PointerEvent) => { const r = stage.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }; };
-  const clampPos = (px: number, py: number) => {
-    const hw = sprite ? (sprite.w1080 / 1080) * 50 : 0; // half the overlay's width, as a % of the stage
+  const qdrag = useRef<{ dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
+  const clampPos = (px: number, py: number, sp: SpritePreview | null = sprite) => {
+    const hw = sp ? (sp.w1080 / 1080) * 50 : 0; // half the overlay's width, as a % of the stage
     return { x: Math.min(100 - hw, Math.max(hw, px)), y: Math.min(96, Math.max(4, py)) };
   };
   return (
@@ -45,6 +48,18 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
             style={{ left: `${x}%`, top: `${y}%`, width: `${(sprite.w1080 / 1080) * 100}%`, transform: "translate(-50%, -50%)" }}
           />
         )}
+        {quote && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={quote.url} alt="Footer greeting quote: drag to move, click to edit" draggable={false} role="button" tabIndex={0} data-video-quote
+            onPointerDown={interactive ? (e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const p = at(e); qdrag.current = { dx: p.x - qx, dy: p.y - qy, sx: e.clientX, sy: e.clientY, moved: false }; } : undefined}
+            onPointerMove={interactive ? (e) => { const d0 = qdrag.current; if (!d0) return; if (!d0.moved && Math.hypot(e.clientX - d0.sx, e.clientY - d0.sy) < 4) return; d0.moved = true; const p = at(e), c = clampPos(p.x - d0.dx, p.y - d0.dy, quote); onMoveQuote?.(Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10); } : undefined}
+            onPointerUp={interactive ? () => { if (qdrag.current && !qdrag.current.moved) onSelectQuote?.(); qdrag.current = null; } : undefined}
+            onKeyDown={interactive ? (e) => { if (!e.key.startsWith("Arrow")) { if (e.key === "Enter") onSelectQuote?.(); return; } e.preventDefault(); const st = e.shiftKey ? 5 : 1; const c = clampPos(qx + (e.key === "ArrowRight" ? st : e.key === "ArrowLeft" ? -st : 0), qy + (e.key === "ArrowDown" ? st : e.key === "ArrowUp" ? -st : 0), quote); onMoveQuote?.(Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10); } : undefined}
+            className={cn("absolute max-w-none touch-none", interactive && "cursor-grab active:cursor-grabbing", quoteSelected ? "outline-2 outline-offset-2 outline-solid outline-[#D12014]" : interactive ? "hover:outline-1 hover:outline-offset-2 hover:outline-dashed hover:outline-[#D12014]" : "")}
+            style={{ left: `${qx}%`, top: `${qy}%`, width: `${(quote.w1080 / 1080) * 100}%`, transform: "translate(-50%, -50%)" }}
+          />
+        )}
       </div>
       <div className="mt-2 flex items-center gap-2" role="group" aria-label="Video controls">
         <button type="button" onClick={() => { const v = vref.current; if (!v) return; if (v.paused) void v.play(); else v.pause(); }} aria-label={playing ? "Pause video" : "Play video"} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0A0B0D] text-white hover:bg-[#17181C] dark:bg-[#D12014] dark:hover:bg-[#E83E32]">{playing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}</button>
@@ -57,7 +72,7 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
 }
 
 /** VideoStage plus its own overlay: renders the guest's greeting sprite with the card's current typography settings and keeps it fresh as they change. */
-export function GreetingVideoStage({ tpl, rd, guest, ...rest }: Omit<Parameters<typeof VideoStage>[0], "sprite"> & { tpl: WeddingTemplate; rd: WeddingDetails; guest: { name: string; place: string } }) {
+export function GreetingVideoStage({ tpl, rd, guest, quoteStyle, ...rest }: Omit<Parameters<typeof VideoStage>[0], "sprite" | "quote"> & { quoteStyle?: QuoteStyle; tpl: WeddingTemplate; rd: WeddingDetails; guest: { name: string; place: string } }) {
   const [sprite, setSprite] = useState<SpritePreview | null>(null);
   useEffect(() => {
     let live = true;
@@ -67,5 +82,16 @@ export function GreetingVideoStage({ tpl, rd, guest, ...rest }: Omit<Parameters<
     }, 60);
     return () => { live = false; clearTimeout(t); };
   }, [tpl, rd, guest]);
-  return <VideoStage {...rest} sprite={sprite} />;
+  const [quote, setQuote] = useState<SpritePreview | null>(null);
+  const qs = quoteStyle;
+  useEffect(() => {
+    let live = true;
+    if (!qs || !qs.text.trim()) { setQuote(null); return; }
+    const t = setTimeout(async () => {
+      const sp = await renderQuoteSprite(qs, 1080);
+      if (live) setQuote(sp ? { url: sp.canvas.toDataURL("image/png"), w1080: sp.w1080 } : null);
+    }, 60);
+    return () => { live = false; clearTimeout(t); };
+  }, [qs?.text, qs?.scale, qs?.color, qs?.font, qs?.backdrop]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <VideoStage {...rest} sprite={sprite} quote={quote} />;
 }

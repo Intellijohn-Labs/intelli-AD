@@ -52,6 +52,46 @@ export function outputSize(info: VideoInfo): { w: number; h: number } {
 /** Video bitrate that keeps the whole file (video + 128 kbps audio) at about 14.5 MB for a clip of this length. */
 export const videoBitrate = (seconds: number) => Math.round(Math.min(4_000_000, Math.max(600_000, (TARGET_BYTES * 8) / Math.max(1, seconds) - AUDIO_BPS)));
 
+export interface VideoFestival { id: string; en: string; ml: string; quoteEn: string; quoteMl: string }
+/** Festival presets for the video greeting: headline + footer quote in English and Malayalam. */
+export const VIDEO_FESTIVALS: VideoFestival[] = [
+  { id: "vishu", en: "Happy Vishu", ml: "വിഷു ആശംസകൾ", quoteEn: "May this Vishu bring prosperity, peace, and bright new beginnings to your home.", quoteMl: "ഐശ്വര്യത്തിന്റെയും സന്തോഷത്തിന്റെയും സമൃദ്ധിയുടെയും വിഷു ആശംസകൾ!" },
+  { id: "onam", en: "Happy Onam", ml: "ഓണാശംസകൾ", quoteEn: "Wishing you and your family a harvest of happiness, harmony, and prosperity this Onam.", quoteMl: "സ്നേഹത്തിന്റെയും സമൃദ്ധിയുടെയും ഒരു നല്ല ഓണക്കാലം ആശംസിക്കുന്നു!" },
+  { id: "christmas", en: "Merry Christmas", ml: "ക്രിസ്മസ് ആശംസകൾ", quoteEn: "May the joy and peace of Christmas fill your home with warmth and happiness.", quoteMl: "സ്നേഹത്തിന്റെയും സമാധാനത്തിന്റെയും തിരുപ്പിറവി ആശംസകൾ!" },
+  { id: "newyear", en: "Happy New Year", ml: "പുതുവത്സരാശംസകൾ", quoteEn: "Wishing you a year filled with good health, new milestones, and endless joy.", quoteMl: "സന്തോഷവും വിജയവും നിറഞ്ഞ ഒരു പുതുവത്സരം ആശംസിക്കുന്നു!" },
+  { id: "eid", en: "Eid Mubarak", ml: "ഈദ് മുബാറക്", quoteEn: "May this blessed Eid bring peace, joy, and abundant blessings to you and your loved ones.", quoteMl: "സ്നേഹത്തിന്റെയും സന്തോഷത്തിന്റെയും ഈദ് മുബാറക്!" },
+  { id: "diwali", en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ", quoteEn: "May the festival of lights illuminate your life with joy, peace, and prosperity.", quoteMl: "വെളിച്ചത്തിന്റെയും സന്തോഷത്തിന്റെയും ദീപാവലി ആശംസകൾ!" },
+];
+
+export interface QuoteStyle { text: string; scale: number; color: string; font: "sans" | "serif" | "manjari"; backdrop: boolean }
+const QUOTE_FONT = { sans: '"Noto Sans Malayalam", "Noto Sans", Inter, system-ui, sans-serif', serif: '"Noto Serif Malayalam", "Noto Serif", Georgia, serif', manjari: '"Manjari", "Noto Sans Malayalam", system-ui, sans-serif' } as const;
+
+/**
+ * The footer quote as a transparent sprite, drawn at `width` px frame width (logical design is 1080 wide). Wraps to at most 3 lines in the chosen
+ * Malayalam-capable web font, on a translucent dark pill (optional) with a text shadow so it stays legible over any footage. w1080 is its width in 1080 units.
+ */
+export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<{ canvas: HTMLCanvasElement; w1080: number } | null> {
+  const text = q.text.trim();
+  if (!text) return null;
+  const k = width / 1080, fam = QUOTE_FONT[q.font], px = 40 * q.scale * k, weight = q.font === "serif" ? 700 : 600;
+  const font = `${weight} ${px}px ${fam}`;
+  try { await Promise.race([document.fonts.load(font, text), new Promise((r) => setTimeout(r, 4000))]); } catch { /* fall back to system fonts */ }
+  const c = document.createElement("canvas"), cx = c.getContext("2d")!;
+  cx.font = font;
+  const maxW = 880 * k, padX = 34 * k * q.scale, padY = 22 * k * q.scale, lh = px * 1.38, lines: string[] = [];
+  let line = "";
+  for (const w of text.split(/\s+/)) { const t = line ? `${line} ${w}` : w; if (line && cx.measureText(t).width > maxW) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  const shown = lines.slice(0, 4), textW = Math.min(maxW, Math.max(...shown.map((l) => cx.measureText(l).width)));
+  const m = 12 * k, w = Math.ceil(textW + padX * 2 + m * 2), h = Math.ceil(shown.length * lh + padY * 2 + m * 2);
+  c.width = w; c.height = h;
+  const g = c.getContext("2d")!; g.font = font; g.textAlign = "center"; g.textBaseline = "middle";
+  if (q.backdrop) { g.fillStyle = "rgba(0,0,0,0.5)"; g.beginPath(); g.roundRect(m, m, w - m * 2, h - m * 2, Math.min(h / 2, 36 * k)); g.fill(); }
+  g.fillStyle = q.color; g.shadowColor = "rgba(0,0,0,0.7)"; g.shadowBlur = 8 * k; g.shadowOffsetY = 2 * k;
+  shown.forEach((l, i) => g.fillText(l, w / 2, m + padY + lh * (i + 0.5)));
+  return { canvas: c, w1080: w / k };
+}
+
 export interface RenderGuestVideoOptions {
   /** Object URL of the uploaded clip. */
   src: string;
@@ -60,6 +100,8 @@ export interface RenderGuestVideoOptions {
   sprite: HTMLCanvasElement;
   /** Overlay centre as 0-100 % of the frame. */
   x: number; y: number;
+  /** Footer quote sprite (drawn at output scale) and its centre as 0-100 % of the frame. */
+  quote?: { sprite: HTMLCanvasElement; x: number; y: number } | null;
   /** Optional sender logo / photo, drawn as a circle in the bottom-left corner. */
   logo?: HTMLImageElement | null;
   onProgress?: (fraction: number) => void;
@@ -67,10 +109,14 @@ export interface RenderGuestVideoOptions {
 }
 
 /** Draws the overlay layers on top of whatever frame is on the canvas. Shared by the render and the poster. */
-export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo">) {
+export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote">) {
   const sw = o.sprite.width, sh = o.sprite.height;
   const cx = Math.min(w - sw / 2, Math.max(sw / 2, (o.x / 100) * w)), cy = Math.min(h - sh / 2, Math.max(sh / 2, (o.y / 100) * h));
   ctx.drawImage(o.sprite, Math.round(cx - sw / 2), Math.round(cy - sh / 2));
+  if (o.quote) {
+    const q = o.quote.sprite, qx = Math.min(w - q.width / 2, Math.max(q.width / 2, (o.quote.x / 100) * w)), qy = Math.min(h - q.height / 2, Math.max(q.height / 2, (o.quote.y / 100) * h));
+    ctx.drawImage(q, Math.round(qx - q.width / 2), Math.round(qy - q.height / 2));
+  }
   if (o.logo) {
     const d = Math.round(Math.min(w, h) * 0.16), m = Math.round(d * 0.28), x = m, y = h - d - m;
     ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 14;

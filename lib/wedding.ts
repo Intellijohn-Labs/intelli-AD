@@ -83,6 +83,16 @@ export interface WeddingDetails {
   customTitle: string;
   /** Festival greetings only: also place the sender's photo or brand logo (the first uploaded photo) on the card. */
   festivalPhoto: boolean;
+  /** Video greetings only: the footer quote burned onto the video (blank = no footer), its festival preset / language, and its look. */
+  videoQuote: string;
+  videoFestival: string;
+  videoQuoteLang: "en" | "ml";
+  videoQuoteX: number | null;
+  videoQuoteY: number | null;
+  videoQuoteScale: number;
+  videoQuoteColor: string;
+  videoQuoteFont: "sans" | "serif" | "manjari";
+  videoQuoteBackdrop: boolean;
   /** Per-element colour / alignment / letter spacing / line height. */
   textStyle: Partial<Record<TextId, TextStyle>>;
   /** Custom text boxes, uploaded images and decorative elements placed in the fullscreen studio. */
@@ -329,7 +339,7 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", festivalPhoto: false, blockFont: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", festivalPhoto: false, videoQuote: "", videoFestival: "custom", videoQuoteLang: "en", videoQuoteX: null, videoQuoteY: null, videoQuoteScale: 1, videoQuoteColor: "#FFFFFF", videoQuoteFont: "sans", videoQuoteBackdrop: true, blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
