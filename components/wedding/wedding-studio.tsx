@@ -373,6 +373,20 @@ export function WeddingStudio() {
     if (out.length) set({ photos: [...d.photos, ...out].slice(0, 4) });
   };
 
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
+  const generateQuote = async () => {
+    setQuoteBusy(true); setQuoteError("");
+    try {
+      const f = VIDEO_FESTIVALS.find((x) => x.id === d.videoFestival);
+      const occasion = d.customTitle.trim() || (f ? f.en : "") || "festival greeting";
+      const res = await fetch("/api/ai/generate-wedding-copy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventType: "festival", lang: d.videoQuoteLang, mode: "footer_quote", quoteLang: d.videoQuoteLang, note: occasion, groom: d.groom, avoid: d.videoQuote.slice(0, 190) }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.quote) { setQuoteError(j.error ?? "The AI couldn't write a quote. You can type it yourself."); return; }
+      set({ videoQuote: j.quote }); toast("Footer quote written. Edit it however you like.");
+    } catch { setQuoteError("Couldn't reach the AI service. You can type the quote yourself."); }
+    finally { setQuoteBusy(false); }
+  };
   const generate = async () => {
     setAiBusy(true); setAiError("");
     try {
@@ -682,6 +696,8 @@ export function WeddingStudio() {
                         </div>
                         <Field id="w-vquote" label="Footer greeting quote" hint="Shown near the bottom of the video. Leave blank to hide it. Click it on the video to change its font, colour and size, or drag it.">
                           <Textarea id="w-vquote" rows={2} value={d.videoQuote} onChange={(e) => set({ videoQuote: e.target.value })} placeholder="Pick a festival above, or type your own quote" />
+                          <button type="button" onClick={() => void generateQuote()} disabled={quoteBusy} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{quoteBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {quoteBusy ? "Generating quote…" : "AI: Write Footer Quote"}</button>
+                          {quoteError && <p role="alert" className="mt-2 text-xs font-semibold text-red-800 dark:text-red-200">{quoteError}</p>}
                         </Field>
                       </div>
                     )}
