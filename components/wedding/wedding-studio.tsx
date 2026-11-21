@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ImagePlus, Loader2, Maximize2, MapPin, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ImagePlus, Loader2, Maximize2, MapPin, Send, Sparkles, Trash2, Video, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -10,12 +10,15 @@ import { CardEditOverlay } from "./card-editor";
 import { SectionToolbar } from "./section-toolbar";
 import { CooldownPill } from "./cooldown-pill";
 import { ModeSelector } from "./mode-selector";
+import { GreetingVideoStage } from "./video-stage";
 import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
-import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
+import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
+import { outputSize, pickMp4Mime, probeVideo, renderGuestVideo, VIDEO_ACCEPT, type VideoInfo } from "@/lib/greeting-video";
+import { createClient } from "@/lib/supabase/client";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { CUSTOM_TEMPLATE_ID, EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { CUSTOM_TEMPLATE_ID, isPseudoTemplate, VIDEO_TEMPLATE_ID, EMPTY_DETAILS, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -32,6 +35,15 @@ export function WeddingStudio() {
   const mode: "invitation" | "greeting" | null = modeParam === "invitation" || modeParam === "greeting" ? modeParam : null;
   const lastInviteEvent = useRef<EventType>("wedding");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Template");
+  // Greeting video (Greeting Cards mode): the clip lives in memory only (too big for the saved draft), so it must be re-uploaded after a reload.
+  const [video, setVideo] = useState<{ file: File; url: string; info: VideoInfo } | null>(null);
+  const [videoError, setVideoError] = useState("");
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [canMp4, setCanMp4] = useState(true);
+  const [videoProgress, setVideoProgress] = useState<{ name: string; pct: number } | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => setCanMp4(!!pickMp4Mime()), []);
+  useEffect(() => () => { if (video) URL.revokeObjectURL(video.url); }, [video]);
   const [templateId, setTemplateId] = useState(TEMPLATES[0].id);
   const [d, setD] = useState<WeddingDetails>(EMPTY_DETAILS);
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -156,7 +168,7 @@ export function WeddingStudio() {
   useEffect(() => {
     const s = loadStudio();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setTemplateId(s.template === CUSTOM_TEMPLATE_ID && !s.details?.customCard ? TEMPLATES.find((t) => t.id !== CUSTOM_TEMPLATE_ID)!.id : s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
+    if (s) { setInviteId(s.inviteId); setPublishedHash(s.publishedHash); setTemplateId(s.template === VIDEO_TEMPLATE_ID || (s.template === CUSTOM_TEMPLATE_ID && !s.details?.customCard) ? TEMPLATES.find((t) => !isPseudoTemplate(t.id))!.id : s.template); setD({ ...EMPTY_DETAILS, ...s.details }); setGuests(s.guests ?? []); }
     setHydrated(true);
   }, []);
   useEffect(() => { if (hydrated) saveStudio({ template: templateId, details: d, guests, inviteId, publishedHash, effect }); }, [hydrated, templateId, d, guests, effect, inviteId, publishedHash]);
@@ -165,6 +177,7 @@ export function WeddingStudio() {
   // The details every render uses (preview, guest PNGs, ZIP): the couple's own, with sample text only where a field is empty.
   const cfg = eventConfig(d.eventType);
   const isCustomMode = templateId === CUSTOM_TEMPLATE_ID && !!d.customCard;
+  const isVideoMode = mode === "greeting" && templateId === VIDEO_TEMPLATE_ID && !!video;
   const isFestival = cfg.group === "festival" && !isCustomMode; // greeting cards: headline, wish, sender (no ceremony fields)
   const rd = useMemo(() => {
     // An uploaded card shows only what the client typed (no sample names, date or venue leaking into the WhatsApp text); other templates fill blanks with samples.
@@ -188,7 +201,7 @@ export function WeddingStudio() {
   const active = useMemo(() => TEMPLATES.filter((t) => !hidden.has(t.id)), [hidden]);
   useEffect(() => {
     if (!hydrated || !hidden.has(templateId)) return;
-    const next = active.find((t) => suits(t, d.eventType)) ?? active.find((t) => t.id !== CUSTOM_TEMPLATE_ID);
+    const next = active.find((t) => suits(t, d.eventType)) ?? active.find((t) => !isPseudoTemplate(t.id));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (next) setTemplateId(next.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,7 +209,7 @@ export function WeddingStudio() {
   const pickEvent = (ev: EventType) => {
     const g = eventConfig(ev).group;
     set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); chooseFilter(g === "events" ? "events" : g);
-    if (!suits(tpl, ev)) { const next = active.find((t) => t.id !== CUSTOM_TEMPLATE_ID && t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); chooseFilter(g === "events" ? "events" : g); } }
+    if (!suits(tpl, ev)) { const next = active.find((t) => !isPseudoTemplate(t.id) && t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); chooseFilter(g === "events" ? "events" : g); } }
   };
   /** Moves the card to another event: a preset template follows its event, an uploaded card keeps being used. */
   const switchEvent = (ev: EventType) => {
@@ -213,11 +226,18 @@ export function WeddingStudio() {
     else if (mode === "invitation" && filter === "festival") setFilter("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, mode, d.eventType, filter]);
+  // A video greeting starts with the name low on the frame; leave it as it was (flow position) for image cards if the client never moved it.
+  const autoBadge = useRef(false);
+  useEffect(() => {
+    if (isVideoMode && d.guestBadgeX == null && d.guestBadgeY == null) { autoBadge.current = true; setD((cur) => ({ ...cur, guestBadgeX: 50, guestBadgeY: 84 })); }
+    else if (!isVideoMode && autoBadge.current) { autoBadge.current = false; setD((cur) => (cur.guestBadgeX === 50 && cur.guestBadgeY === 84 ? { ...cur, guestBadgeX: null, guestBadgeY: null } : cur)); }
+  }, [isVideoMode, d.guestBadgeX, d.guestBadgeY]);
   const switchMode = (m: "invitation" | "greeting") => router.replace(`${pathname}?mode=${m}`, { scroll: false });
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
   // Invitation mode lists every non-festival design; Greeting mode lists only the festival ones (no category pills).
   const inMode = (t: WeddingTemplate) => (mode === "greeting" ? t.category === "festival" : t.category !== "festival");
-  const shown = active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID && inMode(t) && (mode === "greeting" || filter === "all" || t.category === filter));
+  const lead = mode === "greeting" ? 2 : 1; // upload tiles ahead of the gallery (custom card, plus the video tile in Greeting mode)
+  const shown = active.filter((t) => !isPseudoTemplate(t.id) && inMode(t) && (mode === "greeting" || filter === "all" || t.category === filter));
 
   // The preview shows the first real guest's greeting, or a sample one, so it can be styled and positioned before any guest exists.
   const firstGuest = guests.find((g) => g.name.trim());
@@ -317,9 +337,24 @@ export function WeddingStudio() {
     set({ customCard: u }); setTemplateId(CUSTOM_TEMPLATE_ID); setSelected(null);
     toast("Card uploaded. Drag the guest name to the blank space on your design.");
   };
+  const addVideo = async (f: File | undefined) => {
+    if (!f) return;
+    setVideoError(""); setVideoBusy(true);
+    try {
+      const info = await probeVideo(f);
+      setVideo({ file: f, url: URL.createObjectURL(f), info });
+      setTemplateId(VIDEO_TEMPLATE_ID); setSelected(null);
+      toast("Video added. Drag the guest name to where you want it.");
+    } catch (e) { setVideoError(e instanceof Error ? e.message : "Couldn't read that video."); }
+    finally { setVideoBusy(false); }
+  };
+  const removeVideo = () => {
+    setVideo(null); setVideoError("");
+    if (templateId === VIDEO_TEMPLATE_ID) { const next = active.find((t) => !isPseudoTemplate(t.id) && inMode(t)); if (next) setTemplateId(next.id); }
+  };
   const removeCustomCard = () => {
     set({ customCard: null });
-    if (templateId === CUSTOM_TEMPLATE_ID) { const next = active.find((t) => t.id !== CUSTOM_TEMPLATE_ID); if (next) setTemplateId(next.id); }
+    if (templateId === CUSTOM_TEMPLATE_ID) { const next = active.find((t) => !isPseudoTemplate(t.id)); if (next) setTemplateId(next.id); }
   };
   const removePhoto = (i: number) => set({ photos: d.photos.filter((_, j) => j !== i) });
   const clearPhotos = () => set({ photos: [] });
@@ -376,9 +411,27 @@ export function WeddingStudio() {
   /** Renders one guest's card, uploads it and hands it to Waau Panel (or queues it). Returns false to stop a batch (not signed in, etc.). */
   const dispatchOne = async (g: Guest, invId: string | null, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<boolean> => {
     try {
-      const blob = await cardBlob(g, photos);
+      let blob: Blob, videoPath: string | undefined;
+      if (isVideoMode && video) {
+        // Pre-flight first: it applies the 24-hour per-number cooldown BEFORE a minute of rendering is spent on this guest.
+        const pre = await fetch("/api/invitations/video-upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone) }) });
+        const pj = (await pre.json().catch(() => ({}))) as { path?: string; token?: string; error?: string; code?: string; cooldownUntil?: number };
+        if (pj.code === "cooldown") { if (pj.cooldownUntil) { const p = normalizePhone(g.phone); setServerTimes((cur) => ({ ...(cur ?? {}), [p]: [pj.cooldownUntil! - COOLDOWN_WINDOW_MS, pj.cooldownUntil! - COOLDOWN_WINDOW_MS + 1] })); } setLogTick((t) => t + 1); toast(`${g.name}: ${pj.error ?? "This number is in cooldown."}`); return true; }
+        if (!pre.ok || !pj.path || !pj.token) { setStatus(g.id, "failed"); toast(pj.error ?? "Couldn't prepare the video upload."); return pre.status !== 401 && pre.status !== 429 && pre.status !== 503; }
+        const { w } = outputSize(video.info);
+        const sprite = await renderGreetingSprite({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, width: w });
+        if (!sprite) throw new Error("Couldn't draw the guest name on the video.");
+        const logo = d.festivalPhoto && d.photos[0] ? await loadImage(d.photos[0]) : null;
+        setVideoProgress({ name: g.name, pct: 0 });
+        const out = await renderGuestVideo({ src: video.url, info: video.info, sprite: sprite.canvas, x: d.guestBadgeX ?? 50, y: d.guestBadgeY ?? 84, logo, onProgress: (f) => setVideoProgress({ name: g.name, pct: f }) });
+        const sb = createClient();
+        if (!sb) throw new Error("Storage isn't configured.");
+        const up = await sb.storage.from("invitation-cards").uploadToSignedUrl(pj.path, pj.token, out.video, { contentType: "video/mp4" });
+        if (up.error) throw new Error(`Couldn't upload the video: ${up.error.message}`);
+        blob = out.poster; videoPath = pj.path;
+      } else blob = await cardBlob(g, photos);
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), message: whatsappMessage(rd, g, tpl.festival), eventTitle: isFestival ? d.customTitle.trim() || tpl.festival?.title.en || EVENT_TITLE[rd.eventType].en : isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isFestival || isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), ...(videoPath ? { videoPath } : {}), message: whatsappMessage(rd, g, tpl.festival), eventTitle: isFestival ? d.customTitle.trim() || tpl.festival?.title.en || EVENT_TITLE[rd.eventType].en : isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isFestival || isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
       fd.append("card", blob, "card.jpg");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string; code?: string; cooldownUntil?: number };
@@ -390,11 +443,11 @@ export function WeddingStudio() {
       setStatus(g.id, "failed");
       toast(j.error ?? "Couldn't send this invitation.");
       return res.status !== 401 && res.status !== 429 && res.status !== 503;
-    } catch {
+    } catch (e) {
       setStatus(g.id, "failed");
-      toast("Couldn't reach the server. Please try again.");
+      toast(e instanceof Error && e.message && !/failed to fetch|networkerror/i.test(e.message) ? `${g.name}: ${e.message}` : "Couldn't reach the server. Please try again.");
       return false;
-    }
+    } finally { setVideoProgress(null); }
   };
 
   const sendOne = async (g: Guest) => {
@@ -493,9 +546,32 @@ export function WeddingStudio() {
                     <input ref={customRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload your own invitation card" onChange={(e) => { void addCustomCard(e.target.files?.[0]); e.target.value = ""; }} />
                   </div>
                 </li>
+                {mode === "greeting" && (
+                  <li>
+                    {/* Greeting video: only offered in Greeting Cards mode. */}
+                    <div className={cn("relative flex h-full flex-col rounded-lg border p-1.5", templateId === VIDEO_TEMPLATE_ID && video ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-dashed border-[#D12014]/60 bg-[#D12014]/[0.03]")}>
+                      <button type="button" disabled={videoBusy || !canMp4} aria-pressed={templateId === VIDEO_TEMPLATE_ID && !!video} aria-label={video ? "Use your greeting video" : "Upload greeting video"} onClick={() => (video ? (setTemplateId(VIDEO_TEMPLATE_ID), setSelected(null)) : videoInputRef.current?.click())} className="w-full text-left disabled:opacity-60">
+                        <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
+                          {video
+                            ? /* eslint-disable-next-line jsx-a11y/media-has-caption */ <video src={video.url} muted playsInline preload="metadata" className="pointer-events-none h-full w-full object-cover" />
+                            : <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center"><Video className="h-7 w-7 text-[#D12014]" aria-hidden="true" />{videoBusy ? <Loader2 className="h-4 w-4 animate-spin text-[#D12014]" aria-hidden="true" /> : <><span className="text-xs font-extrabold text-[#D12014]">Upload Greeting Video</span><span className="text-[10px] text-slate-600 dark:text-slate-300">Max 1 min · MP4/MOV</span></>}</div>}
+                        </div>
+                        <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{video ? "Your greeting video" : "Video Greeting"}</p>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300">{video ? `${Math.round(video.info.duration)}s · each guest's name on the video` : "Upload up to 1 minute"}</p>
+                      </button>
+                      {video && (
+                        <div className="mt-1.5 flex gap-1.5">
+                          <button type="button" onClick={() => videoInputRef.current?.click()} className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10">Replace</button>
+                          <button type="button" onClick={removeVideo} className="flex-1 rounded-md border border-red-300 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/10">Remove</button>
+                        </div>
+                      )}
+                      <input ref={videoInputRef} type="file" accept={VIDEO_ACCEPT} className="sr-only" aria-label="Upload greeting video" onChange={(e) => { void addVideo(e.target.files?.[0]); e.target.value = ""; }} />
+                    </div>
+                  </li>
+                )}
                 {shown.map((x, i) => (
-                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards, the upload card being the first); a selected template further down stays selected.
-                  <li key={x.id} className={!expanded && i + 1 >= 2 ? (i + 1 >= 5 ? "hidden" : i + 1 >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
+                  // Collapsed: only the first row shows at each width (2 / 3 / 5 cards, the upload tiles coming first); a selected template further down stays selected.
+                  <li key={x.id} className={!expanded && i + lead >= 2 ? (i + lead >= 5 ? "hidden" : i + lead >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
                     <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
                       {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
                       
@@ -508,11 +584,12 @@ export function WeddingStudio() {
                   </li>
                 ))}
               </ul>
+              {mode === "greeting" && (videoError || !canMp4) && <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">{videoError || "This browser can't create MP4 videos. Please use the latest Chrome or Safari to send video greetings."}</p>}
               {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
-              {shown.length + 1 > cols && (
+              {shown.length + lead > cols && (
                 <div className="mt-4 flex justify-center">
                   <button type="button" aria-expanded={expanded} aria-controls="template-grid" onClick={() => setExpandedFor(expanded ? null : filter)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-transparent dark:text-slate-100 dark:hover:bg-white/5">
-                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length + 1 - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
+                    {expanded ? <>See less <ChevronUp className="h-4 w-4" aria-hidden="true" /></> : <>See more ({shown.length + lead - cols}) <ChevronDown className="h-4 w-4" aria-hidden="true" /></>}
                   </button>
                 </div>
               )}
@@ -658,6 +735,7 @@ export function WeddingStudio() {
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <button type="button" onClick={() => void sendAll()} disabled={candidates.length === 0 || !!batch || busyId !== null} className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({sendable.length} {sendable.length === 1 ? "guest" : "guests"})</button>
                   {batch && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Preparing and sending {Math.min(batch.done + 1, batch.total)} of {batch.total}…</span>}
+                  {videoProgress && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Rendering video for {videoProgress.name}: {Math.round(videoProgress.pct * 100)}%. Keep this tab open and visible.</span>}
                 </div>
                 {(sendNote || (cooling.length > 0 && sendable.length === 0 && candidates.length > 0)) && (
                   <p role="status" className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
@@ -668,6 +746,7 @@ export function WeddingStudio() {
                 {(counts.queued > 0 || counts.sent > 0 || counts.failed > 0) && (
                   <p role="status" className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">{counts.sent > 0 && <span className="mr-3">Sent via Waau Panel: {counts.sent}</span>}{counts.queued > 0 && <span className="mr-3">Queued in Waau Panel: {counts.queued}</span>}{counts.failed > 0 && <span className="text-red-700 dark:text-red-300">Failed: {counts.failed} (use Send to retry)</span>}</p>
                 )}
+                {isVideoMode && video && <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs font-semibold text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">Video greeting: each guest&apos;s video is rendered in your browser at normal speed, so it takes about {Math.round(video.info.duration)} seconds per guest{candidates.length > 1 ? ` (about ${Math.ceil((candidates.length * video.info.duration) / 60)} min for ${candidates.length} guests)` : ""}. Keep this tab open and visible until it finishes. The original audio is kept.</p>}
                 <p className="mt-2 text-xs text-slate-700 dark:text-slate-200">Each personalised card is generated, stored securely and handed to Waau Panel for WhatsApp delivery. Until Waau Panel is connected, invitations wait as “Queued in Waau Panel”. Guests without a valid WhatsApp number are skipped. You need to be signed in to send.</p>
               </div>
               <DispatchLog refreshKey={logTick} cooldownLeft={cooldownLeft} onReplied={markReplied} hasReplied={hasReplied} />
@@ -680,15 +759,18 @@ export function WeddingStudio() {
             <div data-preview-bar className="flex items-center justify-between gap-2">
               <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
               <div className="flex shrink-0 items-center gap-2">
-                <button ref={enlargeRef} type="button" onClick={() => { setSelected(null); scrollBeforeStudio.current = window.scrollY; setStudioOpen(true); }} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" title="Open the fullscreen studio"><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Enlarge</button>
+                {!isVideoMode && <button ref={enlargeRef} type="button" onClick={() => { setSelected(null); scrollBeforeStudio.current = window.scrollY; setStudioOpen(true); }} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" title="Open the fullscreen studio"><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Enlarge</button>}
                 <button type="button" onClick={resetLayout} disabled={!layoutCustom} className="text-[11px] font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] disabled:cursor-default disabled:opacity-40 disabled:no-underline disabled:hover:text-slate-600 dark:text-slate-300">Reset layout</button>
-                <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
+                {!isVideoMode && <div className="flex items-center gap-0.5 rounded-lg border border-slate-300 p-0.5 dark:border-slate-600" role="group" aria-label="Preview zoom">
                   <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 1} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">−</span></button>
                   <button type="button" onClick={() => setZoom(1)} title="Reset zoom" className="h-7 min-w-11 rounded-md px-1 text-[11px] font-bold tabular-nums text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10">{Math.round(zoom * 100)}%</button>
                   <button type="button" aria-label="Zoom in" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))} disabled={zoom >= 1.5} className="h-7 w-7 rounded-md text-sm font-bold text-slate-800 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-100 dark:hover:bg-white/10"><span aria-hidden="true">+</span></button>
-                </div>
+                </div>}
               </div>
             </div>
+            {isVideoMode && video ? (
+              <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={previewGuest} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} selected={selected === "guest"} onSelect={() => setSelected("guest")} onMove={moveBadge} />
+            ) : (
             <div className="relative mx-auto w-full max-w-[420px]">
               <div className={cn("rounded-lg", zoom > 1 && "max-h-[80vh] overflow-auto overscroll-contain")} aria-label={zoom > 1 ? "Zoomed preview (scroll to pan)" : undefined}>
               <div style={{ width: `${zoom * 100}%` }}>
@@ -708,6 +790,7 @@ export function WeddingStudio() {
                 const next = [...d.photos]; next[i] = u; set({ photos: next.slice(0, 4) });
               }} />
             </div>
+            )}
             {selected ? (
               <div className="mx-auto w-full max-w-[420px]">
                 <SectionToolbar onStyle={styleText} zone={selected} zones={zones} groups={groups} details={d} cfg={cfg} onChange={set} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScale={scaleText} onMaster={setMaster} onFont={fontForBlock} onAllFont={fontForAll} onDone={() => setSelected(null)} />
@@ -723,7 +806,7 @@ export function WeddingStudio() {
       {studioOpen && (
         <StudioFullscreen
           d={d} rd={rd} tpl={tpl} cfg={cfg} previewGuest={previewGuest} setD={setD} set={set}
-          templates={active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID && inMode(t))} thumbs={thumbs} onPickTemplate={pickTemplate}
+          templates={active.filter((t) => !isPseudoTemplate(t.id) && inMode(t))} thumbs={thumbs} onPickTemplate={pickTemplate}
           moveBadge={moveBadge} moveBlock={moveBlock} scaleText={scaleText} setMaster={setMaster} fontForBlock={fontForBlock} fontForAll={fontForAll} styleText={styleText}
           layoutCustom={layoutCustom} resetLayout={resetLayout} onClose={closeStudio}
         />
@@ -733,7 +816,7 @@ export function WeddingStudio() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-stone-950/75 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setGuestPreview(null); }}>
           <div role="dialog" aria-modal="true" aria-label="Personalised card" className="flex max-h-[94vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between"><h2 className="text-sm font-bold text-slate-900 dark:text-white">Card for {guestPreview.name || "this guest"}</h2><button type="button" aria-label="Close" onClick={() => setGuestPreview(null)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></div>
-            <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>
+            {isVideoMode && video ? <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={guestPreview} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} interactive={false} /> : <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>}
             <button type="button" onClick={() => { void sendOne(guestPreview); }} disabled={!!busyId || !!batch || !guestPreview.name.trim() || !validPhone(guestPreview.phone)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-extrabold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Send via Waau Panel</button>
           </div>
         </div>

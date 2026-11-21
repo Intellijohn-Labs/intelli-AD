@@ -264,9 +264,14 @@ const ART_META: Record<string, Meta> = {
 /** "Your own card": the client's uploaded image is the whole background. It has no gallery entry of its own (the picker shows an upload card instead). */
 export const CUSTOM_TEMPLATE_ID = "custom-upload";
 const CUSTOM_RAW: RawTemplate[] = [{ id: CUSTOM_TEMPLATE_ID, name: "Your own card", ml: "സ്വന്തം കാർഡ്", tagline: "Upload your design; each guest's name is added", layout: "classic", motif: "minimal", shape: "rect", pal: P("#FFFFFF", "#F3F3F3", "#1F1F24", "#55555F", "#B8860B", "#8C1C2B"), blessing: ["", ""] }];
+/** "Greeting video": the client's uploaded clip is the background; only the guest's name is drawn (as a transparent overlay) and burned onto the video. Pseudo template like "Your own card". */
+export const VIDEO_TEMPLATE_ID = "video-greeting";
+const VIDEO_RAW: RawTemplate[] = [{ id: VIDEO_TEMPLATE_ID, name: "Greeting video", ml: "ആശംസാ വീഡിയോ", tagline: "Upload a clip; each guest's name is added", layout: "classic", motif: "minimal", shape: "rect", pal: P("#FFFFFF", "#F3F3F3", "#FFFFFF", "#EDEDED", "#E3BE5C", "#8C1C2B"), blessing: ["", ""] }];
+/** Templates that aren't gallery designs (the picker has upload tiles for them) and must never be auto-selected. */
+export const isPseudoTemplate = (id: string) => id === CUSTOM_TEMPLATE_ID || id === VIDEO_TEMPLATE_ID;
 const CUSTOM_META: Meta = { category: "events", defaultEvent: "wedding", events: [] }; // events: [] so no event type ever auto-selects it
 
-export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...FESTIVAL_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES, ...CUSTOM_RAW].map((t) => ({ ...t, ...((t.id === CUSTOM_TEMPLATE_ID ? CUSTOM_META : undefined) ?? META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : t.id.startsWith("fest-") ? FESTIVAL_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
+export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...FESTIVAL_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES, ...CUSTOM_RAW, ...VIDEO_RAW].map((t) => ({ ...t, ...((isPseudoTemplate(t.id) ? CUSTOM_META : undefined) ?? META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : t.id.startsWith("fest-") ? FESTIVAL_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);

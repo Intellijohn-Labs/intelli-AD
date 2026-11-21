@@ -279,7 +279,7 @@ alter table public.invitation_dispatches enable row level security;
 create index if not exists invitation_dispatches_status_idx on public.invitation_dispatches (status, created_at);
 -- Personalised card images / GIFs (uploaded by the server only; public so the WhatsApp provider can fetch the media URL).
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('invitation-cards', 'invitation-cards', true, 8388608, array['image/jpeg', 'image/png', 'image/gif'])
+values ('invitation-cards', 'invitation-cards', true, 16777216, array['image/jpeg', 'image/png', 'image/gif', 'video/mp4'])
 on conflict (id) do update
   set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 NOTIFY pgrst, 'reload schema';
@@ -308,3 +308,9 @@ NOTIFY pgrst, 'reload schema';
 
 -- ── Per-number cooldown lookups (max 2 invitations per number per rolling 24 hours) ───────────────────────────────────────
 create index if not exists invitation_dispatches_phone_idx on public.invitation_dispatches (phone, created_at desc);
+
+
+-- ── Video greetings (Greeting Cards mode): MP4s up to 16 MB in the invitation-cards bucket, plus the poster frame sent as the fallback image ─────────
+-- The bucket statement above now allows video/mp4 and 16 MB (re-run it); poster_url keeps each video dispatch's JPEG frame for retries.
+alter table public.invitation_dispatches add column if not exists poster_url text;
+NOTIFY pgrst, 'reload schema';

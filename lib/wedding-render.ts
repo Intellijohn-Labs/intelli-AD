@@ -5,7 +5,7 @@
  */
 import { loadPrintFonts } from "./print-ad-render";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { CUSTOM_TEMPLATE_ID, eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { CUSTOM_TEMPLATE_ID, VIDEO_TEMPLATE_ID, eventConfig, EVENT_TITLE, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -307,13 +307,15 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   ctx.scale(scale, scale);
   ctx.imageSmoothingQuality = "high";
   const initial = (n: string) => (Array.from(n.trim())[0] ?? "").toUpperCase();
-  const layers = d.layers ?? [];
+  const video = t.id === VIDEO_TEMPLATE_ID; // transparent canvas: just the guest greeting, composited over the video elsewhere
+  const layers = video ? [] : d.layers ?? [];
   const layerImgs = await Promise.all(layers.map((l) => (l.type === "image" ? layerImage(l.src) : Promise.resolve(null))));
   const custom = t.id === CUSTOM_TEMPLATE_ID;
   const festival = eventConfig(d.eventType).group === "festival" && !custom && !!t.festival; // greeting cards: headline + wish + sender, no ceremony details
   const customImg = custom && d.customCard ? await layerImage(d.customCard) : null;
   const artImg = t.art ? await loadArt(t.art.src) : null;
-  if (custom) drawCustomCard(ctx, customImg);
+  if (video) { /* transparent */ }
+  else if (custom) drawCustomCard(ctx, customImg);
   else if (artImg) ctx.drawImage(artImg, 0, 0, CARD_W, CARD_H);
   else if (!drawMotif(ctx, t, p, { a: initial(d.groom), b: initial(d.bride) })) backdrop(ctx, t, p);
   if (t.art?.panel) {
@@ -325,7 +327,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
 
   const lang = d.lang;
   // On an uploaded card the greeting starts low and centred (where most designs keep a blank band) and is meant to be dragged to the right spot.
-  const badge = o.guest?.name && d.guestBadgeX != null && d.guestBadgeY != null ? { x: Math.min(100, Math.max(0, d.guestBadgeX)), y: Math.min(100, Math.max(0, d.guestBadgeY)) } : o.guest?.name && custom ? { x: 50, y: 86 } : null;
+  const badge = o.guest?.name && d.guestBadgeX != null && d.guestBadgeY != null ? { x: Math.min(100, Math.max(0, d.guestBadgeX)), y: Math.min(100, Math.max(0, d.guestBadgeY)) } : o.guest?.name && custom ? { x: 50, y: 86 } : o.guest?.name && video ? { x: 50, y: 50 } : null;
   const wantMl = lang !== "en", wantEn = lang !== "ml";
   const M = MARGIN[t.motif] ?? MOTIF_LAYOUT[t.motif]?.m ?? 150;
   // Image templates carry an exact safe box; every text line is confined to it (cw wide, centred on cx).
@@ -387,7 +389,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const gt = greetingText(d, o.guest);
       text(gt, 38, 700, { id: "guest", color: p.accent, italic: !hasMl(gt) && d.guestGreetingBoxed === false, pill: d.guestGreetingBoxed !== false });
     }
-    if (custom && !d.printCustomDetails) return blocks; // the uploaded design already carries the event details: only the guest's name goes on it
+    if ((custom && !d.printCustomDetails) || video) return blocks; // the uploaded design already carries the event details: only the guest's name goes on it
     const bless = d.blessing.trim();
     if (festival) { /* greetings have their own layout below */ }
     else if (lvl >= 3) { /* no blessing line */ }
@@ -398,7 +400,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     if (!festival) both(title.ml, title.en, 34, 700, { id: "title", color: p.accent, caps: true, ls: 0.16 });
 
     // couple + photo
-    const photo = custom || (festival && !d.festivalPhoto) ? null : o.photo ?? null;
+    const photo = custom || video || (festival && !d.festivalPhoto) ? null : o.photo ?? null;
     const photo2 = photo && o.photo2 ? o.photo2 : null;
     const photoBlock = () => {
       if (t.layout === "polaroid") {
@@ -574,6 +576,23 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   o.onGroups?.(groups);
   o.onLayers?.(layerBoxes);
   return canvas;
+}
+
+/**
+ * The guest greeting alone, as a transparent sprite cropped tight (plus a margin for its shadow / outline) from the "Greeting video" template, drawn with the
+ * same typography, colour, box and size settings as an image card. `width` is the target frame width: the sprite comes out at that scale, so it can be
+ * composited 1:1 onto a frame that wide. w1080 / h1080 are its size in the card's 1080-unit space (used to size the live overlay as a % of the preview).
+ */
+export async function renderGreetingSprite(o: { template: WeddingTemplate; details: WeddingDetails; guest: { name: string; place: string }; width: number }): Promise<{ canvas: HTMLCanvasElement; w1080: number; h1080: number } | null> {
+  let box: CardZone | undefined;
+  const full = await renderWeddingCard({ template: o.template, details: o.details, guest: o.guest, width: o.width, onZones: (z) => { box = z.find((q) => q.id === "guest"); } });
+  if (!box) return null;
+  const k = o.width / CARD_W, m = 26;
+  const x0 = Math.max(0, Math.floor((box.x - m) * k)), y0 = Math.max(0, Math.floor((box.y - m) * k));
+  const x1 = Math.min(full.width, Math.ceil((box.x + box.w + m) * k)), y1 = Math.min(full.height, Math.ceil((box.y + box.h + m) * k));
+  const out = document.createElement("canvas"); out.width = Math.max(1, x1 - x0); out.height = Math.max(1, y1 - y0);
+  out.getContext("2d")!.drawImage(full, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return { canvas: out, w1080: out.width / k, h1080: out.height / k };
 }
 
 const artCache = new Map<string, Promise<HTMLImageElement | null>>();

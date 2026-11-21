@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { Loader2, Play, RefreshCw, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clock } from "@/lib/invitation-cooldown";
 import { TEMPLATES } from "@/lib/wedding";
@@ -8,7 +8,7 @@ import { CooldownPill } from "./cooldown-pill";
 import { cn } from "@/lib/utils";
 
 type Status = "sent" | "queued" | "failed";
-interface Row { id: string; guestName: string; phone: string; status: Status; templateId: string | null; createdAt: string; sentAt: string | null; reason: string }
+interface Row { kind: "image" | "video"; videoUrl: string | null; id: string; guestName: string; phone: string; status: Status; templateId: string | null; createdAt: string; sentAt: string | null; reason: string }
 interface Counts { total: number; sent: number; queued: number; failed: number }
 type Tab = "all" | Status;
 
@@ -34,6 +34,7 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
   const [loading, setLoading] = useState(false);
   const [retrying, setRetrying] = useState<Set<string> | "all" | null>(null);
   const [note, setNote] = useState("");
+  const [watching, setWatching] = useState<Row | null>(null); // rendered guest video open in the preview modal
   const seq = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
@@ -134,7 +135,7 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-slate-200 align-top dark:border-slate-700">
-                  <td className="px-3 py-2"><div className="font-semibold text-slate-900 dark:text-white">{r.guestName}</div><div className="text-xs text-slate-600 tabular-nums dark:text-slate-300">+{r.phone}</div>{cooldownLeft(r.phone) > 0 && <div className="mt-1"><CooldownPill leftMs={cooldownLeft(r.phone)} onReplied={() => onReplied(r.phone)} /></div>}</td>
+                  <td className="px-3 py-2"><div className="font-semibold text-slate-900 dark:text-white">{r.guestName}{r.kind === "video" && <span className="ml-1.5 rounded bg-[#D12014] px-1.5 py-0.5 align-middle text-[9px] font-extrabold tracking-wide text-white">VIDEO</span>}</div><div className="text-xs text-slate-600 tabular-nums dark:text-slate-300">+{r.phone}</div>{cooldownLeft(r.phone) > 0 && <div className="mt-1"><CooldownPill leftMs={cooldownLeft(r.phone)} onReplied={() => onReplied(r.phone)} /></div>}</td>
                   <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-200">{templateName(r.templateId)}</td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap text-slate-700 dark:text-slate-200">{when.format(new Date(r.sentAt ?? r.createdAt))}</td>
                   <td className="px-3 py-2">
@@ -142,6 +143,7 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
                     {r.status === "failed" && r.reason && <p className="mt-1 max-w-xs text-xs font-medium text-red-700 dark:text-red-300">{r.reason}</p>}
                   </td>
                   <td className="px-3 py-2 text-right">
+                    {r.kind === "video" && r.videoUrl && <button type="button" onClick={() => setWatching(r)} aria-label={`Preview video for ${r.guestName}`} className="mr-1.5 inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5"><Play className="h-3 w-3" aria-hidden="true" /> Preview</button>}
                     {r.status === "failed" && (
                       <button type="button" onClick={() => void retryOne(r.id)} disabled={retrying !== null || cooldownLeft(r.phone) > 0} title={cooldownLeft(r.phone) > 0 ? `In cooldown: ${clock(cooldownLeft(r.phone))} left (max 2 per 24 hours)` : undefined} aria-label={`Retry ${r.guestName}`} className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">
                         {retrying instanceof Set && retrying.has(r.id) ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <RotateCcw className="h-3 w-3" aria-hidden="true" />} Retry
@@ -152,6 +154,14 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {watching?.videoUrl && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-stone-950/75 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setWatching(null); }} onKeyDown={(e) => { if (e.key === "Escape") setWatching(null); }}>
+          <div role="dialog" aria-modal="true" aria-label={`Video for ${watching.guestName}`} className="flex max-h-[94vh] w-full max-w-md flex-col gap-2 rounded-2xl bg-white p-3 shadow-2xl dark:bg-slate-900">
+            <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-slate-900 dark:text-white">Video for {watching.guestName}</h3><button type="button" aria-label="Close" onClick={() => setWatching(null)} className="rounded-md p-1 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"><X className="h-4 w-4" /></button></div>
+            <video src={watching.videoUrl} controls autoPlay playsInline className="max-h-[78vh] w-full rounded-lg bg-black" />
+          </div>
         </div>
       )}
     </section>

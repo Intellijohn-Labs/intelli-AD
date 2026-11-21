@@ -8,7 +8,7 @@ import { COOLDOWN_WINDOW_MS, cooldownUntil } from "./invitation-cooldown";
  * `Authorization: Bearer <key>`: { to, message, media: { url, type, filename }, reference }.
  * If your Waau Panel plan expects different field names, only this function needs to change.
  */
-async function sendViaWaau(p: { to: string; message: string; mediaUrl: string; mediaType: "image" | "gif"; filename: string; reference: string }): Promise<{ ok: true; ref: string | null } | { ok: false; error: string }> {
+async function sendViaWaau(p: { to: string; message: string; mediaUrl: string; mediaType: "image" | "gif" | "video"; filename: string; reference: string }): Promise<{ ok: true; ref: string | null } | { ok: false; error: string }> {
   const url = process.env.WAAU_API_URL, key = process.env.WAAU_API_KEY;
   if (!url || !key) return { ok: false, error: "not-configured" };
   try {
@@ -28,7 +28,7 @@ async function sendViaWaau(p: { to: string; message: string; mediaUrl: string; m
   }
 }
 
-type N8nItem = { id: string; guestName: string; guestPlace: string; guestPhone: string; message: string; cardUrl: string; inviteUrl: string };
+type N8nItem = { id: string; guestName: string; guestPlace: string; guestPhone: string; message: string; cardUrl: string; inviteUrl: string; mediaType: "image" | "video"; videoUrl?: string };
 
 /**
  * Hands the dispatch to the n8n workflow behind N8N_WAAU_WEBHOOK_URL: { eventTitle, senderName, supabaseCallbackUrl, items }.
@@ -65,7 +65,8 @@ async function sendViaN8n(payload: { eventTitle: string; senderName: string; sup
 export interface DeliveryInput {
   /** The invitation_dispatches row id (echoed back by n8n in its status callback). */
   id: string; phone: string; name: string; place: string; message: string; inviteUrl: string;
-  assetUrl: string; assetType: "jpg" | "png" | "gif"; eventTitle: string; senderName: string;
+  /** The media to send: the card image, or (assetType "mp4") the greeting video, in which case posterUrl is the JPEG frame sent as the fallback image. */
+  assetUrl: string; assetType: "jpg" | "png" | "gif" | "mp4"; posterUrl?: string | null; eventTitle: string; senderName: string;
   /** Public origin of this site, used to build the status callback URL given to n8n. */
   base: string;
 }
@@ -85,7 +86,9 @@ export async function deliver(admin: SupabaseClient, i: DeliveryInput): Promise<
   if (process.env.N8N_WAAU_WEBHOOK_URL) {
     const r = await sendViaN8n({
       eventTitle: i.eventTitle, senderName: i.senderName, supabaseCallbackUrl: `${i.base}/api/invitations/waau-status`,
-      items: [{ id: i.id, guestName: i.name, guestPlace: i.place, guestPhone: i.phone, message: i.message, cardUrl: i.assetUrl, inviteUrl: i.inviteUrl }],
+      items: [i.assetType === "mp4"
+        ? { id: i.id, guestName: i.name, guestPlace: i.place, guestPhone: i.phone, message: i.message, cardUrl: i.posterUrl || i.assetUrl, videoUrl: i.assetUrl, mediaType: "video", inviteUrl: i.inviteUrl }
+        : { id: i.id, guestName: i.name, guestPlace: i.place, guestPhone: i.phone, message: i.message, cardUrl: i.assetUrl, mediaType: "image", inviteUrl: i.inviteUrl }],
     });
     if (r.ok) {
       const patch = r.delivered ? { status: "sent", sent_at: now(), provider_response: r.response, error: null, error_message: null, updated_at: now() } : { status: "queued", provider_response: r.response, error: null, error_message: null, updated_at: now() };
@@ -100,7 +103,7 @@ export async function deliver(admin: SupabaseClient, i: DeliveryInput): Promise<
     console.error("[invitations] n8n failed, falling back to the direct Waau Panel API:", n8nError);
   }
 
-  const sent = await sendViaWaau({ to: i.phone, message: i.message, mediaUrl: i.assetUrl, mediaType: i.assetType === "gif" ? "gif" : "image", filename: `${i.name.replace(/\W+/g, "-")}-Invitation.${i.assetType}`, reference: i.id });
+  const sent = await sendViaWaau({ to: i.phone, message: i.message, mediaUrl: i.assetUrl, mediaType: i.assetType === "mp4" ? "video" : i.assetType === "gif" ? "gif" : "image", filename: `${i.name.replace(/\W+/g, "-")}-${i.assetType === "mp4" ? "Greeting" : "Invitation"}.${i.assetType}`, reference: i.id });
   if (sent.ok) {
     await admin.from("invitation_dispatches").update({ status: "sent", provider_ref: sent.ref, sent_at: now(), error: null, error_message: null, updated_at: now() }).eq("id", i.id);
     return { status: "sent", configured: true, via: "waau" };
