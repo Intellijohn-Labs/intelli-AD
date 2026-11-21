@@ -1,7 +1,10 @@
+import { ArrayBufferTarget, Muxer } from "mp4-muxer";
+
 /**
  * Greeting videos (browser only): validate an uploaded clip, then burn a guest's name onto it and re-encode it to MP4 with the original audio.
- * Rendering plays the clip once at normal speed into a canvas while MediaRecorder records the canvas plus the clip's own audio (routed through
- * WebAudio, so nothing is played aloud), so each guest's video takes as long as the clip itself.
+ * Rendering plays the clip once at normal speed into a canvas and encodes it with WebCodecs (H.264 Constrained Baseline, constant 30 fps + AAC-LC 48 kHz)
+ * into a NON-fragmented, faststart MP4 (mp4-muxer): the strict format WhatsApp Cloud API accepts (MediaRecorder's fragmented MP4 gets error 131053).
+ * Each guest's video takes as long as the clip itself.
  */
 export const MAX_VIDEO_SECONDS = 60.5; // "up to 60 seconds", with a little slack for container rounding
 export const MAX_SOURCE_BYTES = 250 * 1024 * 1024;
@@ -36,11 +39,15 @@ export async function probeVideo(file: File): Promise<VideoInfo> {
   } finally { URL.revokeObjectURL(url); }
 }
 
-/** The MP4 flavour this browser's MediaRecorder can produce (H.264 + AAC), or null if it can't make MP4 (WhatsApp does not accept WebM). */
-export function pickMp4Mime(): string | null {
-  if (typeof MediaRecorder === "undefined") return null;
-  return ["video/mp4;codecs=avc1.640028,mp4a.40.2", "video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=avc1,mp4a.40.2", "video/mp4"].find((m) => MediaRecorder.isTypeSupported(m)) ?? null;
+const FPS = 30, SR = 48_000, CH = 2;
+/** H.264 level for the frame size (Constrained Baseline 3.0 / 3.1 / 4.0) so the encoder is never asked for more than the level allows. */
+const avcCodec = (w: number, h: number, profile: "42E0" | "4D40" = "42E0") => { const mb = Math.ceil(w / 16) * Math.ceil(h / 16); return `avc1.${profile}${mb <= 1620 ? "1E" : mb <= 3600 ? "1F" : "28"}`; };
+
+/** True when this browser has WebCodecs video + audio encoding (needed to build a WhatsApp-compliant MP4). Chrome / Edge / Safari 17+ do; older browsers and Firefox don't. */
+export function canEncodeMp4(): boolean {
+  return typeof VideoEncoder !== "undefined" && typeof AudioEncoder !== "undefined" && typeof VideoFrame !== "undefined" && typeof AudioData !== "undefined";
 }
+export const MP4_UNSUPPORTED = "This browser can't create WhatsApp-compatible MP4 videos (it has no WebCodecs encoder). Please use the latest Chrome, Edge or Safari to send video greetings.";
 
 /** Output frame size: the clip's own aspect ratio, long side capped at 1280 px (keeps the file small enough for WhatsApp), even numbers for H.264. */
 export function outputSize(info: VideoInfo): { w: number; h: number } {
@@ -126,28 +133,69 @@ export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number
   }
 }
 
-/** Renders one guest's MP4 (name burned in, audio kept) plus a JPEG poster frame (used as the WhatsApp fallback image). Real time: takes about as long as the clip. */
+/** The clip's audio as 48 kHz stereo, exactly `seconds` long. A clip with no audio (or one this browser can't decode) gets silence, so the MP4 always has a valid AAC track. */
+async function sourceAudio(src: string, seconds: number): Promise<AudioBuffer> {
+  const frames = Math.ceil(seconds * SR);
+  const off = new OfflineAudioContext(CH, frames, SR);
+  try {
+    const data = await (await fetch(src)).arrayBuffer();
+    const buf = await new AudioContext().decodeAudioData(data);
+    const node = off.createBufferSource(); node.buffer = buf; node.connect(off.destination); node.start();
+  } catch { /* no audio track / undecodable: render silence */ }
+  return off.startRendering();
+}
+
+/**
+ * Renders one guest's MP4 (name + quote burned in, audio kept) plus a JPEG poster frame (the WhatsApp fallback image). Real time: takes about as long as the clip.
+ * Output: non-fragmented MP4 with the moov atom first (faststart), H.264 Constrained Baseline yuv420p at a constant 30 fps, AAC-LC 48 kHz stereo 128 kbps.
+ */
 export async function renderGuestVideo(o: RenderGuestVideoOptions): Promise<{ video: Blob; poster: Blob; seconds: number }> {
-  const mime = pickMp4Mime();
-  if (!mime) throw new Error("This browser can't create MP4 videos. Please use the latest Chrome (or Safari) to send video greetings.");
+  if (!canEncodeMp4()) throw new Error(MP4_UNSUPPORTED);
   const { w, h } = outputSize(o.info);
+  const bitrate = videoBitrate(o.info.duration);
+  let vcfg: VideoEncoderConfig | null = null;
+  for (const profile of ["42E0", "4D40"] as const) {
+    const c: VideoEncoderConfig = { codec: avcCodec(w, h, profile), width: w, height: h, framerate: FPS, bitrate, latencyMode: "quality", avc: { format: "avc" } };
+    if ((await VideoEncoder.isConfigSupported(c).catch(() => ({ supported: false }))).supported) { vcfg = c; break; }
+  }
+  const acfg: AudioEncoderConfig = { codec: "mp4a.40.2", sampleRate: SR, numberOfChannels: CH, bitrate: AUDIO_BPS };
+  if (!vcfg) throw new Error("This browser can't encode H.264 video. Please use the latest Chrome, Edge or Safari.");
+  if (!(await AudioEncoder.isConfigSupported(acfg).catch(() => ({ supported: false }))).supported) throw new Error("This browser can't encode AAC audio. Please use the latest Chrome, Edge or Safari.");
+
   const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext("2d", { alpha: false })!;
   const video = document.createElement("video");
-  video.src = o.src; video.playsInline = true; video.preload = "auto"; video.crossOrigin = "anonymous";
+  video.src = o.src; video.muted = true; video.playsInline = true; video.preload = "auto"; video.crossOrigin = "anonymous";
   await new Promise<void>((res, rej) => { video.onloadeddata = () => res(); video.onerror = () => rej(new Error("The video couldn't be read.")); });
+  const pcm = await sourceAudio(o.src, o.info.duration);
 
-  // The clip's own audio goes to the recorder through WebAudio and is never connected to the speakers.
-  const ac = new AudioContext();
-  const dest = ac.createMediaStreamDestination();
-  ac.createMediaElementSource(video).connect(dest);
-  if (ac.state === "suspended") await ac.resume().catch(() => undefined);
-  const stream = new MediaStream([...canvas.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: videoBitrate(o.info.duration), audioBitsPerSecond: AUDIO_BPS });
-  const chunks: Blob[] = [];
-  recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: w, height: h, frameRate: FPS }, audio: { codec: "aac", numberOfChannels: CH, sampleRate: SR }, fastStart: "in-memory", firstTimestampBehavior: "offset" });
+  let encError: Error | null = null;
+  const venc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => { encError = new Error(`Video encoding failed: ${e.message}`); } });
+  const aenc = new AudioEncoder({ output: (chunk, meta) => muxer.addAudioChunk(chunk, meta), error: (e) => { encError = new Error(`Audio encoding failed: ${e.message}`); } });
+  venc.configure(vcfg); aenc.configure(acfg);
 
-  const cleanup = () => { stream.getTracks().forEach((t) => t.stop()); void ac.close().catch(() => undefined); video.pause(); video.removeAttribute("src"); video.load(); };
+  const planes = [pcm.getChannelData(0), pcm.getChannelData(Math.min(1, pcm.numberOfChannels - 1))];
+  let audioPos = 0;
+  /** Feeds the encoder every audio sample up to `untilSec` (kept in step with the video so the file interleaves cleanly). */
+  const feedAudio = (untilSec: number) => {
+    const end = Math.min(pcm.length, Math.floor(untilSec * SR));
+    while (audioPos < end) {
+      const n = Math.min(2048, end - audioPos), buf = new Float32Array(n * CH);
+      buf.set(planes[0].subarray(audioPos, audioPos + n), 0); buf.set(planes[1].subarray(audioPos, audioPos + n), n);
+      const ad = new AudioData({ format: "f32-planar", sampleRate: SR, numberOfFrames: n, numberOfChannels: CH, timestamp: Math.round((audioPos / SR) * 1e6), data: buf });
+      aenc.encode(ad); ad.close(); audioPos += n;
+    }
+  };
+  let nextFrame = 0;
+  const encodeFramesUpTo = (idx: number) => {
+    for (; nextFrame <= idx; nextFrame++) {
+      const f = new VideoFrame(canvas, { timestamp: Math.round((nextFrame * 1e6) / FPS), duration: Math.round(1e6 / FPS) });
+      venc.encode(f, { keyFrame: nextFrame % 60 === 0 }); f.close();
+    }
+  };
+
+  const cleanup = () => { try { if (venc.state !== "closed") venc.close(); } catch { /* closed */ } try { if (aenc.state !== "closed") aenc.close(); } catch { /* closed */ } video.pause(); video.removeAttribute("src"); video.load(); };
   let posterBlob: Blob | null = null;
   const paint = () => { ctx.drawImage(video, 0, 0, w, h); paintOverlay(ctx, w, h, o); };
   try {
@@ -159,26 +207,35 @@ export async function renderGuestVideo(o: RenderGuestVideoOptions): Promise<{ vi
       o.signal?.addEventListener("abort", () => { clearTimeout(guard); rej(new DOMException("Cancelled", "AbortError")); });
     });
     let running = true, posterTaken = false;
-    const tick = () => {
+    const tick = (_now?: number, meta?: { mediaTime?: number }) => {
       if (!running) return;
+      const t = meta?.mediaTime ?? video.currentTime;
       paint();
-      o.onProgress?.(Math.min(1, video.currentTime / o.info.duration));
-      if (!posterTaken && video.currentTime >= Math.min(0.6, o.info.duration / 3)) { posterTaken = true; canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85); }
-      if ("requestVideoFrameCallback" in video) (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void }).requestVideoFrameCallback(tick); else requestAnimationFrame(tick);
+      if (encError) return;
+      encodeFramesUpTo(Math.min(Math.floor(o.info.duration * FPS) - 1, Math.floor(t * FPS))); // constant 30 fps: a frame per 1/30 s of media time
+      feedAudio(t + 0.1);
+      o.onProgress?.(Math.min(1, t / o.info.duration));
+      if (!posterTaken && t >= Math.min(0.6, o.info.duration / 3)) { posterTaken = true; canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85); }
+      // Don't let the encoder queue run away on a slow machine.
+      if (venc.encodeQueueSize > 30) { setTimeout(() => request(), 30); return; }
+      request();
     };
-    recorder.start(1000);
+    const request = () => { if ("requestVideoFrameCallback" in video) (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: (n: number, m: { mediaTime: number }) => void) => void }).requestVideoFrameCallback(tick); else requestAnimationFrame(() => tick()); };
     await video.play();
     tick();
     await done;
     running = false; paint();
+    if (encError) throw encError;
+    encodeFramesUpTo(Math.max(0, Math.ceil(o.info.duration * FPS) - 1));
+    feedAudio(o.info.duration);
     if (!posterTaken) canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85);
-    const stopped = new Promise<void>((res) => { recorder.onstop = () => res(); });
-    recorder.stop();
-    await stopped;
+    await Promise.all([venc.flush(), aenc.flush()]);
+    if (encError) throw encError;
+    muxer.finalize();
     await new Promise((r) => setTimeout(r, 50)); // let a pending poster toBlob settle
-    const videoBlob = new Blob(chunks, { type: "video/mp4" });
+    const videoBlob = new Blob([(muxer.target as ArrayBufferTarget).buffer], { type: "video/mp4" });
     if (!posterBlob) throw new Error("Couldn't create the preview frame.");
     if (videoBlob.size > MAX_OUTPUT_BYTES) throw new Error(`The rendered video is ${(videoBlob.size / 1048576).toFixed(1)} MB, over WhatsApp's 16 MB limit. Please use a shorter or lower-resolution clip.`);
     return { video: videoBlob, poster: posterBlob, seconds: o.info.duration };
-  } finally { if (recorder.state !== "inactive") { try { recorder.stop(); } catch { /* already stopped */ } } cleanup(); }
+  } finally { cleanup(); }
 }

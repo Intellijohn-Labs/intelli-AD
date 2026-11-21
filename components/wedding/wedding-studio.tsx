@@ -15,7 +15,7 @@ import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
-import { outputSize, pickMp4Mime, probeVideo, renderGuestVideo, renderQuoteSprite, VIDEO_ACCEPT, VIDEO_FESTIVALS, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
+import { canEncodeMp4, MP4_UNSUPPORTED, outputSize, probeVideo, renderGuestVideo, renderQuoteSprite, VIDEO_ACCEPT, VIDEO_FESTIVALS, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
 import { createClient } from "@/lib/supabase/client";
 import { publishInvitation } from "@/lib/wedding-publish";
 import { CUSTOM_TEMPLATE_ID, isPseudoTemplate, VIDEO_TEMPLATE_ID, EMPTY_DETAILS, fillName, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
@@ -42,7 +42,7 @@ export function WeddingStudio() {
   const [canMp4, setCanMp4] = useState(true);
   const [videoProgress, setVideoProgress] = useState<{ name: string; pct: number } | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => setCanMp4(!!pickMp4Mime()), []);
+  useEffect(() => setCanMp4(canEncodeMp4()), []);
   useEffect(() => () => { if (video) URL.revokeObjectURL(video.url); }, [video]);
   const [templateId, setTemplateId] = useState(TEMPLATES[0].id);
   const [d, setD] = useState<WeddingDetails>(EMPTY_DETAILS);
@@ -607,7 +607,7 @@ export function WeddingStudio() {
                   </li>
                 ))}
               </ul>
-              {mode === "greeting" && (videoError || !canMp4) && <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">{videoError || "This browser can't create MP4 videos. Please use the latest Chrome or Safari to send video greetings."}</p>}
+              {mode === "greeting" && (videoError || !canMp4) && <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">{videoError || MP4_UNSUPPORTED}</p>}
               {shown.length === 0 && <p className="py-6 text-center text-sm text-slate-600 dark:text-slate-300">No templates in this group.</p>}
               {shown.length + lead > cols && (
                 <div className="mt-4 flex justify-center">
