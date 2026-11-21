@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 
 const FILTERS: { id: "all" | TemplateCategory; label: string }[] = [
   { id: "all", label: "All" }, { id: "wedding", label: "Wedding" }, { id: "birthday", label: "Birthday" },
-  { id: "housewarming", label: "Housewarming" }, { id: "baby", label: "Baby & Kids" }, { id: "events", label: "Events" },
+  { id: "housewarming", label: "Housewarming" }, { id: "baby", label: "Baby & Kids" }, { id: "events", label: "Events" }, { id: "inauguration", label: "Inauguration" },
 ];
-const CATEGORY_LABEL: Record<TemplateCategory, string> = { wedding: "Wedding", birthday: "Birthday", housewarming: "Housewarming", baby: "Baby & Kids", events: "Events" };
+const CATEGORY_LABEL: Record<TemplateCategory, string> = { wedding: "Wedding", birthday: "Birthday", housewarming: "Housewarming", baby: "Baby & Kids", events: "Events", inauguration: "Inauguration" };
 
 type Flags = { enabled: boolean; deleted: boolean };
 

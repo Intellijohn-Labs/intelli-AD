@@ -1,7 +1,7 @@
 /** Wedding & Event Invitations: shared types, the 10 template themes, copy helpers and local persistence. */
 
 export type EventType = "wedding" | "engagement" | "reception" | "haldi" | "nikah" | "save-the-date" | "birthday" | "housewarming" | "choroonu" | "noolukettu" | "baptism" | "babyshower" | "aqiqah" | "inauguration" | "anniversary";
-export type EventGroup = "wedding" | "birthday" | "housewarming" | "baby" | "events";
+export type EventGroup = "wedding" | "birthday" | "housewarming" | "baby" | "events" | "inauguration";
 export type WLang = "en" | "ml" | "both";
 export type Layout = "classic" | "polaroid" | "minimal";
 export type PhotoShape = "arch" | "circle" | "oval" | "rect";
@@ -164,7 +164,7 @@ const META: Record<string, Meta> = {
   goldconfetti: { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true, animated: true }, pastelballoon: { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true, animated: true }, rosegoldbday: { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true, animated: true },
   gruhapravesham: { category: "housewarming", faith: "hindu", defaultEvent: "housewarming", events: ["housewarming"], premium: true, animated: true }, emeraldhome: { category: "housewarming", defaultEvent: "housewarming", events: ["housewarming"], premium: true, animated: true }, christianhome: { category: "housewarming", faith: "christian", defaultEvent: "housewarming", events: ["housewarming"], premium: true, animated: true },
   choroonu: { category: "baby", faith: "hindu", defaultEvent: "choroonu", events: ["choroonu", "noolukettu"], premium: true, animated: true }, baptism: { category: "baby", faith: "christian", defaultEvent: "baptism", events: ["baptism"], premium: true, animated: true }, babyshower: { category: "baby", defaultEvent: "babyshower", events: ["babyshower"], premium: true, animated: true }, aqiqah: { category: "baby", faith: "muslim", defaultEvent: "aqiqah", events: ["aqiqah"], premium: true, animated: true },
-  ribbon: { category: "events", defaultEvent: "inauguration", events: ["inauguration"], premium: true, animated: true }, anniversary: { category: "events", defaultEvent: "anniversary", events: ["anniversary"], premium: true, animated: true },
+  ribbon: { category: "inauguration", defaultEvent: "inauguration", events: ["inauguration"], premium: true, animated: true }, anniversary: { category: "events", defaultEvent: "anniversary", events: ["anniversary"], premium: true, animated: true },
 };
 /**
  * Real-artwork Hindu wedding designs (public/templates/hindu-wedding, prepared by scripts/prepare-hindu-wedding-images.py).
@@ -204,6 +204,18 @@ const NEW_IMAGE_RAW: RawTemplate[] = [
   HW("wedding-sunset-arch-couple", { name: "Sunset Gold Arch & Couple", ml: "സൂര്യാസ്തമയ കമാനം", tagline: "Golden-hour balcony, ornate gold arch", pal: P("#FFF1E0", "#FCE4C8", "#4A1710", "#7A4A2B", "#9A5A10", "#8C1C2B"), blessing: GANESHA }, [470, 130, 330, 370], false, "wedding"),
   HW("wedding-palm-arch-dance", { name: "Palm Garden Arch & First Dance", ml: "പാം ഗാർഡൻ", tagline: "Botanical print, palms & a graceful dance", pal: P("#FBF4DE", "#F3EACB", "#2E3A22", "#5F6B4A", "#8A6A1C", "#B03060"), blessing: ["Two hearts, one beautiful journey", "രണ്ട് മനസ്സുകൾ, ഒരു സുന്ദര യാത്ര"] }, [220, 290, 340, 620], false, "wedding"),
 ];
+/** Shop / business inauguration designs (SVG art from scripts/generate-template-art.py); each draws its own header and an opaque text panel. */
+const IN = (id: string, name: string, ml: string, tagline: string, pal: Palette, blessing: [string, string]): RawTemplate => ({ id, name, ml, tagline, layout: "classic", motif: "art", shape: "rect", pal, blessing, art: { src: `/templates/${id}.svg`, left: 150, right: 150, top: 520, bottom: 140 } });
+const OPENING: [string, string] = ["Cordially invites you to the grand opening", "ഉദ്ഘാടന ചടങ്ങിലേക്ക് സ്വാഗതം"];
+const INAUG_RAW: RawTemplate[] = [
+  IN("inaug-nilavilakku", "Royal Nilavilakku & Marigold Opening", "നിലവിളക്ക് ഉദ്ഘാടനം", "Brass lamp, marigold toran, ivory & gold", P("#FFF8E8", "#F7E6C0", "#4A1B0C", "#7A4A2B", "#9A6B00", "#8C1C2B"), ["Sri Ganapathaye Namah", "ശ്രീ ഗണപതയേ നമഃ"]),
+  IN("inaug-ribbon-arch", "Grand Ribbon Cutting & Gold Arch", "റിബൺ മുറിക്കൽ", "Crimson velvet, gold arch & ribbon", P("#FFF6E6", "#FBE5C8", "#4A0A14", "#7A3A3A", "#9A6B00", "#8E1328"), OPENING),
+  IN("inaug-showroom-gold", "Luxury Showroom Black & Gold", "ഷോറൂം ഉദ്ഘാടനം", "Emerald-black, gold deco fan & gem", P("#0F1D19", "#0A1512", "#F6E7BE", "#CDBF98", "#E3BE5C", "#F6E3A1"), ["A new landmark opens its doors", "പുതിയ ഒരു തുടക്കം"]),
+  IN("inaug-cafe-launch", "Modern Cafe & Storefront Launch", "കഫേ ലോഞ്ച്", "Terracotta awning, leaves & coffee", P("#FFF6EA", "#F6DCC4", "#4A2415", "#7A4A36", "#B5532B", "#3E6B45"), ["Fresh beginnings, great taste", "പുതിയ രുചിയുടെ തുടക്കം"]),
+  IN("inaug-corporate-navy", "Corporate Office & Clinic Opening", "ഓഫീസ് / ക്ലിനിക് ഉദ്ഘാടനം", "Royal navy skyline & champagne gold", P("#FBF8F0", "#F1EBDD", "#10224A", "#4D5A78", "#8A6C1E", "#10224A"), OPENING),
+];
+const INAUG_META: Meta = { category: "inauguration", defaultEvent: "inauguration", events: ["inauguration"], premium: true };
+
 const IMG_META: Record<string, Meta> = {
   "haldi-yellow-drapes-bride": { category: "events", defaultEvent: "haldi", events: ["haldi"], premium: true },
   "nikah-cream-arch-lanterns": { category: "wedding", faith: "muslim", defaultEvent: "nikah", events: ["nikah", "engagement"], premium: true },
@@ -223,14 +235,14 @@ const ART_META: Record<string, Meta> = {
   "balloon-luxury": { category: "birthday", defaultEvent: "birthday", events: ["birthday", "anniversary"], premium: true },
   "balloon-kids": { category: "birthday", defaultEvent: "birthday", events: ["birthday"], premium: true },
 };
-export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
+export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES].map((t) => ({ ...t, ...(META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);
 
 export const TEMPLATE_FILTERS = [
   { id: "all", label: "All" }, { id: "wedding", label: "Wedding (Hindu / Christian / Muslim)" }, { id: "birthday", label: "Birthday" }, { id: "housewarming", label: "Housewarming (ഗൃഹപ്രവേശം)" },
-  { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Inauguration / Anniversary)" },
+  { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Anniversary)" }, { id: "inauguration", label: "Inauguration (ഉദ്ഘാടനം)" },
 ] as const;
 export type TemplateFilter = (typeof TEMPLATE_FILTERS)[number]["id"];
 
@@ -273,7 +285,7 @@ export const EVENTS: EventConfig[] = [
   baby("baptism", "Holy Baptism", "മാമോദീസ", { title: { en: "Holy Baptism", ml: "മാമോദീസ" }, labels: { name1: "Baby's name", name2: "Godparents (optional)", host1: "Parents' names", host2: "", time: "Time", venue: "Church / venue" }, message: { en: "Please join us as our little one is welcomed into God's family.", ml: "ഞങ്ങളുടെ കുഞ്ഞ് ദൈവകുടുംബത്തിലേക്ക് സ്വീകരിക്കപ്പെടുന്ന ഈ ധന്യ നിമിഷത്തിൽ പങ്കുചേരാൻ ക്ഷണിക്കുന്നു." }, sample: { groom: "Ethan", bride: "", groomParents: "Jose & Mary", date: "2027-03-20", time: "10:00 AM", venue: "St. Mary's Church, Kottayam", message: "" } }),
   baby("babyshower", "Baby Shower / Seemantham", "സീമന്തം", { title: { en: "Baby Shower", ml: "സീമന്തം" }, labels: { name1: "Mother-to-be's name", name2: "Father / family (optional)", host1: "Hosted by", host2: "", time: "Time", venue: "Venue" }, hostPrefix: { en: "Hosted by ", ml: "ആതിഥേയർ: " }, invite: { en: "the", ml: "" }, message: { en: "Join us to shower the mum-to-be with love and blessings.", ml: "വരാനിരിക്കുന്ന കുഞ്ഞിനും അമ്മയ്ക്കും അനുഗ്രഹവും സ്നേഹവും ചൊരിയാൻ എല്ലാവരെയും ക്ഷണിക്കുന്നു." }, sample: { groom: "Anjali", bride: "", groomParents: "Her loving family", date: "2027-02-27", time: "11:00 AM", venue: "Rose Residency, Thrissur", message: "" } }),
   baby("aqiqah", "Aqiqah", "അഖീഖ", { title: { en: "Aqiqah Ceremony", ml: "അഖീഖ ക്ഷണക്കത്ത്" }, labels: { name1: "Baby's name", name2: "", host1: "Parents' names", host2: "", time: "Time", venue: "Venue" }, useName2: false, message: { en: "With grateful hearts, we joyfully invite you and your family to grace the Aqiqah ceremony and celebratory feast of our beloved child. Your presence and duas will bless this joyous day.", ml: "അല്ലാഹുവിന്റെ അനുഗ്രഹത്താൽ ലഭിച്ച ഞങ്ങളുടെ പൊന്നോമനയുടെ അഖീഖ ചടങ്ങിലും സദ്യയിലും കുടുംബസമേതം പങ്കെടുത്ത് ദുആ ചെയ്യണമെന്ന് സ്നേഹപൂർവം ക്ഷണിക്കുന്നു." }, sample: { groom: "Muhammad Ayaan", bride: "", groomParents: "Faisal & Shahana", date: "2027-03-14", time: "11:00 AM", venue: "Al-Noor Hall, Kozhikode", message: "" } }),
-  EV({ id: "inauguration", group: "events", en: "Inauguration", ml: "ഉദ്ഘാടനം", title: { en: "Grand Inauguration", ml: "ഉദ്ഘാടന ചടങ്ങ്" }, couple: false, labels: { name1: "Business / brand name", name2: "Chief guest (optional)", host1: "Proprietor / hosted by", host2: "", time: "Inauguration time", venue: "Venue / address" }, useName2: true, useHost2: false, hostPrefix: { en: "Proprietor: ", ml: "ഉടമ: " }, invite: { en: "the", ml: "ഞങ്ങളുടെ" }, message: { en: "We cordially invite you to the opening of our new venture.", ml: "ഞങ്ങളുടെ പുതിയ സംരംഭത്തിന്റെ ഉദ്ഘാടന ചടങ്ങിലേക്ക് സ്നേഹപൂർവം ക്ഷണിക്കുന്നു." }, sample: { groom: "Sree Lakshmi Textiles", bride: "Chief Guest: Hon. Minister", groomParents: "R. Gopalan", date: "2027-06-05", time: "10:00 AM", venue: "MG Road, Thrissur", message: "" } }),
+  EV({ id: "inauguration", group: "inauguration", en: "Inauguration", ml: "ഉദ്ഘാടനം", title: { en: "Grand Inauguration", ml: "ഉദ്ഘാടന ചടങ്ങ്" }, couple: false, labels: { name1: "Shop / Business name", name2: "Business tagline / category", host1: "Inaugurated by / Chief guest (optional)", host2: "", time: "Inauguration time", venue: "Venue / address" }, useName2: true, useHost2: false, hostPrefix: { en: "", ml: "" }, invite: { en: "the", ml: "ഞങ്ങളുടെ" }, message: { en: "We cordially invite you to the grand opening of our new venture. Your presence and blessings will make the day special.", ml: "ഞങ്ങളുടെ പുതിയ സംരംഭത്തിന്റെ ഉദ്ഘാടന ചടങ്ങിലേക്ക് സ്നേഹപൂർവം ക്ഷണിക്കുന്നു. നിങ്ങളുടെ സാന്നിധ്യവും അനുഗ്രഹവും ഞങ്ങൾക്ക് ഏറെ പ്രിയപ്പെട്ടതാണ്." }, sample: { groom: "Lumina Gold & Diamonds", bride: "Grand Opening Ceremony", groomParents: "Inaugurated by Sri. Ramesh Menon", date: "2027-06-05", time: "10:00 AM", venue: "MG Road, Thrissur", message: "" } }),
   EV({ id: "anniversary", group: "events", en: "Anniversary", ml: "വാർഷികം", title: { en: "Wedding Anniversary", ml: "വിവാഹ വാർഷികം" }, couple: true, labels: { name1: "Husband's name", name2: "Wife's name", host1: "Milestone (e.g. 25th Anniversary)", host2: "", time: "Time", venue: "Venue" }, useName2: true, useHost2: false, hostPrefix: { en: "", ml: "" }, invite: { en: "their", ml: "ഞങ്ങളുടെ" }, message: { en: "Celebrate years of love and togetherness with us.", ml: "സ്നേഹത്തിന്റെയും ഒരുമയുടെയും വർഷങ്ങൾ ഞങ്ങളോടൊപ്പം ആഘോഷിക്കാൻ ക്ഷണിക്കുന്നു." }, sample: { groom: "Suresh", bride: "Latha", groomParents: "25th Anniversary", date: "2027-01-23", time: "6:30 PM", venue: "The Residency Towers, Kochi", message: "" } }),
 ];
 export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.map((e) => ({ id: e.id, en: e.en, ml: e.ml }));

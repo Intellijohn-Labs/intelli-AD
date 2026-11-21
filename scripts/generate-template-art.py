@@ -147,5 +147,135 @@ def balloon_kids():
     s.out("balloon-kids")
 
 
+# ───────────────────────────── Inauguration (ഉദ്ഘാടനം) ─────────────────────────────
+def garland(s, y0, depth, n=27, sway=0.0):
+    """Marigold toran across the top of the header (alternating orange / amber blooms with leaf tips)."""
+    for i in range(n):
+        x = 70 + i * 36.15; y = y0 + math.sin(i / (n - 1) * math.pi) * depth
+        s.add(f'<ellipse cx="{x:.0f}" cy="{y+16:.0f}" rx="6" ry="14" fill="#3E8A42" transform="rotate({(i%2)*20-10} {x:.0f} {y+16:.0f})"/>')
+        s.add(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="14" fill="{"#F59F00" if i % 2 else "#E8590C"}"/><circle cx="{x:.0f}" cy="{y:.0f}" r="5.5" fill="#FFE066"/>')
+
+
+def inaug_nilavilakku():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#FFF9EA"),(0.6,"#F7E6C0"),(1,"#EBD3A0")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    glow = s.grad([(0, "#FFE9A8", 0.95), (0.55, "#FFC85A", 0.45), (1, "#FFF9EA", 0)], kind="radial", cx="0.5", cy="0.5", r="0.5")
+    s.add(f'<circle cx="540" cy="260" r="250" fill="{glow}"/>')
+    for x in (100, 980):  # kasavu pillars
+        s.add(f'<rect x="{x-14}" y="60" width="28" height="420" fill="{g}"/>' + "".join(f'<path d="M{x-14} {90+k*38} l14 -9 l14 9 l-14 9Z" fill="#8C1C2B"/>' for k in range(10)))
+    # nilavilakku: stem, rings, tray, arms, flames
+    s.add(f'<ellipse cx="540" cy="452" rx="92" ry="16" fill="{g}" stroke="#7A5712" stroke-width="2.5"/><path d="M470 452 Q540 396 610 452Z" fill="{g}" stroke="#7A5712" stroke-width="2.5"/>')
+    s.add(f'<rect x="530" y="250" width="20" height="170" rx="6" fill="{g}" stroke="#7A5712" stroke-width="2"/>')
+    for yy in (270, 320, 372): s.add(f'<ellipse cx="540" cy="{yy}" rx="{26 if yy==320 else 20}" ry="7" fill="{g}" stroke="#7A5712" stroke-width="2"/>')
+    s.add(f'<path d="M388 292 Q540 340 692 292" stroke="{g}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M448 240 Q540 276 632 240" stroke="{g}" stroke-width="8" fill="none" stroke-linecap="round"/>')
+    for (fx, fy, sc) in [(540, 214, 1.15), (448, 224, 1), (632, 224, 1), (388, 276, 0.95), (692, 276, 0.95)]:
+        s.add(f'<ellipse cx="{fx}" cy="{fy+4}" rx="16" ry="6" fill="{g}" stroke="#7A5712" stroke-width="2"/>')
+        s.add(f'<g transform="translate({fx} {fy-8}) scale({sc})"><ellipse cx="0" cy="-14" rx="22" ry="38" fill="#FFB020" opacity="0.35"/><path d="M0 -44 C13 -26 12 -10 0 -2 C-12 -10 -13 -26 0 -44Z" fill="#FF9F0A"/><path d="M0 -34 C6 -24 6 -14 0 -8 C-6 -14 -6 -24 0 -34Z" fill="#FFF3A0"/></g>')
+    # jasmine strings + marigold toran
+    for gx in (190, 890):
+        for i in range(18): s.add(f'<circle cx="{gx}" cy="{110+i*18}" r="7" fill="#FFFFFF" stroke="#E9DFC0" stroke-width="1.2"/>')
+    garland(s, 66, 34)
+    r = random.Random(21)
+    for _ in range(36): sparkle(s, r.randint(160, 920), r.randint(120, 440), r.randint(3, 6), "#FFD36A")
+    divider(s, g); frame(s, g, "#FFF8E8", panel_stroke="#8C1C2B")
+    s.out("inaug-nilavilakku")
+
+
+def inaug_ribbon():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#5A0A18"),(0.5,"#8E1328"),(1,"#4A0814")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    drape = s.grad([(0, "#6E0F20"), (0.5, "#B3213A"), (1, "#5A0A18")], x1="0", y1="0", x2="1", y2="0")
+    for x0, sg in ((60, 1), (1020, -1)):  # velvet curtains with folds and tassels
+        s.add(f'<path d="M{x0} 60 Q{x0+sg*150} 200 {x0+sg*70} 480 L{x0} 480Z" fill="{drape}"/>')
+        for k in range(4): s.add(f'<path d="M{x0+sg*(20+k*28)} 70 Q{x0+sg*(70+k*26)} 260 {x0+sg*(30+k*14)} 478" stroke="#3A0610" stroke-width="3" fill="none" opacity="0.5"/>')
+        s.add(f'<path d="M{x0+sg*70} 440 l{sg*-10} 40 h{sg*20}Z" fill="{g}"/><circle cx="{x0+sg*70}" cy="436" r="9" fill="{g}"/>')
+    s.add(f'<path d="M250 480 V270 Q250 120 540 100 Q830 120 830 270 V480" fill="none" stroke="{g}" stroke-width="12"/><path d="M276 480 V272 Q276 142 540 124 Q804 142 804 272 V480" fill="none" stroke="{g}" stroke-width="2.5" opacity="0.8"/>')
+    rg = s.grad([(0, "#FF5468"), (0.5, "#D01E3A"), (1, "#8E0F24")], x1="0", y1="0", x2="0", y2="1")
+    s.add(f'<path d="M110 330 H970 V392 H110Z" fill="{rg}" stroke="{g}" stroke-width="3"/><path d="M110 340 H970 M110 382 H970" stroke="{g}" stroke-width="2" opacity="0.8"/>')
+    s.add(f'<path d="M110 330 l-34 31 l34 31Z M970 330 l34 31 l-34 31Z" fill="#B3213A" stroke="{g}" stroke-width="3"/>')
+    s.add(f'<path d="M540 361 C470 290 420 306 430 350 C440 392 500 372 540 361Z M540 361 C610 290 660 306 650 350 C640 392 580 372 540 361Z" fill="{rg}" stroke="{g}" stroke-width="3"/><path d="M540 361 L505 430 L535 410Z M540 361 L575 430 L545 410Z" fill="#B3213A" stroke="{g}" stroke-width="3"/><circle cx="540" cy="361" r="20" fill="{g}"/>')
+    # scissors
+    s.add(f'<g transform="translate(762 214) rotate(-28)" fill="none" stroke="{g}" stroke-width="7" stroke-linecap="round"><ellipse cx="-34" cy="64" rx="22" ry="30"/><ellipse cx="34" cy="64" rx="22" ry="30"/><path d="M-26 36 L38 -86 M26 36 L-38 -86" stroke-width="9"/><circle cx="0" cy="8" r="6" fill="{g}"/></g>')
+    r = random.Random(33)
+    for _ in range(60): sparkle(s, r.randint(80, 1000), r.randint(70, 470), r.randint(3, 9), "#FFD98A")
+    for i in range(0, 27):
+        x = 70 + i * 36.15; s.add(f'<path d="M{x-12} 60 q12 22 24 0Z" fill="{g}"/>')
+    divider(s, g); frame(s, g, "#FFF6E6", panel_stroke="#8E1328")
+    s.out("inaug-ribbon-arch")
+
+
+def inaug_showroom():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#0C1815"),(0.55,"#14302A"),(1,"#09110F")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    # art-deco sunburst fan from the lower middle of the header
+    for i in range(-9, 10):
+        a = math.radians(-90 + i * 8.5); x1, y1 = 540 + math.cos(a) * 120, 470 + math.sin(a) * 120; x2, y2 = 540 + math.cos(a) * 420, 470 + math.sin(a) * 420
+        s.add(f'<path d="M{x1:.0f} {y1:.0f} L{x2:.0f} {y2:.0f}" stroke="{g}" stroke-width="{3 if i % 2 == 0 else 1.5}" opacity="{0.9 if i % 2 == 0 else 0.5}"/>')
+    for rad in (130, 220, 320, 410): s.add(f'<path d="M{540-rad} 470 A{rad} {rad} 0 0 1 {540+rad} 470" fill="none" stroke="{g}" stroke-width="2.5" opacity="0.75"/>')
+    # faceted gem
+    gem = s.grad([(0, "#E8FFF6"), (0.5, "#53D1A5"), (1, "#0F7A5A")], x1="0", y1="0", x2="1", y2="1")
+    s.add(f'<path d="M470 210 L610 210 L660 262 L540 392 L420 262Z" fill="{gem}" stroke="{g}" stroke-width="5"/>')
+    s.add(f'<path d="M420 262 H660 M470 210 L500 262 L540 392 M610 210 L580 262 L540 392 M500 262 L540 210 L580 262" fill="none" stroke="#FFFFFF" stroke-width="2.2" opacity="0.8"/><path d="M500 262 L540 210 L580 262Z" fill="#FFFFFF" opacity="0.35"/>')
+    for x in (110, 970):
+        s.add(f'<rect x="{x-9}" y="64" width="18" height="404" fill="{g}"/>' + "".join(f'<path d="M{x-9} {96+k*44} h18 l-9 12Z" fill="#0C1815"/>' for k in range(9)))
+    for x, y in ((250, 140), (830, 140), (330, 80), (750, 80)): s.add(f'<path d="M{x} {y-24} L{x+14} {y} L{x} {y+24} L{x-14} {y}Z" fill="{g}"/>')
+    r = random.Random(41)
+    for _ in range(46): sparkle(s, r.randint(160, 920), r.randint(90, 300), r.randint(2, 6), "#F6E3A1")
+    divider(s, g, y=482); frame(s, g, "#0F1D19", panel_stroke="#E3BE5C", rx=22)
+    s.out("inaug-showroom-gold")
+
+
+def inaug_cafe():
+    s = Svg(); c = "#B5532B"; g = s.grad([(0, "#9A3F1C"), (0.5, "#E8935E"), (1, "#9A3F1C")], x1="0", y1="0", x2="1", y2="1")
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#F6DCC4"),(0.6,"#EFC7A2"),(1,"#E4AE85")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    # striped awning with scalloped edge
+    for i in range(12):
+        x = 56 + i * 80.5; s.add(f'<path d="M{x} 62 h80.5 v78 a40.25 28 0 0 1 -80.5 0Z" fill="{"#C2603A" if i % 2 == 0 else "#FFF4E4"}"/>')
+    s.add('<rect x="56" y="54" width="968" height="14" rx="4" fill="#8A3A1C"/>')
+    # string lights
+    s.add('<path d="M70 180 Q300 250 540 190 Q780 130 1010 200" stroke="#7A4A2B" stroke-width="2.5" fill="none"/>')
+    for i in range(11):
+        t = i / 10; x = 70 + t * 940; y = 180 + (math.sin(t * math.pi) * 40 if t < 0.5 else 0) + (1 - abs(t - 0.5) * 2) * 22
+        s.add(f'<circle cx="{x:.0f}" cy="{y+14:.0f}" r="22" fill="#FFE9A8" opacity="0.5"/><circle cx="{x:.0f}" cy="{y+14:.0f}" r="9" fill="#FFD36A" stroke="#C2603A" stroke-width="1.5"/>')
+    # botanical leaves both sides
+    def leaf(x, y, rot, sc, col):
+        s.add(f'<g transform="translate({x} {y}) rotate({rot}) scale({sc})"><path d="M0 0 C60 -30 110 -120 0 -210 C-110 -120 -60 -30 0 0Z" fill="{col}"/><path d="M0 0 V-200" stroke="#2E5B36" stroke-width="3"/>' + "".join(f'<path d="M0 {-30-k*30} q{28 if k%2 else -28} -10 {44 if k%2 else -44} -34" stroke="#2E5B36" stroke-width="2" fill="none"/>' for k in range(5)) + '</g>')
+    for x, sg in ((120, 1), (960, -1)):
+        leaf(x, 470, sg * -18, 1.0, "#4E8A55"); leaf(x + sg * 60, 470, sg * 20, 0.85, "#6BA36A"); leaf(x - sg * 38, 470, sg * -52, 0.7, "#3E7347")
+    # coffee cup
+    s.add('<ellipse cx="540" cy="440" rx="120" ry="20" fill="#C77F54" opacity="0.5"/>')
+    s.add('<path d="M440 300 H640 V380 Q640 440 540 440 Q440 440 440 380Z" fill="#FFF4E4" stroke="#8A3A1C" stroke-width="5"/><path d="M640 322 q62 4 52 44 q-8 36 -56 28" fill="none" stroke="#8A3A1C" stroke-width="12" stroke-linecap="round"/><path d="M440 340 H640" stroke="#C2603A" stroke-width="10"/>')
+    s.add('<ellipse cx="540" cy="300" rx="100" ry="16" fill="#6B3A1E"/><ellipse cx="540" cy="300" rx="80" ry="10" fill="#9A5A32"/>')
+    for dx in (-36, 0, 36): s.add(f'<path d="M{540+dx} 270 q-18 -30 0 -56 q18 -26 0 -56" stroke="#FFF4E4" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.9"/>')
+    gd = "#C2603A"; s.add(f'<path d="M330 482 H750" stroke="{gd}" stroke-width="3"/><circle cx="540" cy="482" r="7" fill="{gd}"/>')
+    frame(s, g, "#FFF6EA", panel_stroke="#C2603A", rx=44)
+    s.out("inaug-cafe-launch")
+
+
+def inaug_corporate():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#0A1840"),(0.6,"#13306A"),(1,"#081331")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    sky = s.grad([(0, "#2B4F9A", 0.5), (1, "#0A1840", 0)], kind="radial", cx="0.5", cy="1", r="0.9")
+    s.add(f'<rect x="60" y="60" width="960" height="420" fill="{sky}"/>')
+    # skyline of buildings with lit windows
+    bld = [(130, 150, 90), (225, 100, 130), (360, 60, 190), (555, 120, 150), (710, 90, 110), (825, 140, 100), (200, 40, 60)]
+    r = random.Random(7)
+    for x, w, h in bld:
+        top = 470 - h * 2.1
+        s.add(f'<rect x="{x}" y="{top:.0f}" width="{w}" height="{470-top:.0f}" fill="#0B2152" stroke="{g}" stroke-width="2"/>')
+        for wy in range(int(top) + 14, 456, 22):
+            for wx in range(x + 10, x + w - 10, 20):
+                if r.random() > 0.35: s.add(f'<rect x="{wx}" y="{wy}" width="9" height="12" fill="{"#F6D77A" if r.random() > 0.3 else "#8FA8E0"}"/>')
+    s.add(f'<path d="M80 470 H1000" stroke="{g}" stroke-width="4"/>')
+    for x in (84, 996):  # architectural columns
+        s.add(f'<rect x="{x-16}" y="70" width="32" height="400" fill="#F3E3B6" stroke="{g}" stroke-width="3"/>' + "".join(f'<path d="M{x-8+k*8} 84 V460" stroke="#B89B4F" stroke-width="1.6"/>' for k in range(3)) + f'<rect x="{x-24}" y="62" width="48" height="16" fill="{g}"/><rect x="{x-24}" y="462" width="48" height="16" fill="{g}"/>')
+    # ribbon + bow at the entrance
+    rg = s.grad([(0, "#F7E7B0"), (0.5, "#D9B65A"), (1, "#9A7B2C")], x1="0", y1="0", x2="0", y2="1")
+    s.add(f'<path d="M110 420 H970 V446 H110Z" fill="{rg}"/><path d="M540 433 C500 392 470 402 476 428 C482 452 520 442 540 433Z M540 433 C580 392 610 402 604 428 C598 452 560 442 540 433Z" fill="{rg}" stroke="#7A5E1C" stroke-width="2"/><circle cx="540" cy="433" r="11" fill="#7A5E1C"/>')
+    for x, y in ((200, 90), (880, 96), (330, 70), (750, 66)): sparkle(s, x, y, 12, "#F6E3A1")
+    divider(s, g, y=484); frame(s, g, "#FBF8F0", panel_stroke="#10224A", rx=20)
+    s.out("inaug-corporate-navy")
+
+
 if __name__ == "__main__":
-    for fn in (balloon_luxury, balloon_kids): fn()
+    for fn in (balloon_luxury, balloon_kids, inaug_nilavilakku, inaug_ribbon, inaug_showroom, inaug_cafe, inaug_corporate): fn()
