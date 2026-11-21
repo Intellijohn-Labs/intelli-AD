@@ -310,6 +310,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   const layers = d.layers ?? [];
   const layerImgs = await Promise.all(layers.map((l) => (l.type === "image" ? layerImage(l.src) : Promise.resolve(null))));
   const custom = t.id === CUSTOM_TEMPLATE_ID;
+  const festival = eventConfig(d.eventType).group === "festival" && !custom && !!t.festival; // greeting cards: headline + wish + sender, no ceremony details
   const customImg = custom && d.customCard ? await layerImage(d.customCard) : null;
   const artImg = t.art ? await loadArt(t.art.src) : null;
   if (custom) drawCustomCard(ctx, customImg);
@@ -388,15 +389,16 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
     }
     if (custom && !d.printCustomDetails) return blocks; // the uploaded design already carries the event details: only the guest's name goes on it
     const bless = d.blessing.trim();
-    if (lvl >= 3) { /* no blessing line */ }
+    if (festival) { /* greetings have their own layout below */ }
+    else if (lvl >= 3) { /* no blessing line */ }
     else if (bless) text(bless, 30, 500, { id: "blessing", color: p.sub, italic: true });
     else if (lvl >= 1) text(wantEn ? t.blessing[0] : t.blessing[1], 30, 500, { id: "blessing", color: p.sub, italic: true });
     else both(t.blessing[1], t.blessing[0], 30, 500, { id: "blessing", color: p.sub, italic: true });
     if (t.layout === "minimal") rule(120);
-    both(title.ml, title.en, 34, 700, { id: "title", color: p.accent, caps: true, ls: 0.16 });
+    if (!festival) both(title.ml, title.en, 34, 700, { id: "title", color: p.accent, caps: true, ls: 0.16 });
 
     // couple + photo
-    const photo = custom ? null : o.photo ?? null;
+    const photo = custom || (festival && !d.festivalPhoto) ? null : o.photo ?? null;
     const photo2 = photo && o.photo2 ? o.photo2 : null;
     const photoBlock = () => {
       if (t.layout === "polaroid") {
@@ -449,6 +451,21 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       });
     };
 
+    if (festival) {
+      const f = t.festival!;
+      // Headline (Malayalam then English, or just the typed one), the wish, the optional sender photo / logo, then "With love from <sender>".
+      const typed = d.customTitle.trim();
+      if (typed) text(typed, 84, 800, { id: "title", color: p.accent });
+      else both(f.title.ml, f.title.en, 84, 800, { id: "title", color: p.accent });
+      const wish = d.message.trim();
+      if (wish) text(wish, 36, 500, { id: "message", italic: true, color: p.ink });
+      else both(f.wish.ml, f.wish.en, 36, 500, { id: "message", italic: true });
+      if (d.festivalPhoto) photoBlock();
+      const from = d.groom.trim();
+      if (from) { both("സ്നേഹപൂർവം", "With love from", 28, 600, { id: "names", color: p.sub, fam: SANS }); text(from, 64, 800, { id: "names" }); }
+      if (d.verse.trim()) text(d.verse.trim(), 26, 500, { id: "verse", italic: true, color: p.sub });
+      return blocks;
+    }
     if (t.layout === "polaroid") {
       photoBlock();
     } else {

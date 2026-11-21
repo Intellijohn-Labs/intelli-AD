@@ -277,5 +277,143 @@ def inaug_corporate():
     s.out("inaug-corporate-navy")
 
 
+# ───────────────────────────── Festivals & Greetings ─────────────────────────────
+def _burst(s, cx, cy, r0, r1, n, col, w=3, dots=True):
+    for i in range(n):
+        a = i * 2 * math.pi / n
+        s.add(f'<path d="M{cx+math.cos(a)*r0:.0f} {cy+math.sin(a)*r0:.0f} L{cx+math.cos(a)*r1:.0f} {cy+math.sin(a)*r1:.0f}" stroke="{col}" stroke-width="{w}" stroke-linecap="round"/>')
+        if dots: s.add(f'<circle cx="{cx+math.cos(a)*(r1+14):.0f}" cy="{cy+math.sin(a)*(r1+14):.0f}" r="{w*0.9:.1f}" fill="{col}"/>')
+
+
+def fest_onam():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#FFFBEF"),(0.6,"#F8E9C4"),(1,"#EBD59A")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    for x0, sg in ((0, 1), (W, -1)):  # banana-leaf fronds
+        for k in range(4): s.add(f'<path d="M{x0} {90+k*95} Q{x0+sg*150} {70+k*95} {x0+sg*220} {150+k*95} Q{x0+sg*120} {140+k*95} {x0} {120+k*95}Z" fill="{["#3E8A42","#4FA050","#2F7A38","#5BAE5A"][k]}" opacity="0.9"/>')
+    # pookkalam: concentric rings of petals
+    cx, cy = 540, 262
+    rings = [(196, "#E8590C", 20), (162, "#FFD43B", 18), (128, "#FFFFFF", 16), (96, "#C2185B", 14), (66, "#FFB020", 12)]
+    for rad, col, n in rings:
+        for i in range(n):
+            a = i * 2 * math.pi / n
+            s.add(f'<ellipse cx="{cx+math.cos(a)*rad:.1f}" cy="{cy+math.sin(a)*rad:.1f}" rx="{rad*0.17:.1f}" ry="{rad*0.1:.1f}" fill="{col}" transform="rotate({math.degrees(a):.0f} {cx+math.cos(a)*rad:.1f} {cy+math.sin(a)*rad:.1f})"/>')
+    s.add(f'<circle cx="{cx}" cy="{cy}" r="38" fill="#FF8F00"/><circle cx="{cx}" cy="{cy}" r="20" fill="#FFE066"/>')
+    s.add(f'<circle cx="{cx}" cy="{cy}" r="218" fill="none" stroke="{g}" stroke-width="5"/><circle cx="{cx}" cy="{cy}" r="228" fill="none" stroke="{g}" stroke-width="1.5"/>')
+    # kasavu bands top and bottom of the header
+    for y0 in (62, 470):
+        s.add(f'<rect x="56" y="{y0}" width="{W-112}" height="18" fill="{g}"/>' + "".join(f'<path d="M{70+i*36.15} {y0+2} l18 7 l-18 7 l-18 -7Z" fill="#8C1C2B"/>' for i in range(27)))
+    for x in (130, 950): sparkle(s, x, 330, 16, "#FFB020")
+    divider(s, g, y=482); frame(s, g, "#FFF9EA", panel_stroke="#A56A00")
+    s.out("fest-onam")
+
+
+def fest_vishu():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#FFFCEC"),(0.6,"#FBEFB8"),(1,"#F1DC84")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    glow = s.grad([(0, "#FFF4B0", 0.95), (1, "#FFFCEC", 0)], kind="radial", cx="0.5", cy="0.55", r="0.5")
+    s.add(f'<circle cx="540" cy="290" r="240" fill="{glow}"/>')
+    # hanging konna (cassia) flower clusters
+    r = random.Random(14)
+    for x0, sg in ((120, 1), (960, -1)):
+        for k in range(3):
+            bx = x0 + sg * k * 62; s.add(f'<path d="M{bx} 60 Q{bx+sg*30} 150 {bx+sg*10} 330" stroke="#6B8E23" stroke-width="4" fill="none"/>')
+            for j in range(26):
+                t = j / 25; y = 110 + t * 230; x = bx + sg * (30 * math.sin(t * 2.2)) + r.randint(-14, 14)
+                s.add(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{r.randint(9,15)}" fill="{"#FFC107" if j % 3 else "#FFD54F"}" stroke="#E6A100" stroke-width="1"/>')
+    # lamp + uruli with the vishukkani
+    s.add(f'<rect x="531" y="190" width="18" height="190" rx="6" fill="{g}" stroke="#7A5712" stroke-width="2"/>')
+    s.add(f'<path d="M470 196 Q540 232 610 196" stroke="{g}" stroke-width="9" fill="none" stroke-linecap="round"/>')
+    for fx in (470, 540, 610):
+        s.add(f'<ellipse cx="{fx}" cy="204" rx="15" ry="5" fill="{g}" stroke="#7A5712" stroke-width="2"/><ellipse cx="{fx}" cy="168" rx="20" ry="34" fill="#FFB020" opacity="0.35"/><path d="M{fx} 142 C{fx+11} 160 {fx+10} 176 {fx} 184 C{fx-10} 176 {fx-11} 160 {fx} 142Z" fill="#FF9F0A"/><path d="M{fx} 152 C{fx+5} 162 {fx+5} 172 {fx} 178 C{fx-5} 172 {fx-5} 162 {fx} 152Z" fill="#FFF3A0"/>')
+    s.add(f'<path d="M388 388 Q540 336 692 388 L670 456 Q540 486 410 456Z" fill="{g}" stroke="#7A5712" stroke-width="3"/><ellipse cx="540" cy="384" rx="152" ry="26" fill="#C98A1E" stroke="#7A5712" stroke-width="3"/>')
+    for (fx, fy, col) in [(470, 364, "#E8590C"), (520, 352, "#FFC107"), (570, 356, "#6BA36A"), (615, 366, "#F2778B"), (545, 372, "#FFD54F")]:
+        s.add(f'<circle cx="{fx}" cy="{fy}" r="24" fill="{col}" stroke="#fff" stroke-width="1.5" opacity="0.95"/>')
+    s.add(f'<circle cx="700" cy="330" r="34" fill="#E8F1F5" stroke="{g}" stroke-width="6"/><path d="M684 316 q10 -8 22 -2" stroke="#fff" stroke-width="4" fill="none"/>')  # kannadi (mirror)
+    for x, y in ((330, 120), (760, 130), (240, 300), (840, 290)): sparkle(s, x, y, 12, "#E6A100")
+    divider(s, g, y=486); frame(s, g, "#FFFBEA", panel_stroke="#B07A00")
+    s.out("fest-vishu")
+
+
+def fest_christmas():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#6E0A18"),(0.55,"#A01A2C"),(1,"#4A0812")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    r = random.Random(25)
+    for _ in range(90): s.add(f'<circle cx="{r.randint(60,1020)}" cy="{r.randint(64,470)}" r="{r.choice([2,3,4,5])}" fill="#FFFFFF" opacity="{r.uniform(0.5,0.95):.2f}"/>')
+    pine = s.grad([(0, "#2E8B4B"), (1, "#10502A")], x1="0", y1="0", x2="0", y2="1")
+    for (w, y0) in ((330, 370), (270, 292), (210, 218), (150, 150)):
+        s.add(f'<path d="M540 {y0-100} L{540+w/2} {y0+20} Q540 {y0+50} {540-w/2} {y0+20}Z" fill="{pine}" stroke="#0D4020" stroke-width="3"/>')
+    s.add(f'<rect x="518" y="414" width="44" height="52" fill="#6B3A1E"/>')
+    s.add(f'<path d="M540 36 L552 74 L592 74 L560 98 L572 136 L540 112 L508 136 L520 98 L488 74 L528 74Z" fill="{g}" stroke="#7A5712" stroke-width="2.5"/><circle cx="540" cy="86" r="52" fill="#FFE9A0" opacity="0.25"/>')
+    for (bx, by, col) in [(470, 380, "#E53950"), (600, 392, "#E3BE5C"), (520, 300, "#E3BE5C"), (580, 250, "#E53950"), (492, 232, "#FFFFFF"), (545, 175, "#E53950"), (430, 410, "#4F8FE0"), (660, 420, "#E53950")]:
+        s.add(f'<circle cx="{bx}" cy="{by}" r="17" fill="{col}" stroke="#fff" stroke-width="1.5"/><path d="M{bx-6} {by-16} h12 v-7 h-12Z" fill="{g}"/><ellipse cx="{bx-5}" cy="{by-5}" rx="4" ry="6" fill="#fff" opacity="0.55"/>')
+    for x0, sg in ((110, 1), (970, -1)):  # holly sprigs
+        for k in range(3): s.add(f'<ellipse cx="{x0+sg*k*34}" cy="{410+k*8}" rx="30" ry="12" fill="#2E8B4B" transform="rotate({sg*(-30+k*30)} {x0+sg*k*34} {410+k*8})"/>')
+        for k in range(3): s.add(f'<circle cx="{x0+sg*(14+k*16)}" cy="{398+k*6}" r="8" fill="#E53950"/>')
+    divider(s, g, y=486); frame(s, g, "#FFF8F0", panel_stroke="#A01A2C")
+    s.out("fest-christmas")
+
+
+def fest_newyear():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#0B1638"),(0.6,"#13265C"),(1,"#070E26")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    r = random.Random(31)
+    for (cx, cy, rad, col) in [(540, 215, 150, "#F6D77A"), (250, 170, 100, "#FFFFFF"), (830, 160, 105, "#F08CA8"), (400, 370, 70, "#8FB8FF"), (700, 360, 78, "#F6D77A")]:
+        _burst(s, cx, cy, rad * 0.25, rad, 24, col, 3.2)
+        for j in range(18): a = r.random() * 6.28; rr = r.uniform(rad * 0.3, rad * 0.95); s.add(f'<circle cx="{cx+math.cos(a)*rr:.0f}" cy="{cy+math.sin(a)*rr:.0f}" r="{r.uniform(1.5,3.5):.1f}" fill="{col}" opacity="0.8"/>')
+        s.add(f'<circle cx="{cx}" cy="{cy}" r="{rad*0.12:.0f}" fill="{col}"/>')
+    for _ in range(70): sparkle(s, r.randint(80, 1000), r.randint(70, 470), r.randint(2, 7), "#F6E3A1")
+    # city line
+    for x, w, h in ((90, 70, 70), (170, 54, 110), (240, 80, 60), (340, 60, 90), (720, 70, 100), (800, 56, 70), (870, 80, 120), (960, 40, 60)):
+        s.add(f'<rect x="{x}" y="{470-h}" width="{w}" height="{h}" fill="#050B1E"/>')
+    divider(s, g, y=484); frame(s, g, "#0E1B3F", panel_stroke="#E3BE5C", rx=24)
+    s.out("fest-newyear")
+
+
+def fest_eid():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#04241C"),(0.55,"#0B5D4B"),(1,"#052F26")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    r = random.Random(41)
+    for _ in range(60): sparkle(s, r.randint(70, 1010), r.randint(70, 340), r.randint(2, 6), "#F6E3A1")
+    glow = s.grad([(0, "#FFE9A0", 0.7), (1, "#0B5D4B", 0)], kind="radial", cx="0.5", cy="0.5", r="0.5")
+    s.add(f'<circle cx="540" cy="215" r="200" fill="{glow}"/>')
+    s.add(f'<circle cx="540" cy="215" r="124" fill="{g}"/><circle cx="582" cy="190" r="106" fill="#0B5D4B"/>')
+    s.add(f'<path d="M624 150 L636 188 L676 188 L644 212 L656 250 L624 226 L592 250 L604 212 L572 188 L612 188Z" fill="{g}" stroke="#7A5712" stroke-width="2"/>')
+    for x, y, sc in ((130, 70, 0.85), (950, 70, 0.85), (260, 70, 0.6), (820, 70, 0.6)):  # fanoos
+        glow2 = s.grad([(0, "#FFE9A0", 0.95), (1, "#FFB43A", 0)], kind="radial", cx="0.5", cy="0.5", r="0.5")
+        s.add(f'<g transform="translate({x} {y}) scale({sc})"><path d="M0 -30 V10" stroke="{g}" stroke-width="3"/><circle cx="0" cy="110" r="84" fill="{glow2}"/><path d="M-14 10 H14 L22 26 H-22Z" fill="{g}"/><path d="M-22 26 Q-46 62 -38 100 Q-30 140 -16 158 H16 Q30 140 38 100 Q46 62 22 26Z" fill="#FFD36A" fill-opacity="0.55" stroke="{g}" stroke-width="3.5"/><path d="M0 26 V158 M-22 26 Q-8 90 -16 158 M22 26 Q8 90 16 158" stroke="{g}" stroke-width="2.2" fill="none"/><path d="M0 60 C10 78 9 92 0 98 C-9 92 -10 78 0 60Z" fill="#FFF3B0"/><path d="M-18 158 H18 L10 174 H-10Z" fill="{g}"/></g>')
+    # mosque silhouette
+    sil = "#042A21"
+    s.add(f'<path d="M0 470 V420 H160 V380 Q160 350 190 350 Q220 350 220 380 V420 H330 Q330 330 400 320 Q470 330 470 420 H610 Q610 330 680 320 Q750 330 750 420 H860 V380 Q860 350 890 350 Q920 350 920 380 V420 H1080 V470Z" fill="{sil}"/>')
+    for x in (190, 890): s.add(f'<rect x="{x-9}" y="296" width="18" height="60" fill="{sil}"/><path d="M{x-12} 296 Q{x} 268 {x+12} 296Z" fill="{sil}"/>')
+    divider(s, g, y=486); frame(s, g, "#073B2E", panel_stroke="#E8C766", rx=40)
+    s.out("fest-eid")
+
+
+def fest_diwali():
+    s = Svg(); g = gold(s)
+    s.add(f'<rect width="{W}" height="{H}" fill="{s.grad([(0,"#4A0A18"),(0.55,"#7A1428"),(1,"#3A0813")], x1="0", y1="0", x2="0", y2="1")}"/>')
+    r = random.Random(52)
+    for _ in range(80): sparkle(s, r.randint(70, 1010), r.randint(66, 330), r.randint(2, 7), "#FFD98A")
+    # string lights
+    s.add('<path d="M70 96 Q300 160 540 100 Q780 40 1010 110" stroke="#C99A2E" stroke-width="2.5" fill="none"/>')
+    for i in range(14):
+        t = i / 13; x = 70 + t * 940; y = 96 + (math.sin(t * math.pi * 2) * 40 + t * 14)
+        s.add(f'<circle cx="{x:.0f}" cy="{y+12:.0f}" r="20" fill="#FFD36A" opacity="0.4"/><circle cx="{x:.0f}" cy="{y+12:.0f}" r="8" fill="{["#FFC107","#FF7043","#FFE082"][i%3]}"/>')
+    # rangoli
+    cx, cy = 540, 300
+    for rad, col, n in ((170, "#E8590C", 16), (136, "#FFD43B", 16), (104, "#C2185B", 12), (74, "#FFFFFF", 12)):
+        for i in range(n):
+            a = i * 2 * math.pi / n
+            s.add(f'<ellipse cx="{cx+math.cos(a)*rad:.1f}" cy="{cy+math.sin(a)*rad:.1f}" rx="{rad*0.2:.1f}" ry="{rad*0.1:.1f}" fill="{col}" opacity="0.9" transform="rotate({math.degrees(a):.0f} {cx+math.cos(a)*rad:.1f} {cy+math.sin(a)*rad:.1f})"/>')
+    glow = s.grad([(0, "#FFE9A0", 0.95), (1, "#7A1428", 0)], kind="radial", cx="0.5", cy="0.5", r="0.5")
+    s.add(f'<circle cx="{cx}" cy="{cy-10}" r="150" fill="{glow}"/>')
+    def diya(x, y, sc):
+        s.add(f'<g transform="translate({x} {y}) scale({sc})"><ellipse cx="0" cy="-26" rx="26" ry="46" fill="#FFB020" opacity="0.4"/><path d="M0 -62 C16 -38 14 -18 0 -8 C-14 -18 -16 -38 0 -62Z" fill="#FF9F0A"/><path d="M0 -48 C7 -36 7 -24 0 -16 C-7 -24 -7 -36 0 -48Z" fill="#FFF3A0"/><path d="M-52 0 Q0 52 52 0 Q30 8 0 8 Q-30 8 -52 0Z" fill="{g}" stroke="#7A5712" stroke-width="2.5"/><ellipse cx="0" cy="0" rx="52" ry="9" fill="#E3A82C" stroke="#7A5712" stroke-width="2.5"/><path d="M-12 -2 Q0 4 12 -2" stroke="#7A5712" stroke-width="2" fill="none"/></g>')
+    diya(540, 322, 1.7)
+    for x in (110, 230, 850, 970): diya(x, 440, 0.8)
+    divider(s, g, y=486); frame(s, g, "#FFF6E4", panel_stroke="#9A1B2E")
+    s.out("fest-diwali")
+
+
 if __name__ == "__main__":
-    for fn in (balloon_luxury, balloon_kids, inaug_nilavilakku, inaug_ribbon, inaug_showroom, inaug_cafe, inaug_corporate): fn()
+    for fn in (balloon_luxury, balloon_kids, inaug_nilavilakku, inaug_ribbon, inaug_showroom, inaug_cafe, inaug_corporate, fest_onam, fest_vishu, fest_christmas, fest_newyear, fest_eid, fest_diwali): fn()

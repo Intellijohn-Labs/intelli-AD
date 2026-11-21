@@ -40,12 +40,13 @@ export function InviteView({ id }: { id: string }) {
 
   const d = inv.data.details;
   const map = mapsLink(d);
-  const title = EVENT_TITLE[d.eventType];
+  const festival = eventConfig(d.eventType).group === "festival" ? getTemplate(inv.template_id).festival : undefined;
+  const title = festival ? (d.customTitle.trim() ? { en: d.customTitle.trim(), ml: festival.title.ml } : festival.title) : EVENT_TITLE[d.eventType];
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-xl text-center">
-        <p className="kicker mb-2">{title.en} · {title.ml}</p>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl dark:text-white">{guest ? `Dear ${guest}, you are invited` : "You are invited"}</h1>
+        <p className="kicker mb-2">{title.en}{title.ml && title.ml !== title.en ? ` · ${title.ml}` : ""}</p>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl dark:text-white">{festival ? (guest ? `Dear ${guest}, a greeting for you` : "A greeting for you") : guest ? `Dear ${guest}, you are invited` : "You are invited"}</h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{(eventConfig(d.eventType).couple ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ")}{d.date ? ` · ${formatDate(d.date, "en")}` : ""}</p>
       </div>
       <div className="mx-auto mt-6 max-w-xl space-y-5">

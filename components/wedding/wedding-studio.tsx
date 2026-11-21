@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ImagePlus, Loader2, Maximize2, MapPin, Send, Sparkles, Trash2, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useToast } from "@/components/ui/toast";
@@ -8,6 +9,7 @@ import { GuestTable } from "./guest-table";
 import { CardEditOverlay } from "./card-editor";
 import { SectionToolbar } from "./section-toolbar";
 import { CooldownPill } from "./cooldown-pill";
+import { ModeSelector } from "./mode-selector";
 import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
@@ -24,6 +26,11 @@ const panel = "rounded-xl border border-[#E2E8F0] bg-white p-4 sm:p-5 dark:borde
 /** Invitation cards studio: pick one of 10 templates, enter the couple's details and media, let AI write the wording, then personalise and share on WhatsApp. */
 export function WeddingStudio() {
   const toast = useToast();
+  // Invitation / Greeting mode lives in the URL (?mode=invitation | greeting); with neither the studio shows the mode selector first.
+  const router = useRouter(), pathname = usePathname(), searchParams = useSearchParams();
+  const modeParam = searchParams.get("mode");
+  const mode: "invitation" | "greeting" | null = modeParam === "invitation" || modeParam === "greeting" ? modeParam : null;
+  const lastInviteEvent = useRef<EventType>("wedding");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Template");
   const [templateId, setTemplateId] = useState(TEMPLATES[0].id);
   const [d, setD] = useState<WeddingDetails>(EMPTY_DETAILS);
@@ -158,6 +165,7 @@ export function WeddingStudio() {
   // The details every render uses (preview, guest PNGs, ZIP): the couple's own, with sample text only where a field is empty.
   const cfg = eventConfig(d.eventType);
   const isCustomMode = templateId === CUSTOM_TEMPLATE_ID && !!d.customCard;
+  const isFestival = cfg.group === "festival" && !isCustomMode; // greeting cards: headline, wish, sender (no ceremony fields)
   const rd = useMemo(() => {
     // An uploaded card shows only what the client typed (no sample names, date or venue leaking into the WhatsApp text); other templates fill blanks with samples.
     const base = { ...sampleFor(d.eventType), ...(isCustomMode ? { groom: "", bride: "", groomParents: "", brideParents: "", date: "", time: "", venue: "", message: "" } : {}) };
@@ -190,8 +198,26 @@ export function WeddingStudio() {
     set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); chooseFilter(g === "events" ? "events" : g);
     if (!suits(tpl, ev)) { const next = active.find((t) => t.id !== CUSTOM_TEMPLATE_ID && t.defaultEvent === ev) ?? active.find((t) => suits(t, ev)); if (next) { setTemplateId(next.id); chooseFilter(g === "events" ? "events" : g); } }
   };
+  /** Moves the card to another event: a preset template follows its event, an uploaded card keeps being used. */
+  const switchEvent = (ev: EventType) => {
+    if (templateId === CUSTOM_TEMPLATE_ID && d.customCard) { set(msgEdited.current ? { eventType: ev } : { eventType: ev, message: "" }); setFilter("all"); }
+    else pickEvent(ev);
+  };
+  useEffect(() => { if (mode === "invitation" && eventConfig(d.eventType).group !== "festival") lastInviteEvent.current = d.eventType; }, [mode, d.eventType]);
+  // Keep the event type in step with the mode (also covers opening /invitation-cards?mode=greeting with an old invitation draft).
+  useEffect(() => {
+    if (!hydrated || !mode) return;
+    const isFest = eventConfig(d.eventType).group === "festival";
+    if (mode === "greeting" && !isFest) switchEvent("festival");
+    else if (mode === "invitation" && isFest) switchEvent(lastInviteEvent.current);
+    else if (mode === "invitation" && filter === "festival") setFilter("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, mode, d.eventType, filter]);
+  const switchMode = (m: "invitation" | "greeting") => router.replace(`${pathname}?mode=${m}`, { scroll: false });
   const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
-  const shown = active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID && (filter === "all" || t.category === filter));
+  // Invitation mode lists every non-festival design; Greeting mode lists only the festival ones (no category pills).
+  const inMode = (t: WeddingTemplate) => (mode === "greeting" ? t.category === "festival" : t.category !== "festival");
+  const shown = active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID && inMode(t) && (mode === "greeting" || filter === "all" || t.category === filter));
 
   // The preview shows the first real guest's greeting, or a sample one, so it can be styled and positioned before any guest exists.
   const firstGuest = guests.find((g) => g.name.trim());
@@ -281,6 +307,7 @@ export function WeddingStudio() {
   }, [guestPreview, tpl, rd, d.photos]);
 
   const customRef = useRef<HTMLInputElement>(null);
+  const festPhotoRef = useRef<HTMLInputElement>(null);
   const addCustomCard = async (f: File | undefined) => {
     if (!f) return;
     if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { toast("Please choose a PNG, JPG or WebP image."); return; }
@@ -309,8 +336,8 @@ export function WeddingStudio() {
       const res = await fetch("/api/ai/generate-wedding-copy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventType: d.eventType, lang: d.lang, bride: d.bride, groom: d.groom, brideParents: d.brideParents, groomParents: d.groomParents, date: d.date, venue: d.venue, note: d.message, template: tpl.name, themeHint: tpl.tagline }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) { setAiError(j.error ?? "The AI couldn't write the wording. You can type it yourself below."); return; }
-      set({ blessing: j.blessing || d.blessing, message: j.message || d.message, verse: j.verse || d.verse }); msgEdited.current = false;
-      toast("AI wording and verses added. Edit anything you like.");
+      if (cfg.group === "festival") { set({ message: j.message || d.message }); msgEdited.current = true; toast("Greeting wish written. Edit it however you like."); }
+      else { set({ blessing: j.blessing || d.blessing, message: j.message || d.message, verse: j.verse || d.verse }); msgEdited.current = false; toast("AI wording and verses added. Edit anything you like."); }
     } catch { setAiError("Couldn't reach the AI service. You can type the wording yourself."); }
     finally { setAiBusy(false); }
   };
@@ -351,7 +378,7 @@ export function WeddingStudio() {
     try {
       const blob = await cardBlob(g, photos);
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), message: whatsappMessage(rd, g), eventTitle: isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), message: whatsappMessage(rd, g, tpl.festival), eventTitle: isFestival ? d.customTitle.trim() || tpl.festival?.title.en || EVENT_TITLE[rd.eventType].en : isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isFestival || isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
       fd.append("card", blob, "card.jpg");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string; code?: string; cooldownUntil?: number };
@@ -405,11 +432,21 @@ export function WeddingStudio() {
     </button>
   );
 
+  if (!mode) return <ModeSelector pathname={pathname} />; // all hooks have run; the draft stays in state and storage while the selector is showing
+
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <p className="kicker mb-2">Invitation cards · ക്ഷണക്കത്തുകൾ</p>
-      <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">Design an invitation card and send it to every guest on WhatsApp</h1>
-      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">Weddings, birthdays, housewarming, baby ceremonies and more: choose a template, add your details and photos, let AI write the wording, then send a personalised card to each guest on WhatsApp through Waau Panel.</p>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div role="tablist" aria-label="Card type" className="inline-flex rounded-full border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-[#131416]">
+          {([["invitation", "Invitation Cards"], ["greeting", "Greeting Cards"]] as const).map(([m, label]) => (
+            <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => switchMode(m)} className={cn("rounded-full px-4 py-1.5 text-xs font-bold transition-colors", mode === m ? "bg-[#D12014] text-white" : "text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10")}>{label}</button>
+          ))}
+        </div>
+        <button type="button" onClick={() => router.push(pathname, { scroll: false })} className="text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] dark:text-slate-300">← Back to start</button>
+      </div>
+      <p className="kicker mb-2">{mode === "greeting" ? "Greeting cards · ആശംസാ കാർഡുകൾ" : "Invitation cards · ക്ഷണക്കത്തുകൾ"}</p>
+      <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">{mode === "greeting" ? "Design a festival greeting and send it to everyone on WhatsApp" : "Design an invitation card and send it to every guest on WhatsApp"}</h1>
+      <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">{mode === "greeting" ? "Onam, Vishu, Christmas, New Year, Eid, Diwali and your own designs: choose a template, write your wish, add your name or logo, then send a personalised greeting to each contact on WhatsApp through Waau Panel." : "Weddings, birthdays, housewarming, inaugurations and more: choose a template, add your details, let AI write the wording, then send a personalised card to each guest on WhatsApp through Waau Panel."}</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 space-y-4">
@@ -420,11 +457,11 @@ export function WeddingStudio() {
               {/* Step 1 order: Pick a template, then the greeting format, then the card font. */}
               <div className="mb-4">
               <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
-              <div className="relative mb-3 flex items-center gap-1.5">
+              {mode !== "greeting" && <div className="relative mb-3 flex items-center gap-1.5">
                 <button type="button" aria-label="Scroll categories left" onClick={() => scrollPills(-1)} disabled={pillEdge.start} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-600 dark:bg-[#131416] dark:text-slate-100 dark:hover:bg-white/10", pillEdge.start && pillEdge.end && "hidden")}><ChevronLeft className="h-4 w-4" aria-hidden="true" /></button>
                 <div className="relative min-w-0 flex-1">
                   <div ref={pillsRef} onScroll={syncPills} role="tablist" aria-label="Template categories" className="no-scrollbar flex items-center gap-2 overflow-x-auto overscroll-x-contain scroll-smooth px-0.5 py-1">
-                    {TEMPLATE_FILTERS.map((f) => (
+                    {TEMPLATE_FILTERS.filter((f) => f.id !== "festival").map((f) => (
                       <button key={f.id} data-pill={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => chooseFilter(f.id)} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-colors", filter === f.id ? "border-[#D12014] bg-[#D12014] text-white" : "border-slate-300 text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10")}>{f.label}</button>
                     ))}
                   </div>
@@ -433,7 +470,7 @@ export function WeddingStudio() {
                   {!pillEdge.end && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent dark:from-[#131416]" />}
                 </div>
                 <button type="button" aria-label="Scroll categories right" onClick={() => scrollPills(1)} disabled={pillEdge.end} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-600 dark:bg-[#131416] dark:text-slate-100 dark:hover:bg-white/10", pillEdge.start && pillEdge.end && "hidden")}><ChevronRight className="h-4 w-4" aria-hidden="true" /></button>
-              </div>
+              </div>}
               <ul id="template-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                 <li>
                   {/* "Upload Custom Card" always leads the picker; once an image is uploaded it becomes the selectable "Your own card" entry. */}
@@ -442,9 +479,9 @@ export function WeddingStudio() {
                       <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
                         {d.customCard
                           ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={d.customCard} alt="Your uploaded card" draggable={false} className="h-full w-full object-cover" />
-                          : <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center"><ImagePlus className="h-7 w-7 text-[#D12014]" aria-hidden="true" /><span className="text-xs font-extrabold text-[#D12014]">Upload Custom Card</span><span className="text-[10px] text-slate-600 dark:text-slate-300">PNG, JPG or WebP · we add each guest&apos;s name</span></div>}
+                          : <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center"><ImagePlus className="h-7 w-7 text-[#D12014]" aria-hidden="true" /><span className="text-xs font-extrabold text-[#D12014]">{mode === "greeting" ? "Upload Custom Greeting Card" : "Upload Custom Card"}</span><span className="text-[10px] text-slate-600 dark:text-slate-300">PNG, JPG or WebP · we add each guest&apos;s name</span></div>}
                       </div>
-                      <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{d.customCard ? "Your own card" : "Upload Your Own Card"}</p>
+                      <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{d.customCard ? "Your own card" : mode === "greeting" ? "Upload Your Own Greeting" : "Upload Your Own Card"}</p>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300">{d.customCard ? "Your design + a personalised greeting" : "Use your own invitation design"}</p>
                     </button>
                     {d.customCard && (
@@ -524,11 +561,11 @@ export function WeddingStudio() {
           {tab === "Details" && (
             <section className={cn(panel, "space-y-4")} aria-label="Event details">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => pickEvent(e.target.value as EventType)}>{EVENTS.map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>
+                {mode !== "greeting" && <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => pickEvent(e.target.value as EventType)}>{EVENTS.filter((x) => x.group !== "festival").map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>}
                 <Field id="w-lang" label="Language"><Select id="w-lang" value={d.lang} onChange={(e) => set({ lang: e.target.value as WLang })}><option value="en">English</option><option value="ml">Malayalam (മലയാളം)</option><option value="both">Bilingual (ML + EN)</option></Select></Field>
-                <Field id="w-groom" label={isCustomMode ? "Host / Sender name" : cfg.labels.name1} hint={isCustomMode ? "Sent to guests in the WhatsApp message (variable {{3}}). Printed on the card only if you turn on “Print event details” above." : undefined}><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} placeholder={cfg.sample.groom} /></Field>
+                <Field id="w-groom" label={isCustomMode ? "Host / Sender name" : cfg.labels.name1} className={isFestival ? "sm:col-span-2" : undefined} hint={isCustomMode ? "Sent to guests in the WhatsApp message (variable {{3}}). Printed on the card only if you turn on “Print event details” above." : undefined}><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} placeholder={cfg.sample.groom} /></Field>
                 {!isCustomMode && cfg.useName2 && <Field id="w-bride" label={cfg.labels.name2}><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} placeholder={cfg.sample.bride || undefined} /></Field>}
-                {!isCustomMode && <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>}
+                {!isCustomMode && !isFestival && <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>}
                 {!isCustomMode && cfg.useHost2 && <Field id="w-bp" label={cfg.labels.host2}><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>}
                 {isCustomMode && (
                   <div className="space-y-3 rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3 sm:col-span-2">
@@ -542,14 +579,35 @@ export function WeddingStudio() {
                     <label className="flex items-start gap-2 text-sm font-semibold text-slate-900 dark:text-white"><input type="checkbox" checked={!!d.printCustomDetails} onChange={(e) => set({ printCustomDetails: e.target.checked })} className="mt-0.5 h-4 w-4 accent-[#D12014]" /><span>Also print event details on the card<span className="block text-xs font-normal text-slate-700 dark:text-slate-200">Off by default: your design already has them. Turn on to add the title, host, date and venue below as text.</span></span></label>
                   </div>
                 )}
-                {isCustomMode && <Field id="w-ctitle" label="Event title" hint="Used in the WhatsApp message (variable {{2}})." className="sm:col-span-2"><Input id="w-ctitle" value={d.customTitle} onChange={(e) => set({ customTitle: e.target.value })} placeholder={EVENT_TITLE[d.eventType].en} /></Field>}
-                <Field id="w-date" label="Date" hint={d.date || isCustomMode ? undefined : "Sample date shown on the card. Pick your own date to replace it."}><Input id="w-date" type="date" value={d.date || (isCustomMode ? "" : cfg.sample.date || "")} className={d.date ? undefined : "text-slate-500"} onChange={(e) => set({ date: e.target.value })} /></Field>
-                <Field id="w-time" label={cfg.labels.time}><Input id="w-time" value={d.time} onChange={(e) => set({ time: e.target.value })} placeholder={cfg.sample.time} /></Field>
-                <Field id="w-venue" label={cfg.labels.venue} className="sm:col-span-2"><Input id="w-venue" value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder={cfg.sample.venue} /></Field>
-                <Field id="w-maps" label="Google Maps link" hint="Optional. Guests get an “Open in Google Maps” button. Without a link, the venue name is searched." className="sm:col-span-2"><Input id="w-maps" type="url" value={d.mapsUrl} onChange={(e) => set({ mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/…" /></Field>
-                <Field id="w-msg" label="Invitation message / note" className="sm:col-span-2"><Textarea id="w-msg" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} /></Field>
+                {isFestival && (
+                  <>
+                    <Field id="w-gtitle" label="Greeting title" hint="Printed large on the card and used as the WhatsApp message headline." className="sm:col-span-2"><Input id="w-gtitle" value={d.customTitle} onChange={(e) => set({ customTitle: e.target.value })} placeholder={tpl.festival?.title.en ?? "Happy Onam"} /></Field>
+                    <Field id="w-wish" label="Wish message" hint={d.message ? undefined : "Showing this festival's own wish until you write yours."} className="sm:col-span-2">
+                      <Textarea id="w-wish" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} placeholder={tpl.festival?.wish.en ?? ""} />
+                      <button type="button" onClick={() => void generate()} disabled={aiBusy} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {aiBusy ? "Writing…" : "AI: Write Greeting Wish"}</button>
+                      {aiError && <p role="alert" className="mt-2 text-xs font-semibold text-red-800 dark:text-red-200">{aiError}</p>}
+                    </Field>
+                    <div className="space-y-2 rounded-lg border border-slate-200 p-3 sm:col-span-2 dark:border-slate-700">
+                      <label className="flex items-start gap-2 text-sm font-semibold text-slate-900 dark:text-white"><input type="checkbox" checked={d.festivalPhoto} onChange={(e) => set({ festivalPhoto: e.target.checked })} className="mt-0.5 h-4 w-4 accent-[#D12014]" /><span>Add my photo / brand logo<span className="block text-xs font-normal text-slate-700 dark:text-slate-200">Families and businesses can place a photo or logo above the sender name.</span></span></label>
+                      {d.festivalPhoto && (
+                        <div className="flex items-center gap-3">
+                          {d.photos[0] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={d.photos[0]} alt="Sender photo or logo" className="h-16 w-16 rounded-full border border-slate-300 object-cover dark:border-slate-600" /> : <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-slate-400 text-[10px] font-bold text-slate-600 dark:text-slate-300">No image</span>}
+                          <button type="button" onClick={() => festPhotoRef.current?.click()} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10"><ImagePlus className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />{d.photos[0] ? "Replace" : "Upload"} photo / logo</button>
+                          {d.photos[0] && <button type="button" onClick={() => removePhoto(0)} className="text-xs font-semibold text-red-700 underline dark:text-red-300">Remove</button>}
+                          <input ref={festPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload sender photo or logo" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; const u = await photoToDataUrl(f); if (u) setD((cur) => ({ ...cur, photos: [u, ...cur.photos.slice(1)] })); }} />
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+                {isCustomMode && <Field id="w-ctitle" label={mode === "greeting" ? "Greeting title" : "Event title"} hint="Used in the WhatsApp message (variable {{2}})." className="sm:col-span-2"><Input id="w-ctitle" value={d.customTitle} onChange={(e) => set({ customTitle: e.target.value })} placeholder={mode === "greeting" ? "Happy Onam" : EVENT_TITLE[d.eventType].en} /></Field>}
+                {!isFestival && <Field id="w-date" label="Date" hint={d.date || isCustomMode ? undefined : "Sample date shown on the card. Pick your own date to replace it."}><Input id="w-date" type="date" value={d.date || (isCustomMode ? "" : cfg.sample.date || "")} className={d.date ? undefined : "text-slate-500"} onChange={(e) => set({ date: e.target.value })} /></Field>}
+                {!isFestival && <Field id="w-time" label={cfg.labels.time}><Input id="w-time" value={d.time} onChange={(e) => set({ time: e.target.value })} placeholder={cfg.sample.time} /></Field>}
+                {!isFestival && <Field id="w-venue" label={cfg.labels.venue} className="sm:col-span-2"><Input id="w-venue" value={d.venue} onChange={(e) => set({ venue: e.target.value })} placeholder={cfg.sample.venue} /></Field>}
+                {!isFestival && <Field id="w-maps" label="Google Maps link" hint="Optional. Guests get an “Open in Google Maps” button. Without a link, the venue name is searched." className="sm:col-span-2"><Input id="w-maps" type="url" value={d.mapsUrl} onChange={(e) => set({ mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/…" /></Field>}
+                {!isFestival && <Field id="w-msg" label="Invitation message / note" className="sm:col-span-2"><Textarea id="w-msg" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} /></Field>}
               </div>
-              {(!isCustomMode || d.printCustomDetails) && <div className="rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
+              {!isFestival && (!isCustomMode || d.printCustomDetails) && <div className="rounded-lg border border-[#D12014]/30 bg-[#D12014]/5 p-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <button type="button" onClick={() => void generate()} disabled={aiBusy} className="inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {aiBusy ? "Writing…" : "AI: write wording & verses"}</button>
                   <span className="text-xs text-slate-700 dark:text-slate-200">Poetic Malayalam / English wording and blessing verses generated from your details.</span>
@@ -665,7 +723,7 @@ export function WeddingStudio() {
       {studioOpen && (
         <StudioFullscreen
           d={d} rd={rd} tpl={tpl} cfg={cfg} previewGuest={previewGuest} setD={setD} set={set}
-          templates={active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID)} thumbs={thumbs} onPickTemplate={pickTemplate}
+          templates={active.filter((t) => t.id !== CUSTOM_TEMPLATE_ID && inMode(t))} thumbs={thumbs} onPickTemplate={pickTemplate}
           moveBadge={moveBadge} moveBlock={moveBlock} scaleText={scaleText} setMaster={setMaster} fontForBlock={fontForBlock} fontForAll={fontForAll} styleText={styleText}
           layoutCustom={layoutCustom} resetLayout={resetLayout} onClose={closeStudio}
         />

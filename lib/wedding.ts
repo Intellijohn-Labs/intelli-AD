@@ -1,7 +1,7 @@
 /** Wedding & Event Invitations: shared types, the 10 template themes, copy helpers and local persistence. */
 
-export type EventType = "wedding" | "engagement" | "reception" | "haldi" | "nikah" | "save-the-date" | "birthday" | "housewarming" | "choroonu" | "noolukettu" | "baptism" | "babyshower" | "aqiqah" | "inauguration" | "anniversary";
-export type EventGroup = "wedding" | "birthday" | "housewarming" | "baby" | "events" | "inauguration";
+export type EventType = "wedding" | "engagement" | "reception" | "haldi" | "nikah" | "save-the-date" | "birthday" | "housewarming" | "choroonu" | "noolukettu" | "baptism" | "babyshower" | "aqiqah" | "inauguration" | "anniversary" | "festival";
+export type EventGroup = "wedding" | "birthday" | "housewarming" | "baby" | "events" | "inauguration" | "festival";
 export type WLang = "en" | "ml" | "both";
 export type Layout = "classic" | "polaroid" | "minimal";
 export type PhotoShape = "arch" | "circle" | "oval" | "rect";
@@ -81,6 +81,8 @@ export interface WeddingDetails {
   printCustomDetails: boolean;
   /** Custom card only: the event title used for the WhatsApp message and invite page (the host / sender name is the first name field). */
   customTitle: string;
+  /** Festival greetings only: also place the sender's photo or brand logo (the first uploaded photo) on the card. */
+  festivalPhoto: boolean;
   /** Per-element colour / alignment / letter spacing / line height. */
   textStyle: Partial<Record<TextId, TextStyle>>;
   /** Custom text boxes, uploaded images and decorative elements placed in the fullscreen studio. */
@@ -113,6 +115,8 @@ export interface WeddingTemplate {
   /** Shown under the Animated (GIF) filter (every template can still export a GIF). */
   animated?: boolean;
   /** Illustrated image backdrop (same-origin SVG in public/templates, 1080 x 1500: artwork header + opaque text panel). left / right / top / bottom = the inner safe box (px from each edge of the 1080 x 1500 card) that every text line is confined to; panel draws a soft ivory panel behind the text for artwork with no clear area. */
+  /** Festival greeting designs: the default headline and wish printed when the client hasn't typed their own (Malayalam + English). */
+  festival?: { title: { en: string; ml: string }; wish: { en: string; ml: string } };
   art?: { src: string; left: number; right: number; top: number; bottom: number; panel?: boolean };
 }
 
@@ -224,6 +228,20 @@ const INAUG_RAW: RawTemplate[] = [
 ];
 const INAUG_META: Meta = { category: "inauguration", defaultEvent: "inauguration", events: ["inauguration"], premium: true };
 
+/** Festival greeting designs (SVG art from scripts/generate-template-art.py): a festive header and a solid text panel; the headline and wish default to each festival's own wording. */
+const FEST = (id: string, name: string, ml: string, tagline: string, pal: Palette, title: { en: string; ml: string }, wish: { en: string; ml: string }): RawTemplate => ({
+  id, name, ml, tagline, layout: "classic", motif: "art", shape: "circle", pal, blessing: ["", ""], festival: { title, wish }, art: { src: `/templates/${id}.svg`, left: 150, right: 150, top: 520, bottom: 140 },
+});
+const FESTIVAL_RAW: RawTemplate[] = [
+  FEST("fest-onam", "Onam Pookkalam & Kasavu", "ഓണാശംസ", "Floral pookkalam, kasavu gold & lamp", P("#FFF9EA", "#F8E9C4", "#3F1A08", "#7A4A1E", "#A56A00", "#2E7D32"), { en: "Happy Onam", ml: "ഹൃദയം നിറഞ്ഞ ഓണാശംസകൾ" }, { en: "May the festival of Onam bring happiness, prosperity and togetherness to you and your family.", ml: "ഓണം നിങ്ങൾക്കും കുടുംബത്തിനും സന്തോഷവും ഐശ്വര്യവും ഒരുമയും കൊണ്ടുവരട്ടെ." }),
+  FEST("fest-vishu", "Vishu Kani Konna & Lamp", "വിഷു ആശംസ", "Golden konna blooms & the vishukkani", P("#FFFBEA", "#FBEFB8", "#4A2A00", "#7A5A12", "#B07A00", "#2E6B2E"), { en: "Happy Vishu", ml: "ഐശ്വര്യപൂർണ്ണമായ വിഷു ആശംസകൾ" }, { en: "May the Vishukkani bring you a year full of prosperity, good health and joy.", ml: "വിഷുക്കണി നിങ്ങൾക്ക് ഐശ്വര്യവും ആരോഗ്യവും സന്തോഷവും നിറഞ്ഞ ഒരു വർഷം സമ്മാനിക്കട്ടെ." }),
+  FEST("fest-christmas", "Christmas Star & Pine", "ക്രിസ്മസ് ആശംസ", "Red & pine with a golden star", P("#FFF8F0", "#F9E6D8", "#4A0A14", "#6E3A3A", "#A07400", "#1F6B3A"), { en: "Merry Christmas & Season's Greetings", ml: "ക്രിസ്മസ് ആശംസകൾ" }, { en: "Wishing you the joy, peace and love of Christmas, and a blessed new year.", ml: "ക്രിസ്മസിന്റെ സന്തോഷവും സമാധാനവും സ്നേഹവും നിങ്ങൾക്ക് നേരുന്നു." }),
+  FEST("fest-newyear", "New Year Fireworks", "പുതുവത്സരാശംസ", "Midnight navy & gold fireworks", P("#0E1B3F", "#08112B", "#F7E9BE", "#C9CFE6", "#E3BE5C", "#F6E3A1"), { en: "Happy New Year", ml: "പുതുവത്സരാശംസകൾ" }, { en: "Wishing you a new year full of health, happiness and new beginnings.", ml: "ആരോഗ്യവും സന്തോഷവും പുതിയ തുടക്കങ്ങളും നിറഞ്ഞ ഒരു പുതുവർഷം നേരുന്നു." }),
+  FEST("fest-eid", "Eid Mubarak Crescent & Lanterns", "ഈദ് മുബാറക്", "Emerald, gold crescent & fanoos", P("#073B2E", "#052F26", "#FFF4D6", "#CFE3D6", "#E8C766", "#F0DA94"), { en: "Eid Mubarak", ml: "ഈദ് മുബാറക്" }, { en: "May Allah accept your prayers and fill your home with joy, peace and blessings this Eid.", ml: "ഈ പെരുന്നാൾ നിങ്ങളുടെ വീട്ടിൽ സന്തോഷവും സമാധാനവും അനുഗ്രഹവും നിറയ്ക്കട്ടെ." }),
+  FEST("fest-diwali", "Diwali Diyas & Rangoli", "ദീപാവലി ആശംസ", "Royal maroon, diya lights & rangoli", P("#FFF6E4", "#FBE3BD", "#4A0F1A", "#7A4030", "#A86400", "#9A1B2E"), { en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ" }, { en: "May the festival of lights fill your life with happiness, prosperity and peace.", ml: "ദീപങ്ങളുടെ ഉത്സവം നിങ്ങളുടെ ജീവിതത്തിൽ സന്തോഷവും ഐശ്വര്യവും സമാധാനവും നിറയ്ക്കട്ടെ." }),
+];
+const FESTIVAL_META: Meta = { category: "festival", defaultEvent: "festival", events: ["festival"], premium: true };
+
 const IMG_META: Record<string, Meta> = {
   "haldi-yellow-drapes-bride": { category: "events", defaultEvent: "haldi", events: ["haldi"], premium: true },
   "nikah-cream-arch-lanterns": { category: "wedding", faith: "muslim", defaultEvent: "nikah", events: ["nikah", "engagement"], premium: true },
@@ -248,14 +266,14 @@ export const CUSTOM_TEMPLATE_ID = "custom-upload";
 const CUSTOM_RAW: RawTemplate[] = [{ id: CUSTOM_TEMPLATE_ID, name: "Your own card", ml: "സ്വന്തം കാർഡ്", tagline: "Upload your design; each guest's name is added", layout: "classic", motif: "minimal", shape: "rect", pal: P("#FFFFFF", "#F3F3F3", "#1F1F24", "#55555F", "#B8860B", "#8C1C2B"), blessing: ["", ""] }];
 const CUSTOM_META: Meta = { category: "events", defaultEvent: "wedding", events: [] }; // events: [] so no event type ever auto-selects it
 
-export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES, ...CUSTOM_RAW].map((t) => ({ ...t, ...((t.id === CUSTOM_TEMPLATE_ID ? CUSTOM_META : undefined) ?? META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
+export const TEMPLATES: WeddingTemplate[] = [...NEW_IMAGE_RAW, ...HINDU_TEMPLATES, ...INAUG_RAW, ...FESTIVAL_RAW, ...RAW_TEMPLATES, ...NEW_TEMPLATES, ...ART_TEMPLATES, ...CUSTOM_RAW].map((t) => ({ ...t, ...((t.id === CUSTOM_TEMPLATE_ID ? CUSTOM_META : undefined) ?? META[t.id] ?? ART_META[t.id] ?? IMG_META[t.id] ?? (t.id.startsWith("inaug-") ? INAUG_META : t.id.startsWith("fest-") ? FESTIVAL_META : undefined) ?? (t.id.startsWith("hindu-") ? HINDU_META : undefined)) }));
 
 /** True when a design is written for this event (wedding-type designs fit every wedding-type event). */
 export const templateSuits = (t: Pick<WeddingTemplate, "category" | "events">, ev: EventType) => (t.events ? t.events.includes(ev) : eventConfig(ev).group === t.category);
 
 export const TEMPLATE_FILTERS = [
   { id: "all", label: "All" }, { id: "wedding", label: "Wedding (Hindu / Christian / Muslim)" }, { id: "birthday", label: "Birthday" }, { id: "housewarming", label: "Housewarming (ഗൃഹപ്രവേശം)" },
-  { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Anniversary)" }, { id: "inauguration", label: "Inauguration (ഉദ്ഘാടനം)" },
+  { id: "baby", label: "Baby & Kids (ചോറൂണ് / നൂലുകെട്ട് / Baptism)" }, { id: "events", label: "Events (Engagement / Anniversary)" }, { id: "inauguration", label: "Inauguration (ഉദ്ഘാടനം)" }, { id: "festival", label: "Festivals & Greetings" },
 ] as const;
 export type TemplateFilter = (typeof TEMPLATE_FILTERS)[number]["id"];
 
@@ -299,13 +317,14 @@ export const EVENTS: EventConfig[] = [
   baby("babyshower", "Baby Shower / Seemantham", "സീമന്തം", { title: { en: "Baby Shower", ml: "സീമന്തം" }, labels: { name1: "Mother-to-be's name", name2: "Father / family (optional)", host1: "Hosted by", host2: "", time: "Time", venue: "Venue" }, hostPrefix: { en: "Hosted by ", ml: "ആതിഥേയർ: " }, invite: { en: "the", ml: "" }, message: { en: "Join us to shower the mum-to-be with love and blessings.", ml: "വരാനിരിക്കുന്ന കുഞ്ഞിനും അമ്മയ്ക്കും അനുഗ്രഹവും സ്നേഹവും ചൊരിയാൻ എല്ലാവരെയും ക്ഷണിക്കുന്നു." }, sample: { groom: "Anjali", bride: "", groomParents: "Her loving family", date: "2027-02-27", time: "11:00 AM", venue: "Rose Residency, Thrissur", message: "" } }),
   baby("aqiqah", "Aqiqah", "അഖീഖ", { title: { en: "Aqiqah Ceremony", ml: "അഖീഖ ക്ഷണക്കത്ത്" }, labels: { name1: "Baby's name", name2: "", host1: "Parents' names", host2: "", time: "Time", venue: "Venue" }, useName2: false, message: { en: "With grateful hearts, we joyfully invite you and your family to grace the Aqiqah ceremony and celebratory feast of our beloved child. Your presence and duas will bless this joyous day.", ml: "അല്ലാഹുവിന്റെ അനുഗ്രഹത്താൽ ലഭിച്ച ഞങ്ങളുടെ പൊന്നോമനയുടെ അഖീഖ ചടങ്ങിലും സദ്യയിലും കുടുംബസമേതം പങ്കെടുത്ത് ദുആ ചെയ്യണമെന്ന് സ്നേഹപൂർവം ക്ഷണിക്കുന്നു." }, sample: { groom: "Muhammad Ayaan", bride: "", groomParents: "Faisal & Shahana", date: "2027-03-14", time: "11:00 AM", venue: "Al-Noor Hall, Kozhikode", message: "" } }),
   EV({ id: "inauguration", group: "inauguration", en: "Inauguration", ml: "ഉദ്ഘാടനം", title: { en: "Grand Inauguration", ml: "ഉദ്ഘാടന ചടങ്ങ്" }, couple: false, labels: { name1: "Shop / Business name", name2: "Business tagline / category", host1: "Inaugurated by / Chief guest (optional)", host2: "", time: "Inauguration time", venue: "Venue / address" }, useName2: true, useHost2: false, hostPrefix: { en: "", ml: "" }, invite: { en: "the", ml: "ഞങ്ങളുടെ" }, message: { en: "We cordially invite you to the grand opening of our new venture. Your presence and blessings will make the day special.", ml: "ഞങ്ങളുടെ പുതിയ സംരംഭത്തിന്റെ ഉദ്ഘാടന ചടങ്ങിലേക്ക് സ്നേഹപൂർവം ക്ഷണിക്കുന്നു. നിങ്ങളുടെ സാന്നിധ്യവും അനുഗ്രഹവും ഞങ്ങൾക്ക് ഏറെ പ്രിയപ്പെട്ടതാണ്." }, sample: { groom: "Lumina Gold & Diamonds", bride: "Grand Opening Ceremony", groomParents: "Inaugurated by Sri. Ramesh Menon", date: "2027-06-05", time: "10:00 AM", venue: "MG Road, Thrissur", message: "" } }),
+  EV({ id: "festival", group: "festival", en: "Festival greeting", ml: "ഉത്സവാശംസ", title: { en: "Festival Greeting", ml: "ഉത്സവാശംസ" }, couple: false, labels: { name1: "From / Sender name", name2: "", host1: "", host2: "", time: "", venue: "" }, useName2: false, useHost2: false, hostPrefix: { en: "", ml: "" }, invite: { en: "the", ml: "" }, message: { en: "Wishing you and your family joy, peace and prosperity.", ml: "നിങ്ങൾക്കും കുടുംബത്തിനും സന്തോഷവും സമാധാനവും ഐശ്വര്യവും നേരുന്നു." }, sample: { groom: "Arun & Family", bride: "", groomParents: "", date: "", time: "", venue: "", message: "" } }),
   EV({ id: "anniversary", group: "events", en: "Anniversary", ml: "വാർഷികം", title: { en: "Wedding Anniversary", ml: "വിവാഹ വാർഷികം" }, couple: true, labels: { name1: "Husband's name", name2: "Wife's name", host1: "Milestone (e.g. 25th Anniversary)", host2: "", time: "Time", venue: "Venue" }, useName2: true, useHost2: false, hostPrefix: { en: "", ml: "" }, invite: { en: "their", ml: "ഞങ്ങളുടെ" }, message: { en: "Celebrate years of love and togetherness with us.", ml: "സ്നേഹത്തിന്റെയും ഒരുമയുടെയും വർഷങ്ങൾ ഞങ്ങളോടൊപ്പം ആഘോഷിക്കാൻ ക്ഷണിക്കുന്നു." }, sample: { groom: "Suresh", bride: "Latha", groomParents: "25th Anniversary", date: "2027-01-23", time: "6:30 PM", venue: "The Residency Towers, Kochi", message: "" } }),
 ];
 export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.map((e) => ({ id: e.id, en: e.en, ml: e.ml }));
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", blockFont: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", festivalPhoto: false, blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });
@@ -487,8 +506,14 @@ export const inviteUrl = (origin: string, id: string, g?: { name?: string; place
 };
 
 /** The WhatsApp text for one guest (language follows the card). */
-export function whatsappMessage(d: WeddingDetails, g: { name: string; place: string }): string {
+export function whatsappMessage(d: WeddingDetails, g: { name: string; place: string }, festival?: { title: { en: string; ml: string }; wish: { en: string; ml: string } }): string {
   const cfg = eventConfig(d.eventType);
+  if (cfg.group === "festival") { // a greeting, not an invitation: headline + wish + who it's from
+    const who = g.name || "Friend", from = d.groom.trim(), typedTitle = d.customTitle.trim(), typedWish = d.message.trim();
+    const part = (l: "en" | "ml") => `${typedTitle || festival?.title[l] || cfg.title[l]}${from ? (l === "en" ? ` from ${from}` : ` - ${from}`) : ""}!${typedWish || festival?.wish[l] || cfg.message[l] ? `\n\n${typedWish || festival?.wish[l] || cfg.message[l]}` : ""}`;
+    const en = `Dear ${who},\n\n${part("en")}`, ml = `പ്രിയപ്പെട്ട ${who},\n\n${part("ml")}`;
+    return d.lang === "ml" ? ml : d.lang === "both" ? `${ml}\n\n———\n\n${en}` : en;
+  }
   const custom = !!d.customCard && !!d.customTitle.trim();
   const title = custom ? { en: d.customTitle.trim(), ml: d.customTitle.trim() } : cfg.title;
   const names = (cfg.couple && !custom ? [d.groom, d.bride] : [d.groom]).filter(Boolean).join(" & ");
