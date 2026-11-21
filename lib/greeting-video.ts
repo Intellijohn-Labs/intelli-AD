@@ -49,15 +49,15 @@ export function canEncodeMp4(): boolean {
 }
 export const MP4_UNSUPPORTED = "This browser can't create WhatsApp-compatible MP4 videos (it has no WebCodecs encoder). Please use the latest Chrome, Edge or Safari to send video greetings.";
 
-/** Output frame size: the clip's own aspect ratio, long side capped at 1280 px (keeps the file small enough for WhatsApp), even numbers for H.264. */
+/** Output frame size: the clip's own aspect ratio, long side capped at 1280 px, both sides rounded to multiples of 16 (macroblock aligned: 478x850 becomes 480x848). */
 export function outputSize(info: VideoInfo): { w: number; h: number } {
   const k = Math.min(1, 1280 / Math.max(info.width, info.height));
-  const even = (n: number) => Math.max(2, Math.round((n * k) / 2) * 2);
-  return { w: even(info.width), h: even(info.height) };
+  const m16 = (n: number) => Math.max(16, Math.round((n * k) / 16) * 16);
+  return { w: m16(info.width), h: m16(info.height) };
 }
 
-/** Video bitrate that keeps the whole file (video + 128 kbps audio) at about 14.5 MB for a clip of this length. */
-export const videoBitrate = (seconds: number) => Math.round(Math.min(4_000_000, Math.max(600_000, (TARGET_BYTES * 8) / Math.max(1, seconds) - AUDIO_BPS)));
+/** Video bitrate: never above 2.4 Mbps (2.5 Mbps with the audio), and low enough that the whole file stays about 14.5 MB for a clip of this length. */
+export const videoBitrate = (seconds: number) => Math.round(Math.min(2_400_000, Math.max(600_000, (TARGET_BYTES * 8) / Math.max(1, seconds) - AUDIO_BPS)));
 
 export interface VideoFestival { id: string; en: string; ml: string; quoteEn: string; quoteMl: string }
 /** Festival presets for the video greeting: headline + footer quote in English and Malayalam. */
