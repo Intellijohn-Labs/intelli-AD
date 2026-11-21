@@ -15,6 +15,7 @@ import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
+import { VIDEO_RENDERER_VERSION } from "@/lib/video-version";
 import { canEncodeMp4, MP4_UNSUPPORTED, outputSize, probeVideo, renderGuestVideo, renderQuoteSprite, VIDEO_ACCEPT, VIDEO_FESTIVALS, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
 import { createClient } from "@/lib/supabase/client";
 import { publishInvitation } from "@/lib/wedding-publish";
@@ -436,7 +437,7 @@ export function WeddingStudio() {
       let blob: Blob, videoPath: string | undefined;
       if (isVideoMode && video) {
         // Pre-flight first: it applies the 24-hour per-number cooldown BEFORE a minute of rendering is spent on this guest.
-        const pre = await fetch("/api/invitations/video-upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone) }) });
+        const pre = await fetch("/api/invitations/video-upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), rendererVersion: VIDEO_RENDERER_VERSION }) });
         const pj = (await pre.json().catch(() => ({}))) as { path?: string; token?: string; error?: string; code?: string; cooldownUntil?: number };
         if (pj.code === "cooldown") { if (pj.cooldownUntil) { const p = normalizePhone(g.phone); setServerTimes((cur) => ({ ...(cur ?? {}), [p]: [pj.cooldownUntil! - COOLDOWN_WINDOW_MS, pj.cooldownUntil! - COOLDOWN_WINDOW_MS + 1] })); } setLogTick((t) => t + 1); toast(`${g.name}: ${pj.error ?? "This number is in cooldown."}`); return true; }
         if (!pre.ok || !pj.path || !pj.token) { setStatus(g.id, "failed"); toast(pj.error ?? "Couldn't prepare the video upload."); return pre.status !== 401 && pre.status !== 429 && pre.status !== 503; }

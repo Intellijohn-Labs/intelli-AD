@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clock, COOLDOWN_MAX } from "@/lib/invitation-cooldown";
 import { cooldownFor } from "@/lib/invitation-delivery";
+import { VIDEO_RENDERER_VERSION } from "@/lib/video-version";
 import { normalizePhone, validPhone } from "@/lib/wedding";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/supabase/session";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 const BUCKET = "invitation-cards";
 const NO_STORE = { "Cache-Control": "no-store" };
 
-const body = z.object({ phone: z.string().trim().max(32), guestReplied: z.boolean().default(false) });
+const body = z.object({ phone: z.string().trim().max(32), guestReplied: z.boolean().default(false), rendererVersion: z.number().int().default(0) });
 
 const hits = new Map<string, number[]>();
 function throttled(id: string) {
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
 
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success || !validPhone(parsed.data.phone)) return NextResponse.json({ error: "That WhatsApp number isn't valid." }, { status: 400, headers: NO_STORE });
+  if (parsed.data.rendererVersion < VIDEO_RENDERER_VERSION) return NextResponse.json({ code: "stale-client", error: "The app was updated since this page was opened. Please reload the page (Ctrl+Shift+R, or Cmd+Shift+R on Mac), re-upload your video and send again." }, { status: 409, headers: NO_STORE });
   const until = parsed.data.guestReplied ? null : await cooldownFor(admin, normalizePhone(parsed.data.phone));
   if (until) {
     const wait = until - Date.now();

@@ -1,3 +1,4 @@
+import { mp4Problem } from "@/lib/mp4-check";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -102,6 +103,14 @@ export async function POST(req: Request) {
     if (!obj || size <= 0) return NextResponse.json({ error: "The rendered video didn't finish uploading. Please try again." }, { status: 400 });
     if (size > MAX_VIDEO_BYTES) { await admin.storage.from(BUCKET).remove([parsed.videoPath]); return NextResponse.json({ error: "The rendered video is over WhatsApp's 16 MB limit." }, { status: 413 }); }
     videoUrl = admin.storage.from(BUCKET).getPublicUrl(parsed.videoPath).data.publicUrl;
+    // WhatsApp rejects fragmented / non-faststart MP4s and odd frame sizes (error 131053): look at the file's header before it is ever sent.
+    try {
+      const head = await fetch(videoUrl, { headers: { Range: "bytes=0-131071" }, signal: AbortSignal.timeout(10_000) });
+      if (head.ok || head.status === 206) {
+        const problem = mp4Problem(new Uint8Array(await head.arrayBuffer()));
+        if (problem) { await admin.storage.from(BUCKET).remove([parsed.videoPath]); return NextResponse.json({ error: `This video is in a format WhatsApp rejects (${problem}). Please reload the page (Cmd/Ctrl+Shift+R) so the latest video encoder loads, then send again.` }, { status: 422 }); }
+      }
+    } catch { /* the header check is best effort: a network hiccup must not block a good video */ }
   }
 
   const row = {
