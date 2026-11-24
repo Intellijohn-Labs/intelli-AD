@@ -21,6 +21,37 @@ export const TEXT_ANIMS: { id: TextAnim; label: string; group: "static" | "entra
   { id: "float", label: "Gentle Float", group: "loop" },
   { id: "pulse", label: "Soft Pulse / Festive Glow", group: "loop" },
 ];
+/** How a layer leaves the screen. */
+export type ExitAnim = "none" | "fade-out" | "slide-up-out" | "slide-down-out" | "zoom-out-exit";
+export const EXIT_ANIMS: { id: ExitAnim; label: string }[] = [
+  { id: "none", label: "Stay Visible" }, { id: "fade-out", label: "Fade Out" }, { id: "slide-up-out", label: "Slide Up Out" },
+  { id: "slide-down-out", label: "Slide Down Out" }, { id: "zoom-out-exit", label: "Zoom Out" },
+];
+export const EXIT_SECONDS = 0.7;
+/** Per-layer timing as saved with the draft. `null` = automatic (preset default / 1.2 s before the end of the clip). */
+export interface AnimTiming { speed: number; startIn: number; duration: number | null; exit: ExitAnim; outTime: number | null }
+export const SPEED_RANGE = { min: 0.4, max: 2.5 }, START_RANGE = { min: 0, max: 10 }, DURATION_RANGE = { min: 0.3, max: 5 };
+export const defaultTiming = (layer: "header" | "footer"): AnimTiming => ({ speed: 1, startIn: layer === "footer" ? 0.4 : 0, duration: null, exit: "none", outTime: null });
+/** Preset's own entrance length at 1x (s): what `duration` replaces. */
+const NATURAL: Partial<Record<TextAnim, number>> = { typewriter: 2.6, word: 2.4, curtain: 0.9, bounce: 0.95, "zoom-in": 0.75 };
+export const defaultDuration = (a: TextAnim) => (a === "typewriter" || a === "word" ? 2.2 : 0.9);
+/** Everything the drawing code needs, all numbers resolved. */
+export interface AnimConfig extends Omit<AnimTiming, "duration" | "outTime"> { preset: TextAnim; duration: number; outTime: number }
+const num = (v: unknown, d: number, a: number, b: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d);
+/** Validates saved / typed timing and resolves defaults. `videoDuration` clamps the exit time to the clip. */
+export function buildAnimConfig(preset: TextAnim, timing: Partial<AnimTiming> | undefined, layer: "header" | "footer", videoDuration: number): AnimConfig {
+  const d = defaultTiming(layer), tm = timing ?? {};
+  const exit = EXIT_ANIMS.some((e) => e.id === tm.exit) ? (tm.exit as ExitAnim) : "none";
+  const out = num(tm.outTime, Math.max(0, videoDuration - 1.2), 0, 1e9);
+  return {
+    preset, exit,
+    speed: num(tm.speed, d.speed, SPEED_RANGE.min, SPEED_RANGE.max),
+    startIn: num(tm.startIn, d.startIn, START_RANGE.min, START_RANGE.max),
+    duration: num(tm.duration, defaultDuration(preset), DURATION_RANGE.min, DURATION_RANGE.max),
+    outTime: Math.min(out, Math.max(0, videoDuration)),
+  };
+}
+export const NO_ANIM: AnimConfig = { preset: "none", speed: 1, startIn: 0, duration: 0.9, exit: "none", outTime: 0 };
 export const isTextAnim = (v: unknown): v is TextAnim => TEXT_ANIMS.some((a) => a.id === v);
 
 /** Where each grapheme / word of one text line sits inside its sprite (px): `g[k]` is the right edge after k+1 graphemes. */
@@ -60,8 +91,11 @@ const scratch = (w: number, h: number) => { tmp ??= document.createElement("canv
 /**
  * Draws `sp` centred at (cx, cy) on `ctx` as it looks at time `t`. `k` = frame width / 1080: distances below are quoted at 1080 wide and scale with it.
  */
-export function drawAnimated(ctx: CanvasRenderingContext2D, sp: AnimSprite, cx: number, cy: number, t: number, anim: TextAnim, k: number) {
-  const W = sp.canvas.width, H = sp.canvas.height;
+export function drawAnimated(ctx: CanvasRenderingContext2D, sp: AnimSprite, cx: number, cy: number, clock: number, cfg: AnimConfig, k: number) {
+  const W = sp.canvas.width, H = sp.canvas.height, anim = cfg.preset;
+  // Before "Start In" the layer is hidden. After it, entrance effects run on a clock scaled by speed and by natural/duration, loops on speed alone.
+  if (clock < cfg.startIn) return;
+  const local = clock - cfg.startIn, tl = local * cfg.speed, t = local * cfg.speed * ((NATURAL[anim] ?? 0.85) / cfg.duration);
   let alpha = 1, dx = 0, dy = 0, sc = 1, glow = 0;
   const fade = (dur = 0.85) => easeOut(prog(t, 0, dur));
   switch (anim) {
@@ -74,9 +108,14 @@ export function drawAnimated(ctx: CanvasRenderingContext2D, sp: AnimSprite, cx: 
     case "zoom-out": { const e = easeOut(prog(t, 0, 0.85)); alpha = e; sc = 1.22 - 0.22 * e; break; }
     case "bounce": { const u = prog(t, 0, 0.95); const s = u >= 1 ? 1 : 1 - Math.exp(-5.5 * u) * Math.cos(10 * u); alpha = clamp(u * 5); sc = Math.max(0.05, 0.7 + 0.3 * s); dy = (1 - s) * 34 * k; break; }
     case "shimmer": alpha = fade(0.7); break;
-    case "float": alpha = fade(0.7); dy = 3.5 * k * Math.sin((2 * Math.PI * t) / 3); break;
-    case "pulse": { alpha = fade(0.7); const b = (1 - Math.cos((2 * Math.PI * t) / 2.6)) / 2; sc = 1 + 0.035 * b; glow = 0.35 + 0.65 * b; break; }
+    case "float": alpha = fade(0.7); dy = 3.5 * k * Math.sin((2 * Math.PI * tl) / 3); break;
+    case "pulse": { alpha = fade(0.7); const b = (1 - Math.cos((2 * Math.PI * tl) / 2.6)) / 2; sc = 1 + 0.035 * b; glow = 0.35 + 0.65 * b; break; }
     default: break;
+  }
+  if (cfg.exit !== "none") {
+    const u = prog(clock, cfg.outTime, EXIT_SECONDS), e = u * u * (3 - 2 * u);
+    alpha *= 1 - e;
+    if (cfg.exit === "slide-up-out") dy -= 24 * k * e; else if (cfg.exit === "slide-down-out") dy += 24 * k * e; else if (cfg.exit === "zoom-out-exit") sc *= 1 - 0.18 * e;
   }
   if (alpha <= 0.001) return;
   const text = sp.fg ?? sp.canvas;
@@ -116,8 +155,8 @@ export function drawAnimated(ctx: CanvasRenderingContext2D, sp: AnimSprite, cx: 
     ctx.drawImage(cv, x0, y0);
   } else {
     ctx.drawImage(sp.canvas, x0, y0);
-    if (anim === "shimmer" && t > 0.9) {
-      const u = ((t - 0.9) % 2.8) / 1.4;
+    if (anim === "shimmer" && tl > 0.9) {
+      const u = ((tl - 0.9) % 2.8) / 1.4;
       if (u <= 1) {
         const { cv, c } = scratch(W, H), band = W * 0.28, mid = -band + u * (W + band * 2);
         c.drawImage(text, 0, 0); c.globalCompositeOperation = "source-atop";

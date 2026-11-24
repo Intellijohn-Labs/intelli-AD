@@ -3,7 +3,7 @@
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { paintOverlay, renderQuoteSprite, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
-import { plainReveal, type AnimSprite, type TextAnim } from "@/lib/text-anim";
+import { plainReveal, type AnimConfig, type AnimSprite } from "@/lib/text-anim";
 import { renderGreetingSprite } from "@/lib/wedding-render";
 import type { WeddingDetails, WeddingTemplate } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
@@ -16,11 +16,11 @@ export interface SpritePreview { sp: AnimSprite; w1080: number; h1080: number }
  * overlay you can drag (a plain click selects it so its font, colour, size and box can be edited). The overlay is sized as a % of the stage width,
  * exactly how the rendered MP4 scales it, so what you see is where it lands on every frame.
  */
-export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, onMove, interactive = true, quote, qx = 50, qy = 92, quoteSelected, onSelectQuote, onMoveQuote, headerAnim = "none", footerAnim = "none", replayKey = 0 }: {
+export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, onMove, interactive = true, quote, qx = 50, qy = 92, quoteSelected, onSelectQuote, onMoveQuote, headerAnimConfig, footerAnimConfig, replayKey = 0 }: {
   src: string; info: VideoInfo; sprite: SpritePreview | null; x: number; y: number; logo?: string | null;
   selected?: boolean; onSelect?: () => void; onMove?: (x: number, y: number) => void; interactive?: boolean;
   /** Text animations (header = the guest line, footer = the quote) and a counter that restarts the clip from 0 s whenever it changes. */
-  headerAnim?: TextAnim; footerAnim?: TextAnim; replayKey?: number;
+  headerAnimConfig?: AnimConfig; footerAnimConfig?: AnimConfig; replayKey?: number;
   /** Footer quote overlay (draggable like the greeting). */
   quote?: SpritePreview | null; qx?: number; qy?: number; quoteSelected?: boolean; onSelectQuote?: () => void; onMoveQuote?: (x: number, y: number) => void;
 }) {
@@ -31,8 +31,8 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
   useEffect(() => { if (!replayKey) return; const v = vref.current; if (!v) return; v.currentTime = 0; void v.play().catch(() => undefined); }, [replayKey]);
   // The animated text is drawn on a canvas from the video's own clock, by the same function the MP4 renderer uses, so play, pause and scrubbing all match the export.
   const cv = useRef<HTMLCanvasElement>(null);
-  const live = useRef({ sprite, quote, x, y, qx, qy, headerAnim, footerAnim });
-  live.current = { sprite, quote, x, y, qx, qy, headerAnim, footerAnim };
+  const live = useRef({ sprite, quote, x, y, qx, qy, headerAnimConfig, footerAnimConfig });
+  live.current = { sprite, quote, x, y, qx, qy, headerAnimConfig, footerAnimConfig };
   useEffect(() => {
     let raf = 0;
     const loop = () => {
@@ -40,7 +40,7 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
       if (c && v) {
         const ctx = c.getContext("2d")!, L = live.current;
         ctx.clearRect(0, 0, c.width, c.height);
-        if (L.sprite) paintOverlay(ctx, c.width, c.height, { sprite: L.sprite.sp, x: L.x, y: L.y, quote: L.quote ? { sprite: L.quote.sp, x: L.qx, y: L.qy } : null, headerAnim: L.headerAnim, footerAnim: L.footerAnim, t: v.currentTime, skipLogo: true });
+        if (L.sprite) paintOverlay(ctx, c.width, c.height, { sprite: L.sprite.sp, x: L.x, y: L.y, quote: L.quote ? { sprite: L.quote.sp, x: L.qx, y: L.qy } : null, headerAnimConfig: L.headerAnimConfig, footerAnimConfig: L.footerAnimConfig, t: v.currentTime, skipLogo: true });
       }
       raf = requestAnimationFrame(loop);
     };

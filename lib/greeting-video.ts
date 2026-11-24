@@ -1,5 +1,5 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
-import { drawAnimated, graphemes, plainReveal, type AnimSprite, type RevealLine, type TextAnim } from "@/lib/text-anim";
+import { drawAnimated, graphemes, plainReveal, type AnimSprite, type RevealLine, type AnimConfig, NO_ANIM } from "@/lib/text-anim";
 
 /**
  * Greeting videos (browser only): validate an uploaded clip, then burn a guest's name onto it and re-encode it to MP4 with the original audio.
@@ -129,7 +129,7 @@ export interface RenderGuestVideoOptions {
   /** Footer quote sprite (drawn at output scale) and its centre as 0-100 % of the frame. */
   quote?: { sprite: AnimSprite; x: number; y: number } | null;
   /** Text animations for the guest line (header) and the footer quote. */
-  headerAnim?: TextAnim; footerAnim?: TextAnim;
+  headerAnimConfig?: AnimConfig; footerAnimConfig?: AnimConfig;
   /** Optional sender logo / photo, drawn as a circle in the bottom-left corner. */
   logo?: HTMLImageElement | null;
   onProgress?: (fraction: number) => void;
@@ -137,11 +137,11 @@ export interface RenderGuestVideoOptions {
 }
 
 /** Draws the overlay layers (animated text at video time `t`, then the logo) on top of whatever frame is on the canvas. Shared by the live preview and the render. */
-export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote" | "headerAnim" | "footerAnim"> & { t: number; skipLogo?: boolean }) {
+export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote" | "headerAnimConfig" | "footerAnimConfig"> & { t: number; skipLogo?: boolean }) {
   const k = w / 1080, place = (sp: AnimSprite, x: number, y: number) => ({ cx: Math.min(w - sp.canvas.width / 2, Math.max(sp.canvas.width / 2, (x / 100) * w)), cy: Math.min(h - sp.canvas.height / 2, Math.max(sp.canvas.height / 2, (y / 100) * h)) });
   const a = place(o.sprite, o.x, o.y);
-  drawAnimated(ctx, o.sprite, a.cx, a.cy, o.t, o.headerAnim ?? "none", k);
-  if (o.quote) { const q = place(o.quote.sprite, o.quote.x, o.quote.y); drawAnimated(ctx, o.quote.sprite, q.cx, q.cy, o.t, o.footerAnim ?? "none", k); }
+  drawAnimated(ctx, o.sprite, a.cx, a.cy, o.t, o.headerAnimConfig ?? NO_ANIM, k);
+  if (o.quote) { const q = place(o.quote.sprite, o.quote.x, o.quote.y); drawAnimated(ctx, o.quote.sprite, q.cx, q.cy, o.t, o.footerAnimConfig ?? NO_ANIM, k); }
   if (o.logo && !o.skipLogo) {
     const d = Math.round(Math.min(w, h) * 0.16), m = Math.round(d * 0.28), x = m, y = h - d - m;
     ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 14;
