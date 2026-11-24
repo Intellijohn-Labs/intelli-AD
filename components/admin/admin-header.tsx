@@ -15,6 +15,7 @@ const LINKS = [
   { href: "/admin/bookings", label: "Bookings Monitor" },
   { href: "/admin/banners", label: "Ad Banners (പ്രമോഷൻ പോസ്റ്ററുകൾ)" },
   { href: "/admin/invitations", label: "Invitation Templates" },
+  { href: "/admin/templates", label: "Company Templates" },
   { href: "/admin/settings/ai", label: "AI Settings" },
 ];
 

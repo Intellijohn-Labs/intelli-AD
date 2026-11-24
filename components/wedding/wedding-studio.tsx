@@ -15,6 +15,7 @@ import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
+import type { PublicTemplate } from "@/lib/custom-templates";
 import { ColorControls } from "./anim-colors";
 import { buildAnimConfig, defaultDuration, defaultTiming, DURATION_RANGE, EXIT_ANIMS, plainReveal, SPEED_RANGE, START_RANGE, TEXT_ANIMS, type AnimTiming, type ExitAnim, type TextAnim } from "@/lib/text-anim";
 import { VIDEO_RENDERER_VERSION } from "@/lib/video-version";
@@ -60,6 +61,7 @@ export function WeddingStudio() {
   const [groups, setGroups] = useState<GroupBox[]>([]);
   const [zoom, setZoom] = useState(1); // preview canvas zoom only; the exported PNG is always rendered at full resolution
   const animCfg = (layer: "header" | "footer") => buildAnimConfig(layer === "header" ? d.videoHeaderAnim : d.videoFooterAnim, layer === "header" ? d.videoHeaderTiming : d.videoFooterTiming, layer, video?.info.duration ?? 0);
+  const [companies, setCompanies] = useState<PublicTemplate[]>([]), [companyId, setCompanyId] = useState<string | null>(null), [companyBusy, setCompanyBusy] = useState<string | null>(null);
   const [replayKey, setReplayKey] = useState(0); // bumped to restart the preview clip from 0 s (animation replay)
   const [quoteSel, setQuoteSel] = useState(false); // video greetings: the footer quote's style controls are open
   const [selected, setSelected] = useState<CardZone["id"] | null>(null); // the text section whose toolbar is open (null = clean preview)
@@ -239,10 +241,13 @@ export function WeddingStudio() {
     else if (!isVideoMode && autoBadge.current) { autoBadge.current = false; setD((cur) => (cur.guestBadgeX === 50 && cur.guestBadgeY === 84 ? { ...cur, guestBadgeX: null, guestBadgeY: null } : cur)); }
   }, [isVideoMode, d.guestBadgeX, d.guestBadgeY]);
   const switchMode = (m: "invitation" | "greeting") => router.replace(`${pathname}?mode=${m}`, { scroll: false });
-  const pickTemplate = (t: WeddingTemplate) => { setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
+  const pickTemplate = (t: WeddingTemplate) => { setCompanyId(null); setTemplateId(t.id); if (!suits(t, d.eventType)) set(msgEdited.current ? { eventType: t.defaultEvent } : { eventType: t.defaultEvent, message: "" }); };
   // Invitation mode lists every non-festival design; Greeting mode lists only the festival ones (no category pills).
   const inMode = (t: WeddingTemplate) => (mode === "greeting" ? t.category === "festival" : t.category !== "festival");
-  const lead = mode === "greeting" ? 2 : 1; // upload tiles ahead of the gallery (custom card, plus the video tile in Greeting mode)
+  const baseLead = mode === "greeting" ? 2 : 1; // upload tiles ahead of the gallery (custom card, plus the video tile in Greeting mode)
+  // Company templates published in /admin/templates: Invitation mode lists the invitation ones (matching the category pill, "All" shows every category); Greeting mode lists the greeting ones.
+  const companyShown = companies.filter((c) => (mode === "greeting" ? c.kind === "greeting" : c.kind === "invitation" && c.media_type === "image" && (filter === "all" || c.category === filter)));
+  const lead = baseLead + companyShown.length;
   const shown = active.filter((t) => !isPseudoTemplate(t.id) && inMode(t) && (mode === "greeting" || filter === "all" || t.category === filter));
 
   // The preview shows the first real guest's greeting, or a sample one, so it can be styled and positioned before any guest exists.
@@ -339,6 +344,40 @@ export function WeddingStudio() {
     return () => { live = false; };
   }, [guestPreview, tpl, rd, d.photos]);
 
+  // Company templates are fetched fresh (no cache) on open and whenever the tab regains focus, so a template the admin just published or hid shows up straight away.
+  useEffect(() => {
+    let live = true;
+    const load = () => { fetch("/api/templates", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j: { templates?: PublicTemplate[] } | null) => { if (live && j?.templates) setCompanies(j.templates); }).catch(() => undefined); };
+    load();
+    const onVis = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVis); window.addEventListener("focus", load);
+    return () => { live = false; document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", load); };
+  }, []);
+  const CATEGORY_EVENT: Record<string, EventType> = { wedding: "wedding", birthday: "birthday", housewarming: "housewarming", baby: "babyshower", events: "engagement", inauguration: "inauguration", festival: "festival" };
+  const pickCompany = async (t: PublicTemplate) => {
+    if (companyBusy) return;
+    setCompanyBusy(t.id); setVideoError("");
+    try {
+      const res = await fetch(t.media_url);
+      if (!res.ok) throw new Error("Couldn't load that template. Try again.");
+      const blob = await res.blob();
+      const greet = t.default_greeting_format.trim();
+      const base: Partial<WeddingDetails> = { ...(CATEGORY_EVENT[t.category] ? { eventType: CATEGORY_EVENT[t.category] } : {}), ...(greet ? { guestGreetingFormat: "custom", guestGreetingTemplate: greet } : {}) };
+      if (t.media_type === "video") {
+        const ext = /quicktime/.test(blob.type) ? "mov" : "mp4";
+        const f = new File([blob], `${t.title}.${ext}`, { type: blob.type || "video/mp4" });
+        const info = await probeVideo(f);
+        setVideo({ file: f, url: URL.createObjectURL(f), info });
+        setTemplateId(VIDEO_TEMPLATE_ID); set(base);
+      } else {
+        const u = await photoToDataUrl(blob, 1600);
+        if (!u) throw new Error("Couldn't read that image.");
+        set({ ...base, customCard: u }); setTemplateId(CUSTOM_TEMPLATE_ID);
+      }
+      setSelected(null); setQuoteSel(false); setCompanyId(t.id);
+    } catch (e) { const m = e instanceof Error ? e.message : "Couldn't load that template."; setVideoError(m); toast(m); }
+    finally { setCompanyBusy(null); }
+  };
   const customRef = useRef<HTMLInputElement>(null);
   const festPhotoRef = useRef<HTMLInputElement>(null);
   const addCustomCard = async (f: File | undefined) => {
@@ -347,7 +386,7 @@ export function WeddingStudio() {
     if (f.size > 15 * 1024 * 1024) { toast("That image is over 15 MB. Please use a smaller file."); return; }
     const u = await photoToDataUrl(f, 1600);
     if (!u) { toast("Couldn't read that image."); return; }
-    set({ customCard: u }); setTemplateId(CUSTOM_TEMPLATE_ID); setSelected(null);
+    set({ customCard: u }); setTemplateId(CUSTOM_TEMPLATE_ID); setSelected(null); setCompanyId(null);
     toast("Card uploaded. Drag the guest name to the blank space on your design.");
   };
   const addVideo = async (f: File | undefined) => {
@@ -356,7 +395,7 @@ export function WeddingStudio() {
     try {
       const info = await probeVideo(f);
       setVideo({ file: f, url: URL.createObjectURL(f), info });
-      setTemplateId(VIDEO_TEMPLATE_ID); setSelected(null);
+      setTemplateId(VIDEO_TEMPLATE_ID); setSelected(null); setCompanyId(null);
       toast("Video added. Drag the guest name to where you want it.");
     } catch (e) { setVideoError(e instanceof Error ? e.message : "Couldn't read that video."); }
     finally { setVideoBusy(false); }
@@ -597,6 +636,21 @@ export function WeddingStudio() {
                     </div>
                   </li>
                 )}
+                {companyShown.map((c, i) => {
+                  const on = companyId === c.id && (c.media_type === "video" ? templateId === VIDEO_TEMPLATE_ID && !!video : templateId === CUSTOM_TEMPLATE_ID && !!d.customCard), idx = baseLead + i;
+                  return (
+                    <li key={c.id} data-company-template={c.id} className={!expanded && idx >= 2 ? (idx >= 5 ? "hidden" : idx >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
+                      <button type="button" onClick={() => void pickCompany(c)} disabled={!!companyBusy || (c.media_type === "video" && !canMp4)} aria-pressed={on} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md disabled:opacity-60", on ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
+                        <div className="relative aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
+                          {c.media_type === "video" ? <video src={c.media_url} muted playsInline preload="metadata" className="pointer-events-none h-full w-full object-cover" /> : /* eslint-disable-next-line @next/next/no-img-element */ <img src={c.media_url} alt={`${c.title} template`} draggable={false} onContextMenu={(e) => e.preventDefault()} className="pointer-events-none h-full w-full object-cover select-none" />}
+                          {companyBusy === c.id && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden="true" /></div>}
+                        </div>
+                        <p className="mt-1.5 text-xs leading-tight font-bold text-slate-900 dark:text-white">{c.title}</p>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300">{c.description || (c.media_type === "video" ? "Greeting video" : "Company template")}</p>
+                      </button>
+                    </li>
+                  );
+                })}
                 {shown.map((x, i) => (
                   // Collapsed: only the first row shows at each width (2 / 3 / 5 cards, the upload tiles coming first); a selected template further down stays selected.
                   <li key={x.id} className={!expanded && i + lead >= 2 ? (i + lead >= 5 ? "hidden" : i + lead >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
