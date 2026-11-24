@@ -1,4 +1,5 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
+import { drawAnimated, graphemes, plainReveal, type AnimSprite, type RevealLine, type TextAnim } from "@/lib/text-anim";
 
 /**
  * Greeting videos (browser only): validate an uploaded clip, then burn a guest's name onto it and re-encode it to MP4 with the original audio.
@@ -77,7 +78,7 @@ const QUOTE_FONT = { sans: '"Noto Sans Malayalam", "Noto Sans", Inter, system-ui
  * The footer quote as a transparent sprite, drawn at `width` px frame width (logical design is 1080 wide). Wraps to at most 3 lines in the chosen
  * Malayalam-capable web font, on a translucent dark pill (optional) with a text shadow so it stays legible over any footage. w1080 is its width in 1080 units.
  */
-export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<{ canvas: HTMLCanvasElement; w1080: number } | null> {
+export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<(AnimSprite & { w1080: number; h1080: number; canvas: HTMLCanvasElement }) | null> {
   const text = q.text.trim();
   if (!text) return null;
   const k = width / 1080, fam = QUOTE_FONT[q.font], px = 40 * q.scale * k, weight = q.font === "serif" ? 700 : 600;
@@ -91,12 +92,30 @@ export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<{
   if (line) lines.push(line);
   const shown = lines.slice(0, 4), textW = Math.min(maxW, Math.max(...shown.map((l) => cx.measureText(l).width)));
   const m = 12 * k, w = Math.ceil(textW + padX * 2 + m * 2), h = Math.ceil(shown.length * lh + padY * 2 + m * 2);
-  c.width = w; c.height = h;
-  const g = c.getContext("2d")!; g.font = font; g.textAlign = "center"; g.textBaseline = "middle";
-  if (q.backdrop) { g.fillStyle = "rgba(0,0,0,0.5)"; g.beginPath(); g.roundRect(m, m, w - m * 2, h - m * 2, Math.min(h / 2, 36 * k)); g.fill(); }
-  g.fillStyle = q.color; g.shadowColor = "rgba(0,0,0,0.7)"; g.shadowBlur = 8 * k; g.shadowOffsetY = 2 * k;
-  shown.forEach((l, i) => g.fillText(l, w / 2, m + padY + lh * (i + 0.5)));
-  return { canvas: c, w1080: w / k };
+  const mk = () => { const cv = document.createElement("canvas"); cv.width = w; cv.height = h; return cv; };
+  const bg = mk(), fg = mk(), whole = mk();
+  const gb = bg.getContext("2d")!;
+  if (q.backdrop) { gb.fillStyle = "rgba(0,0,0,0.5)"; gb.beginPath(); gb.roundRect(m, m, w - m * 2, h - m * 2, Math.min(h / 2, 36 * k)); gb.fill(); }
+  const gf = fg.getContext("2d")!; gf.font = font; gf.textAlign = "center"; gf.textBaseline = "middle";
+  gf.fillStyle = q.color; gf.shadowColor = "rgba(0,0,0,0.7)"; gf.shadowBlur = 8 * k; gf.shadowOffsetY = 2 * k;
+  const reveal: RevealLine[] = [];
+  shown.forEach((l, i) => {
+    const yc = m + padY + lh * (i + 0.5);
+    gf.fillText(l, w / 2, yc);
+    // Exact reveal geometry: right edge after each grapheme cluster, and each word's span, measured in this font.
+    const gs = graphemes(l), lw = cx.measureText(l).width, left = (w - lw) / 2;
+    let acc = "";
+    const g = gs.map((ch) => { acc += ch; return left + cx.measureText(acc).width; });
+    const words: RevealLine["words"] = []; let gi = 0, pre = "";
+    for (const part of l.split(/(\s+)/)) {
+      const n = graphemes(part).length;
+      if (part && !/^\s+$/.test(part)) words.push({ x0: left + cx.measureText(pre).width, x1: left + cx.measureText(pre + part).width, first: gi, last: gi + n - 1 });
+      pre += part; gi += n;
+    }
+    reveal.push({ y0: yc - lh / 2, y1: yc + lh / 2, g, words });
+  });
+  const gw = whole.getContext("2d")!; gw.drawImage(bg, 0, 0); gw.drawImage(fg, 0, 0);
+  return { canvas: whole, bg, fg, reveal, w1080: w / k, h1080: h / k };
 }
 
 export interface RenderGuestVideoOptions {
@@ -104,27 +123,26 @@ export interface RenderGuestVideoOptions {
   src: string;
   info: VideoInfo;
   /** The guest-name overlay, already drawn at output scale (see sprite helpers in the studio). */
-  sprite: HTMLCanvasElement;
+  sprite: AnimSprite;
   /** Overlay centre as 0-100 % of the frame. */
   x: number; y: number;
   /** Footer quote sprite (drawn at output scale) and its centre as 0-100 % of the frame. */
-  quote?: { sprite: HTMLCanvasElement; x: number; y: number } | null;
+  quote?: { sprite: AnimSprite; x: number; y: number } | null;
+  /** Text animations for the guest line (header) and the footer quote. */
+  headerAnim?: TextAnim; footerAnim?: TextAnim;
   /** Optional sender logo / photo, drawn as a circle in the bottom-left corner. */
   logo?: HTMLImageElement | null;
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
 }
 
-/** Draws the overlay layers on top of whatever frame is on the canvas. Shared by the render and the poster. */
-export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote">) {
-  const sw = o.sprite.width, sh = o.sprite.height;
-  const cx = Math.min(w - sw / 2, Math.max(sw / 2, (o.x / 100) * w)), cy = Math.min(h - sh / 2, Math.max(sh / 2, (o.y / 100) * h));
-  ctx.drawImage(o.sprite, Math.round(cx - sw / 2), Math.round(cy - sh / 2));
-  if (o.quote) {
-    const q = o.quote.sprite, qx = Math.min(w - q.width / 2, Math.max(q.width / 2, (o.quote.x / 100) * w)), qy = Math.min(h - q.height / 2, Math.max(q.height / 2, (o.quote.y / 100) * h));
-    ctx.drawImage(q, Math.round(qx - q.width / 2), Math.round(qy - q.height / 2));
-  }
-  if (o.logo) {
+/** Draws the overlay layers (animated text at video time `t`, then the logo) on top of whatever frame is on the canvas. Shared by the live preview and the render. */
+export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote" | "headerAnim" | "footerAnim"> & { t: number; skipLogo?: boolean }) {
+  const k = w / 1080, place = (sp: AnimSprite, x: number, y: number) => ({ cx: Math.min(w - sp.canvas.width / 2, Math.max(sp.canvas.width / 2, (x / 100) * w)), cy: Math.min(h - sp.canvas.height / 2, Math.max(sp.canvas.height / 2, (y / 100) * h)) });
+  const a = place(o.sprite, o.x, o.y);
+  drawAnimated(ctx, o.sprite, a.cx, a.cy, o.t, o.headerAnim ?? "none", k);
+  if (o.quote) { const q = place(o.quote.sprite, o.quote.x, o.quote.y); drawAnimated(ctx, o.quote.sprite, q.cx, q.cy, o.t, o.footerAnim ?? "none", k); }
+  if (o.logo && !o.skipLogo) {
     const d = Math.round(Math.min(w, h) * 0.16), m = Math.round(d * 0.28), x = m, y = h - d - m;
     ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 14;
     ctx.beginPath(); ctx.arc(x + d / 2, y + d / 2, d / 2, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill(); ctx.restore();
@@ -190,6 +208,7 @@ export async function renderGuestVideo(o: RenderGuestVideoOptions): Promise<{ vi
   let nextFrame = 0;
   const encodeFramesUpTo = (idx: number) => {
     for (; nextFrame <= idx; nextFrame++) {
+      paint(nextFrame / FPS); // the picture under this frame, with the text animation at exactly this frame's time
       const f = new VideoFrame(canvas, { timestamp: Math.round((nextFrame * 1e6) / FPS), duration: Math.round(1e6 / FPS) });
       venc.encode(f, { keyFrame: nextFrame % 60 === 0 }); f.close();
     }
@@ -197,9 +216,9 @@ export async function renderGuestVideo(o: RenderGuestVideoOptions): Promise<{ vi
 
   const cleanup = () => { try { if (venc.state !== "closed") venc.close(); } catch { /* closed */ } try { if (aenc.state !== "closed") aenc.close(); } catch { /* closed */ } video.pause(); video.removeAttribute("src"); video.load(); };
   let posterBlob: Blob | null = null;
-  const paint = () => { ctx.drawImage(video, 0, 0, w, h); paintOverlay(ctx, w, h, o); };
+  const paint = (t = 0) => { ctx.drawImage(video, 0, 0, w, h); paintOverlay(ctx, w, h, { ...o, t }); };
   try {
-    paint();
+    paint(0);
     const done = new Promise<void>((res, rej) => {
       const guard = setTimeout(() => rej(new Error("Rendering the video took too long.")), (o.info.duration + 30) * 1000);
       video.onended = () => { clearTimeout(guard); res(); };
@@ -210,12 +229,11 @@ export async function renderGuestVideo(o: RenderGuestVideoOptions): Promise<{ vi
     const tick = (_now?: number, meta?: { mediaTime?: number }) => {
       if (!running) return;
       const t = meta?.mediaTime ?? video.currentTime;
-      paint();
       if (encError) return;
       encodeFramesUpTo(Math.min(Math.floor(o.info.duration * FPS) - 1, Math.floor(t * FPS))); // constant 30 fps: a frame per 1/30 s of media time
       feedAudio(t + 0.1);
       o.onProgress?.(Math.min(1, t / o.info.duration));
-      if (!posterTaken && t >= Math.min(0.6, o.info.duration / 3)) { posterTaken = true; canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85); }
+      if (!posterTaken && t >= Math.min(0.6, o.info.duration / 3)) { posterTaken = true; ctx.drawImage(video, 0, 0, w, h); paintOverlay(ctx, w, h, { ...o, t: Math.min(3, o.info.duration) }); canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85); }
       // Don't let the encoder queue run away on a slow machine.
       if (venc.encodeQueueSize > 30) { setTimeout(() => request(), 30); return; }
       request();
@@ -224,11 +242,11 @@ export async function renderGuestVideo(o: RenderGuestVideoOptions): Promise<{ vi
     await video.play();
     tick();
     await done;
-    running = false; paint();
+    running = false;
     if (encError) throw encError;
     encodeFramesUpTo(Math.max(0, Math.ceil(o.info.duration * FPS) - 1));
     feedAudio(o.info.duration);
-    if (!posterTaken) canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85);
+    if (!posterTaken) { ctx.drawImage(video, 0, 0, w, h); paintOverlay(ctx, w, h, { ...o, t: Math.min(3, o.info.duration) }); } if (!posterTaken) canvas.toBlob((b) => { posterBlob = b; }, "image/jpeg", 0.85);
     await Promise.all([venc.flush(), aenc.flush()]);
     if (encError) throw encError;
     muxer.finalize();

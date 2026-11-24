@@ -583,7 +583,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
  * same typography, colour, box and size settings as an image card. `width` is the target frame width: the sprite comes out at that scale, so it can be
  * composited 1:1 onto a frame that wide. w1080 / h1080 are its size in the card's 1080-unit space (used to size the live overlay as a % of the preview).
  */
-export async function renderGreetingSprite(o: { template: WeddingTemplate; details: WeddingDetails; guest: { name: string; place: string }; width: number }): Promise<{ canvas: HTMLCanvasElement; w1080: number; h1080: number } | null> {
+export async function renderGreetingSprite(o: { template: WeddingTemplate; details: WeddingDetails; guest: { name: string; place: string }; width: number }): Promise<{ canvas: HTMLCanvasElement; w1080: number; h1080: number; text: string } | null> {
   let box: CardZone | undefined;
   const full = await renderWeddingCard({ template: o.template, details: o.details, guest: o.guest, width: o.width, onZones: (z) => { box = z.find((q) => q.id === "guest"); } });
   if (!box) return null;
@@ -592,7 +592,7 @@ export async function renderGreetingSprite(o: { template: WeddingTemplate; detai
   const x1 = Math.min(full.width, Math.ceil((box.x + box.w + m) * k)), y1 = Math.min(full.height, Math.ceil((box.y + box.h + m) * k));
   const out = document.createElement("canvas"); out.width = Math.max(1, x1 - x0); out.height = Math.max(1, y1 - y0);
   out.getContext("2d")!.drawImage(full, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
-  return { canvas: out, w1080: out.width / k, h1080: out.height / k };
+  return { canvas: out, w1080: out.width / k, h1080: out.height / k, text: greetingText(o.details, o.guest) };
 }
 
 const artCache = new Map<string, Promise<HTMLImageElement | null>>();
