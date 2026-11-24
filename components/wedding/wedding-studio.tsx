@@ -800,14 +800,7 @@ export function WeddingStudio() {
                         </div>
                       </div>
                     )}
-                    {!isVideoMode && <>
-                    <Field id="w-gtitle" label="Greeting title" hint="Printed large on the card and used as the WhatsApp message headline." className="sm:col-span-2"><Input id="w-gtitle" value={d.customTitle} onChange={(e) => set({ customTitle: e.target.value })} placeholder={tpl.festival?.title.en ?? "Happy Onam"} /></Field>
-                    <Field id="w-wish" label="Wish message" hint={d.message ? "Use {name} anywhere to auto-fill each guest's name." : "Showing this festival's own wish until you write yours. Use {name} anywhere to auto-fill each guest's name."} className="sm:col-span-2">
-                      <Textarea id="w-wish" rows={3} value={d.message} onChange={(e) => set({ message: e.target.value })} placeholder={tpl.festival?.wish.en ?? ""} />
-                      <button type="button" onClick={() => void generate()} disabled={aiBusy} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {aiBusy ? "Writing…" : "AI: Write Greeting Wish"}</button>
-                      {aiError && <p role="alert" className="mt-2 text-xs font-semibold text-red-800 dark:text-red-200">{aiError}</p>}
-                    </Field>
-                    </>}
+                    {/* Greeting title and Wish message are intentionally not shown: the saved customTitle / message (and each festival's own wording) still feed the card and the WhatsApp payload. */}
                     <div className="space-y-2 rounded-lg border border-slate-200 p-3 sm:col-span-2 dark:border-slate-700">
                       <label className="flex items-start gap-2 text-sm font-semibold text-slate-900 dark:text-white"><input type="checkbox" checked={d.festivalPhoto} onChange={(e) => set({ festivalPhoto: e.target.checked })} className="mt-0.5 h-4 w-4 accent-[#D12014]" /><span>Add my photo / brand logo<span className="block text-xs font-normal text-slate-700 dark:text-slate-200">Families and businesses can place a photo or logo above the sender name.</span></span></label>
                       {d.festivalPhoto && (
