@@ -15,6 +15,7 @@ import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
 import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
+import { ColorControls } from "./anim-colors";
 import { buildAnimConfig, defaultDuration, defaultTiming, DURATION_RANGE, EXIT_ANIMS, plainReveal, SPEED_RANGE, START_RANGE, TEXT_ANIMS, type AnimTiming, type ExitAnim, type TextAnim } from "@/lib/text-anim";
 import { VIDEO_RENDERER_VERSION } from "@/lib/video-version";
 import { canEncodeMp4, MP4_UNSUPPORTED, outputSize, probeVideo, renderGuestVideo, renderQuoteSprite, VIDEO_ACCEPT, VIDEO_FESTIVALS, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
@@ -254,7 +255,7 @@ export function WeddingStudio() {
     set({ videoFestival: id, videoQuoteLang: lang, customTitle: lang === "ml" ? f.ml : f.en, videoQuote: lang === "ml" ? f.quoteMl : f.quoteEn });
   };
   const moveQuote = (x: number, y: number) => set({ videoQuoteX: clamp(x), videoQuoteY: clamp(y) });
-  const quoteFor = (name: string): QuoteStyle => ({ text: fillName(d.videoQuote, name), scale: d.videoQuoteScale, color: d.videoQuoteColor, font: d.videoQuoteFont, backdrop: d.videoQuoteBackdrop });
+  const quoteFor = (name: string): QuoteStyle => ({ text: fillName(d.videoQuote, name), scale: d.videoQuoteScale, color: d.videoQuoteColor, font: d.videoQuoteFont, pill: d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill, pillColor: d.videoQuotePillColor });
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
   const moveBlock = (key: Exclude<TextId, "guest">, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
   const styleText = (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => setD((cur) => {
@@ -735,7 +736,10 @@ export function WeddingStudio() {
                                     <input type="number" aria-label={`${label} out time`} data-anim-out={layer} disabled={off} className={`${num} mt-1`} min={0} max={Math.max(0, video?.info.duration ?? 60)} step={0.1} value={Math.round(cfg.outTime * 10) / 10} onChange={(e) => setT({ outTime: parse(e.target.value) })} />
                                   </label>
                                 </fieldset>
-                              </div>
+                                {layer === "header"
+                                  ? <ColorControls layer="header" label="Header" allowDefaultColor color={d.textStyle?.guest?.color ?? null} onColor={(c) => styleText("guest", { color: c })} pill={d.videoHeaderPill} pillColor={d.videoHeaderPillColor} onPill={(p) => set({ videoHeaderPill: p })} onPillColor={(c) => set({ videoHeaderPillColor: c })} />
+                                  : <ColorControls layer="footer" label="Footer" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />}
+              </div>
                             );
                           })}
                           <button type="button" onClick={() => setReplayKey((n) => n + 1)} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-white dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" aria-label="Replay animation from the start">↻ Replay</button>
@@ -883,7 +887,7 @@ export function WeddingStudio() {
                   <label className="text-xs font-semibold text-slate-800 dark:text-slate-100">Colour<input type="color" aria-label="Quote colour" value={d.videoQuoteColor} onChange={(e) => set({ videoQuoteColor: e.target.value })} className="mt-1 block h-10 w-full cursor-pointer rounded-lg border border-slate-300 dark:border-slate-600" /></label>
                 </div>
                 <label className="block text-xs font-semibold text-slate-800 dark:text-slate-100">Size {Math.round(d.videoQuoteScale * 100)}%<input type="range" aria-label="Quote size" min={60} max={160} value={Math.round(d.videoQuoteScale * 100)} onChange={(e) => set({ videoQuoteScale: Number(e.target.value) / 100 })} className="block h-1.5 w-full accent-[#D12014]" /></label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-100"><input type="checkbox" checked={d.videoQuoteBackdrop} onChange={(e) => set({ videoQuoteBackdrop: e.target.checked })} className="h-4 w-4 accent-[#D12014]" /> Dark backdrop behind the quote</label>
+                <ColorControls layer="footer-toolbar" label="Quote" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />
                 <button type="button" onClick={() => set({ videoQuoteX: null, videoQuoteY: null })} className="text-xs font-bold text-[#D12014] underline">Reset position</button>
               </div>
             ) : selected ? (

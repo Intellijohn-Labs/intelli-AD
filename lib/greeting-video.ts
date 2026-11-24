@@ -1,5 +1,5 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
-import { drawAnimated, graphemes, plainReveal, type AnimSprite, type RevealLine, type AnimConfig, NO_ANIM } from "@/lib/text-anim";
+import { drawAnimated, graphemes, plainReveal, type AnimSprite, type RevealLine, type AnimConfig, NO_ANIM, pillFill, type PillStyle } from "@/lib/text-anim";
 
 /**
  * Greeting videos (browser only): validate an uploaded clip, then burn a guest's name onto it and re-encode it to MP4 with the original audio.
@@ -71,7 +71,7 @@ export const VIDEO_FESTIVALS: VideoFestival[] = [
   { id: "diwali", en: "Happy Diwali", ml: "ദീപാവലി ആശംസകൾ", quoteEn: "{name}, may the festival of lights illuminate your life with joy, peace, and prosperity.", quoteMl: "പ്രിയ {name}, വെളിച്ചത്തിന്റെയും സന്തോഷത്തിന്റെയും ദീപാവലി ആശംസകൾ!" },
 ];
 
-export interface QuoteStyle { text: string; scale: number; color: string; font: "sans" | "serif" | "manjari"; backdrop: boolean }
+export interface QuoteStyle { text: string; scale: number; color: string; font: "sans" | "serif" | "manjari"; pill: PillStyle; pillColor: string }
 const QUOTE_FONT = { sans: '"Noto Sans Malayalam", "Noto Sans", Inter, system-ui, sans-serif', serif: '"Noto Serif Malayalam", "Noto Serif", Georgia, serif', manjari: '"Manjari", "Noto Sans Malayalam", system-ui, sans-serif' } as const;
 
 /**
@@ -95,7 +95,8 @@ export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<(
   const mk = () => { const cv = document.createElement("canvas"); cv.width = w; cv.height = h; return cv; };
   const bg = mk(), fg = mk(), whole = mk();
   const gb = bg.getContext("2d")!;
-  if (q.backdrop) { gb.fillStyle = "rgba(0,0,0,0.5)"; gb.beginPath(); gb.roundRect(m, m, w - m * 2, h - m * 2, Math.min(h / 2, 36 * k)); gb.fill(); }
+  const pf = pillFill(q.pill, q.pillColor, "footer");
+  if (pf) { gb.fillStyle = pf; gb.beginPath(); gb.roundRect(m, m, w - m * 2, h - m * 2, Math.min(h / 2, 36 * k)); gb.fill(); }
   const gf = fg.getContext("2d")!; gf.font = font; gf.textAlign = "center"; gf.textBaseline = "middle";
   gf.fillStyle = q.color; gf.shadowColor = "rgba(0,0,0,0.7)"; gf.shadowBlur = 8 * k; gf.shadowOffsetY = 2 * k;
   const reveal: RevealLine[] = [];

@@ -170,3 +170,20 @@ export function drawAnimated(ctx: CanvasRenderingContext2D, sp: AnimSprite, cx: 
   ctx.restore();
 }
 const easeLinear = (x: number) => x;
+
+/** Background pill behind a text layer. "default" = the layer's own current look (header: the card's light pill with a gold border; footer: dark). */
+export type PillStyle = "default" | "dark" | "frost" | "none" | "custom";
+export const PILL_STYLES: { id: PillStyle; label: string }[] = [
+  { id: "dark", label: "Dark Translucent" }, { id: "frost", label: "Light Frost" }, { id: "none", label: "None / Transparent" }, { id: "custom", label: "Custom Tint" },
+];
+export const isPillStyle = (v: unknown): v is PillStyle => v === "default" || PILL_STYLES.some((p) => p.id === v);
+export const isHex = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
+/** The pill's fill colour for a style: `null` = no pill, `"default"` = use the layer's built-in look. Footer defaults to dark. */
+export function pillFill(style: PillStyle | undefined, color: string | undefined, layer: "header" | "footer"): string | null {
+  const st: PillStyle = style && isPillStyle(style) ? style : "default";
+  if (st === "none") return null;
+  if (st === "dark" || (st === "default" && layer === "footer")) return "rgba(0,0,0,0.5)";
+  if (st === "frost") return "rgba(255,255,255,0.72)";
+  if (st === "custom") { const c = isHex(color) ? color : "#000000"; return `rgba(${parseInt(c.slice(1, 3), 16)},${parseInt(c.slice(3, 5), 16)},${parseInt(c.slice(5, 7), 16)},0.78)`; }
+  return "default";
+}

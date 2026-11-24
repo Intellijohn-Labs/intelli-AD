@@ -114,6 +114,6 @@ export function GreetingVideoStage({ tpl, rd, guest, quoteStyle, ...rest }: Omit
       if (live) setQuote(sp ? { sp, w1080: sp.w1080, h1080: sp.h1080 } : null);
     }, 60);
     return () => { live = false; clearTimeout(t); };
-  }, [qs?.text, qs?.scale, qs?.color, qs?.font, qs?.backdrop]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [qs?.text, qs?.scale, qs?.color, qs?.font, qs?.pill, qs?.pillColor]); // eslint-disable-line react-hooks/exhaustive-deps
   return <VideoStage {...rest} sprite={sprite} quote={quote} />;
 }

@@ -4,6 +4,7 @@
  * invite page and in the downloadable personalised PNG. Logical size is 1080 x 1500; `width` scales it.
  */
 import { loadPrintFonts } from "./print-ad-render";
+import { pillFill } from "./text-anim";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
 import { CUSTOM_TEMPLATE_ID, VIDEO_TEMPLATE_ID, eventConfig, EVENT_TITLE, fillName, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
@@ -364,14 +365,18 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
           const padY = opt.pill ? fs * 0.45 : 0;
           if (opt.pill) { // bordered pill behind the text (the greeting's "boxed" style)
             const bw = tw + 2 * fs * 0.9, bh = lines.length * fs * lh + 2 * padY;
-            ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3; ctx.fillStyle = `${p.bg1}EE`;
-            ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.fill(); ctx.restore();
-            ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.stroke();
+            // Video greetings can restyle the pill (dark / frost / custom tint / none); anywhere else it keeps the card's own light pill.
+            const pf = opt.id === "guest" && video ? pillFill(d.videoHeaderPill, d.videoHeaderPillColor, "header") : "default";
+            if (pf) {
+              ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3; ctx.fillStyle = pf === "default" ? `${p.bg1}EE` : pf;
+              ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.fill(); ctx.restore();
+              if (pf === "default") { ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.stroke(); }
+            }
           }
           ctx.font = `${opt.italic ? "italic " : ""}${weight} ${fs}px ${fam}`;
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = lsEm && !hasMl(str) ? `${lsEm * fs}px` : "0px";
           const align = opt.pill ? "center" : ts.align ?? "center", tx = align === "left" ? x - tw / 2 : align === "right" ? x + tw / 2 : x; // lines align inside the block's own width
-          ctx.fillStyle = ts.color ?? (opt.pill ? p.ink : opt.color ?? p.ink); ctx.textAlign = align; ctx.textBaseline = "middle";
+          ctx.fillStyle = ts.color ?? (opt.pill ? (opt.id === "guest" && video && ["dark", "none"].includes(d.videoHeaderPill) ? "#FFFFFF" : p.ink) : opt.color ?? p.ink); ctx.textAlign = align; ctx.textBaseline = "middle";
           if (opt.id === "guest" && !opt.pill) { ctx.save(); ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, fs * 0.16); ctx.strokeStyle = haloFor(ts.color ?? opt.color ?? p.ink, p.bg1); lines.forEach((l, i) => ctx.strokeText(l, tx, y + padY + (i + 0.5) * fs * lh)); ctx.restore(); }
           lines.forEach((l, i) => ctx.fillText(l, tx, y + padY + (i + 0.5) * fs * lh));
           (ctx as Ctx & { letterSpacing: string }).letterSpacing = "0px";
