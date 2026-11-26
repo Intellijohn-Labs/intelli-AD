@@ -1,4 +1,5 @@
 /** Wedding & Event Invitations: shared types, the 10 template themes, copy helpers and local persistence. */
+import type { LogoShape } from "./overlay";
 import type { AnimTiming, PillStyle, TextAnim } from "@/lib/text-anim";
 
 export type EventType = "wedding" | "engagement" | "reception" | "haldi" | "nikah" | "save-the-date" | "birthday" | "housewarming" | "choroonu" | "noolukettu" | "baptism" | "babyshower" | "aqiqah" | "inauguration" | "anniversary" | "festival";
@@ -31,6 +32,8 @@ export type CardLayer =
   | { id: string; type: "text"; x: number; y: number; w: number; text: string; size: number; font: FontStyle | ""; color: string; align: "left" | "center" | "right"; ls: number; lh: number; opacity: number; bold: boolean; italic: boolean }
   | { id: string; type: "image"; x: number; y: number; w: number; src: string; shape: LayerShape; opacity: number; border: number; borderColor: string; shadow: boolean }
   | { id: string; type: "element"; x: number; y: number; w: number; kind: ElementKind; color: string; opacity: number };
+/** A free text box the client adds on top of the card / video: dragged on the live preview, styled and (on video) animated on its own. x / y = centre as 0-100 % of the frame; size in px on a 1080-wide frame. */
+export interface OverlayText { id: string; text: string; x: number; y: number; size: number; font: FontStyle | ""; color: string | null; pill: PillStyle; pillColor: string; anim: TextAnim; timing: AnimTiming }
 export type FontStyle = "default" | "royal" | "script" | "sans" | "ml-classic" | FontId;
 export type CardEffect = "none" | "petals" | "shimmer" | "sparkle";
 
@@ -103,6 +106,13 @@ export interface WeddingDetails {
   videoHeaderPillColor: string;
   videoQuotePill: PillStyle;
   videoQuotePillColor: string;
+  /** Sender logo / photo placement (greeting cards and videos): centre as % of the frame (null = default spot), size px on a 1080 frame, shape. */
+  logoX: number | null;
+  logoY: number | null;
+  logoSize: number;
+  logoShape: LogoShape;
+  /** Free text boxes on the card or video (+ Add Text Box). */
+  overlayTexts: OverlayText[];
   videoHeaderTiming: AnimTiming;
   videoFooterTiming: AnimTiming;
   /** Per-element colour / alignment / letter spacing / line height. */
@@ -351,7 +361,7 @@ export const EVENT_TYPES: { id: EventType; en: string; ml: string }[] = EVENTS.m
 export const eventConfig = (id: EventType): EventConfig => EVENTS.find((e) => e.id === id) ?? EVENTS[0];
 export const EVENT_TITLE = Object.fromEntries(EVENTS.map((e) => [e.id, e.title])) as Record<EventType, { en: string; ml: string }>;
 
-export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", festivalPhoto: false, videoQuote: "", videoFestival: "custom", videoQuoteLang: "en", videoQuoteX: null, videoQuoteY: null, videoQuoteScale: 1, videoQuoteColor: "#FFFFFF", videoQuoteFont: "sans", videoQuoteBackdrop: true, videoHeaderAnim: "none", videoFooterAnim: "none", videoHeaderPill: "default", videoHeaderPillColor: "#000000", videoQuotePill: "dark", videoQuotePillColor: "#000000", videoHeaderTiming: { speed: 1, startIn: 0, duration: null, exit: "none", outTime: null }, videoFooterTiming: { speed: 1, startIn: 0.4, duration: null, exit: "none", outTime: null }, blockFont: {} };
+export const EMPTY_DETAILS: WeddingDetails = { eventType: "wedding", lang: "both", bride: "", groom: "", brideParents: "", groomParents: "", date: "", time: "", venue: "", mapsUrl: "", message: "", blessing: "", verse: "", accent: "", photos: [], guestGreetingFormat: "dear-name-place", guestCustomPrefix: "", guestBadgeX: null, guestBadgeY: null, guestGreetingTemplate: "", blockPos: {}, guestGreetingBoxed: true, fontStyle: "default", blockScale: {}, contentScale: 1, textStyle: {}, layers: [], customCard: null, showGuestName: true, printCustomDetails: false, customTitle: "", festivalPhoto: false, videoQuote: "", videoFestival: "custom", videoQuoteLang: "en", videoQuoteX: null, videoQuoteY: null, videoQuoteScale: 1, videoQuoteColor: "#FFFFFF", videoQuoteFont: "sans", videoQuoteBackdrop: true, videoHeaderAnim: "none", videoFooterAnim: "none", logoX: null, logoY: null, logoSize: 170, logoShape: "circle", overlayTexts: [], videoHeaderPill: "default", videoHeaderPillColor: "#000000", videoQuotePill: "dark", videoQuotePillColor: "#000000", videoHeaderTiming: { speed: 1, startIn: 0, duration: null, exit: "none", outTime: null }, videoFooterTiming: { speed: 1, startIn: 0.4, duration: null, exit: "none", outTime: null }, blockFont: {} };
 
 /** Placeholder text for the event type (used for gallery thumbnails and before anything is typed). */
 export const sampleFor = (id: EventType): WeddingDetails => ({ ...EMPTY_DETAILS, eventType: id, ...eventConfig(id).sample });

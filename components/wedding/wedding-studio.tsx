@@ -13,16 +13,19 @@ import { ModeSelector } from "./mode-selector";
 import { GreetingVideoStage } from "./video-stage";
 import { DispatchLog } from "./dispatch-log";
 import { StudioFullscreen } from "./studio-fullscreen";
-import { loadImage, photoToDataUrl, renderGreetingSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
+import { loadImage, photoToDataUrl, renderGreetingSprite, renderOverlayTextSprite, renderWeddingCard, type CardZone, type GroupBox } from "@/lib/wedding-render";
 import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib/invitation-cooldown";
 import type { PublicTemplate } from "@/lib/custom-templates";
+import { OverlayHitLayer, useTextSprites } from "./overlay-layer";
+import { LogoControls, newTextBox, TextBoxEditor } from "./text-box-editor";
+import { AnimControls } from "./anim-controls";
 import { ColorControls } from "./anim-colors";
 import { buildAnimConfig, defaultDuration, defaultTiming, DURATION_RANGE, EXIT_ANIMS, plainReveal, SPEED_RANGE, START_RANGE, TEXT_ANIMS, type AnimTiming, type ExitAnim, type TextAnim } from "@/lib/text-anim";
 import { VIDEO_RENDERER_VERSION } from "@/lib/video-version";
 import { canEncodeMp4, MP4_UNSUPPORTED, outputSize, probeVideo, renderGuestVideo, renderQuoteSprite, VIDEO_ACCEPT, VIDEO_FESTIVALS, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
 import { createClient } from "@/lib/supabase/client";
 import { publishInvitation } from "@/lib/wedding-publish";
-import { CUSTOM_TEMPLATE_ID, isPseudoTemplate, VIDEO_TEMPLATE_ID, EMPTY_DETAILS, fillName, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
+import { CUSTOM_TEMPLATE_ID, isPseudoTemplate, VIDEO_TEMPLATE_ID, EMPTY_DETAILS, fillName, EVENTS, EVENT_TITLE, FONT_STACKS, FONT_STYLES, GREETING_FORMATS, greetingText, SAMPLE_GUEST, type BlockId, type BlockKey, type TextId, type TextStyle, TEXT_SCALE_MAX, TEXT_SCALE_MIN, type FontStyle, eventConfig, getTemplate, inviteUrl, loadStudio, mapsLink, normalizePhone, saveStudio, sampleFor, TEMPLATE_FILTERS, templateSuits, TEMPLATES, validPhone, whatsappMessage, type CardEffect, type EventType, type OverlayText, type GreetingFormat, type Guest, type TemplateFilter, type WeddingDetails, type WeddingTemplate, type WLang } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
 import type { Palette } from "@/lib/wedding";
 
@@ -270,6 +273,15 @@ export function WeddingStudio() {
   const moveQuote = (x: number, y: number) => set({ videoQuoteX: clamp(x), videoQuoteY: clamp(y) });
   const quoteFor = (name: string): QuoteStyle => ({ text: fillName(d.videoQuote, name), scale: d.videoQuoteScale, color: d.videoQuoteColor, font: d.videoQuoteFont, pill: d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill, pillColor: d.videoQuotePillColor });
   const moveBadge = (x: number, y: number) => set({ guestBadgeX: clamp(x), guestBadgeY: clamp(y) });
+  // "+ Add Text Box" boxes and the free logo: selection, edits and drags (shared by image cards and videos).
+  const [ovSel, setOvSel] = useState<string | null>(null);
+  const boxes = d.overlayTexts ?? [];
+  const patchBox = (id: string, patch: Partial<OverlayText>) => setD((cur) => ({ ...cur, overlayTexts: (cur.overlayTexts ?? []).map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
+  const addTextBox = () => { const b = newTextBox(boxes.length); setD((cur) => ({ ...cur, overlayTexts: [...(cur.overlayTexts ?? []), b] })); setOvSel(b.id); setSelected(null); setQuoteSel(false); };
+  const delTextBox = (id: string) => { setD((cur) => ({ ...cur, overlayTexts: (cur.overlayTexts ?? []).filter((b) => b.id !== id) })); setOvSel(null); };
+  const pickOverlay = (id: string) => { setOvSel(id); setSelected(null); setQuoteSel(false); };
+  const moveLogo = (x: number, y: number) => set({ logoX: clamp(x), logoY: clamp(y) });
+  const imgSprites = useTextSprites(boxes, d.fontStyle ?? "default", previewGuest.name);
   const moveBlock = (key: Exclude<TextId, "guest">, x: number, y: number) => setD((cur) => ({ ...cur, blockPos: { ...cur.blockPos, [key]: { x: clamp(x), y: clamp(y) } } }));
   const styleText = (id: TextId, patch: { [K in keyof TextStyle]?: TextStyle[K] | null }) => setD((cur) => {
     const next: TextStyle = { ...(cur.textStyle?.[id] ?? {}) };
@@ -288,8 +300,11 @@ export function WeddingStudio() {
   const fontForBlock = (key: TextId, f: FontStyle | "") => setD((cur) => { const bf = { ...cur.blockFont }; if (f) bf[key] = f; else delete bf[key]; return { ...cur, blockFont: bf }; });
   // One font for every block at once: also clears the per-block overrides so nothing keeps an older choice.
   const fontForAll = (f: FontStyle) => set({ fontStyle: f, blockFont: {} });
-  const layoutCustom = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || Object.keys(d.textStyle ?? {}).length > 0 || (d.contentScale ?? 1) !== 1;
-  const resetLayout = () => set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, textStyle: {}, contentScale: 1 });
+  const layoutCustom = d.guestBadgeX != null || Object.keys(d.blockPos ?? {}).length > 0 || Object.keys(d.blockScale ?? {}).length > 0 || Object.keys(d.blockFont ?? {}).length > 0 || Object.keys(d.textStyle ?? {}).length > 0 || (d.contentScale ?? 1) !== 1 || d.logoX != null || (d.overlayTexts ?? []).length > 0;
+  const resetLayout = () => {
+    setD((cur) => ({ ...cur, logoX: null, logoY: null, overlayTexts: (cur.overlayTexts ?? []).map((b, i) => ({ ...b, x: 50, y: Math.min(80, 30 + i * 10) })) }));
+    set({ guestBadgeX: null, guestBadgeY: null, blockPos: {}, blockScale: {}, blockFont: {}, textStyle: {}, contentScale: 1 });
+  };
 
   // The toolbar is only there while a section is selected: Escape, Done, or a click anywhere but on a text section / the toolbar / the bar above the card closes it.
   useEffect(() => {
@@ -520,8 +535,9 @@ export function WeddingStudio() {
         if (!sprite) throw new Error("Couldn't draw the guest name on the video.");
         const logo = d.festivalPhoto && d.photos[0] ? await loadImage(d.photos[0]) : null;
         const qsp = await renderQuoteSprite(quoteFor(g.name), w);
+        const texts = (await Promise.all((rd.overlayTexts ?? []).map(async (tb) => { const sp = await renderOverlayTextSprite(tb, rd, w, g.name); return sp ? { sprite: sp, x: tb.x, y: tb.y, cfg: buildAnimConfig(tb.anim ?? "none", tb.timing, "header", video.info.duration) } : null; }))).filter((x): x is NonNullable<typeof x> => !!x);
         setVideoProgress({ name: g.name, pct: 0 });
-        const out = await renderGuestVideo({ src: video.url, info: video.info, sprite: { canvas: sprite.canvas, reveal: plainReveal(sprite.text, sprite.canvas.width, sprite.canvas.height) }, headerAnimConfig: animCfg("header"), footerAnimConfig: animCfg("footer"), x: d.guestBadgeX ?? 50, y: d.guestBadgeY ?? 84, quote: qsp ? { sprite: qsp, x: d.videoQuoteX ?? 50, y: d.videoQuoteY ?? 92 } : null, logo, onProgress: (f) => setVideoProgress({ name: g.name, pct: f }) });
+        const out = await renderGuestVideo({ src: video.url, info: video.info, sprite: { canvas: sprite.canvas, reveal: plainReveal(sprite.text, sprite.canvas.width, sprite.canvas.height) }, headerAnimConfig: animCfg("header"), footerAnimConfig: animCfg("footer"), x: d.guestBadgeX ?? 50, y: d.guestBadgeY ?? 84, quote: qsp ? { sprite: qsp, x: d.videoQuoteX ?? 50, y: d.videoQuoteY ?? 92 } : null, logo, logoSpec: { x: d.logoX ?? null, y: d.logoY ?? null, size: d.logoSize ?? 170, shape: d.logoShape ?? "circle" }, texts, onProgress: (f) => setVideoProgress({ name: g.name, pct: f }) });
         const sb = createClient();
         if (!sb) throw new Error("Storage isn't configured.");
         const up = await sb.storage.from("invitation-cards").uploadToSignedUrl(pj.path, pj.token, out.video, { contentType: "video/mp4" });
@@ -849,40 +865,13 @@ export function WeddingStudio() {
                         </Field>
                         <div className="space-y-3" data-anim-controls>
                           {([["header", "w-hanim", "Header animation", "videoHeaderAnim", "videoHeaderTiming", "The guest line at the top / greeting"], ["footer", "w-fanim", "Footer animation", "videoFooterAnim", "videoFooterTiming", "The footer greeting quote"]] as const).map(([layer, id, label, key, tkey, hint]) => {
-                            const preset = d[key], tm = { ...defaultTiming(layer), ...(d[tkey] ?? {}) }, cfg = animCfg(layer), off = tm.exit === "none", num = "h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
-                            const setT = (patch: Partial<AnimTiming>) => { set({ [tkey]: { ...tm, ...patch } }); setReplayKey((n) => n + 1); };
-                            const parse = (v: string) => (v.trim() === "" ? null : Number(v));
                             return (
-                              <div key={id} className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700" data-anim-layer={layer}>
-                                <Field id={id} label={label} hint={hint}>
-                                  <Select id={id} value={preset} onChange={(e) => { set({ [key]: e.target.value as TextAnim }); setReplayKey((n) => n + 1); }}>
-                                    <option value="none">None (Static)</option>
-                                    <optgroup label="Entrance animations">{TEXT_ANIMS.filter((a) => a.group === "entrance").map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</optgroup>
-                                    <optgroup label="Continuous / loop">{TEXT_ANIMS.filter((a) => a.group === "loop").map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</optgroup>
-                                  </Select>
-                                </Field>
-                                <fieldset className="grid gap-2 sm:grid-cols-2" disabled={preset === "none" && off}>
-                                  <legend className="mb-1 text-xs font-bold text-slate-700 dark:text-slate-200">Timing &amp; Speed</legend>
-                                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Speed: {tm.speed.toFixed(2).replace(/0$/, "")}x
-                                    <input type="range" aria-label={`${label} speed`} data-anim-speed={layer} min={SPEED_RANGE.min} max={SPEED_RANGE.max} step={0.05} value={tm.speed} onChange={(e) => setT({ speed: Number(e.target.value) })} className="mt-1 block w-full" />
-                                  </label>
-                                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Start In (s)
-                                    <input type="number" aria-label={`${label} start in`} data-anim-start={layer} className={`${num} mt-1`} min={START_RANGE.min} max={START_RANGE.max} step={0.1} value={tm.startIn} onChange={(e) => setT({ startIn: Number(e.target.value) || 0 })} />
-                                  </label>
-                                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Duration (s)
-                                    <input type="number" aria-label={`${label} duration`} data-anim-duration={layer} className={`${num} mt-1`} min={DURATION_RANGE.min} max={DURATION_RANGE.max} step={0.1} value={tm.duration ?? defaultDuration(preset)} onChange={(e) => setT({ duration: parse(e.target.value) })} />
-                                  </label>
-                                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Exit / Out
-                                    <Select id={`${id}-exit`} value={tm.exit} onChange={(e) => setT({ exit: e.target.value as ExitAnim })}>{EXIT_ANIMS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</Select>
-                                  </label>
-                                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 sm:col-span-2">Out Time (s)
-                                    <input type="number" aria-label={`${label} out time`} data-anim-out={layer} disabled={off} className={`${num} mt-1`} min={0} max={Math.max(0, video?.info.duration ?? 60)} step={0.1} value={Math.round(cfg.outTime * 10) / 10} onChange={(e) => setT({ outTime: parse(e.target.value) })} />
-                                  </label>
-                                </fieldset>
+                              <AnimControls key={id} layer={layer} id={id} label={label} hint={hint} preset={d[key]} timing={d[tkey]} cfg={animCfg(layer)} videoDuration={video?.info.duration ?? 60}
+                                onPreset={(p) => { set({ [key]: p }); setReplayKey((n) => n + 1); }} onTiming={(t) => { set({ [tkey]: t }); setReplayKey((n) => n + 1); }}>
                                 {layer === "header"
                                   ? <ColorControls layer="header" label="Header" allowDefaultColor color={d.textStyle?.guest?.color ?? null} onColor={(c) => styleText("guest", { color: c })} pill={d.videoHeaderPill} pillColor={d.videoHeaderPillColor} onPill={(p) => set({ videoHeaderPill: p })} onPillColor={(c) => set({ videoHeaderPillColor: c })} />
                                   : <ColorControls layer="footer" label="Footer" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />}
-              </div>
+                              </AnimControls>
                             );
                           })}
                           <button type="button" onClick={() => setReplayKey((n) => n + 1)} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-white dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" aria-label="Replay animation from the start">↻ Replay</button>
@@ -900,6 +889,7 @@ export function WeddingStudio() {
                           <input ref={festPhotoRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload sender photo or logo" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; const u = await photoToDataUrl(f); if (u) setD((cur) => ({ ...cur, photos: [u, ...cur.photos.slice(1)] })); }} />
                         </div>
                       )}
+                      {d.festivalPhoto && d.photos[0] && <LogoControls size={d.logoSize ?? 170} shape={d.logoShape ?? "circle"} moved={d.logoX != null} onSize={(n) => set({ logoSize: n })} onShape={(sh) => set({ logoShape: sh })} onReset={() => set({ logoX: null, logoY: null })} />}
                     </div>
                   </>
                 )}
@@ -921,6 +911,7 @@ export function WeddingStudio() {
                   <Field id="w-verse" label="Closing verse"><Input id="w-verse" value={d.verse} onChange={(e) => set({ verse: e.target.value })} /></Field>
                 </div>
               </div>}
+              <TextBoxEditor boxes={boxes} selectedId={ovSel} onSelect={(id) => (id ? pickOverlay(id) : setOvSel(null))} onAdd={addTextBox} onChange={patchBox} onDelete={delTextBox} isVideo={isVideoMode} videoDuration={video?.info.duration ?? 60} onReplay={() => setReplayKey((n) => n + 1)} />
               <button type="button" onClick={() => setTab("Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: photos</button>
             </section>
           )}
@@ -1004,7 +995,7 @@ export function WeddingStudio() {
               </div>
             </div>
             {isVideoMode && video ? (
-              <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={previewGuest} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} selected={selected === "guest"} onSelect={() => { setQuoteSel(false); setSelected("guest"); }} onMove={moveBadge} quoteStyle={quoteFor(previewGuest.name)} headerAnimConfig={animCfg("header")} footerAnimConfig={animCfg("footer")} replayKey={replayKey} qx={d.videoQuoteX ?? 50} qy={d.videoQuoteY ?? 92} quoteSelected={quoteSel} onSelectQuote={() => { setSelected(null); setQuoteSel(true); }} onMoveQuote={moveQuote} />
+              <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={previewGuest} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} selected={selected === "guest"} onSelect={() => { setQuoteSel(false); setSelected("guest"); }} onMove={moveBadge} quoteStyle={quoteFor(previewGuest.name)} headerAnimConfig={animCfg("header")} footerAnimConfig={animCfg("footer")} replayKey={replayKey} onMoveLogo={moveLogo} onMoveText={(id, x, y) => patchBox(id, { x, y })} overlaySel={ovSel} onSelectOverlay={pickOverlay} qx={d.videoQuoteX ?? 50} qy={d.videoQuoteY ?? 92} quoteSelected={quoteSel} onSelectQuote={() => { setSelected(null); setQuoteSel(true); }} onMoveQuote={moveQuote} />
             ) : (
             <div className="relative mx-auto w-full max-w-[420px]">
               <div className={cn("rounded-lg", zoom > 1 && "max-h-[80vh] overflow-auto overscroll-contain")} aria-label={zoom > 1 ? "Zoomed preview (scroll to pan)" : undefined}>
@@ -1012,7 +1003,8 @@ export function WeddingStudio() {
               <div onContextMenu={(e) => e.preventDefault()} className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 select-none dark:border-slate-700 dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {preview ? <img src={preview} alt="Invitation card preview" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}
-                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScaleText={scaleText} onEditText={editTextField} />}
+                {preview && <CardEditOverlay zones={zones} groups={groups} details={d} selected={selected} onSelect={setSelected} onPickPhoto={(i) => { cardPhotoIdx.current = i; cardPhotoRef.current?.click(); }} onRemovePhoto={removePhoto} onMoveBadge={moveBadge} onMoveBlock={moveBlock} onScaleText={scaleText} onEditText={editTextField} onMoveLogo={moveLogo} />}
+                {preview && <OverlayHitLayer selectedId={ovSel} onSelect={pickOverlay} onMove={(id, x, y) => patchBox(id, { x, y })} items={boxes.flatMap((b, i) => (imgSprites[b.id] ? [{ id: b.id, x: b.x, y: b.y, w: (imgSprites[b.id].w1080 / 1080) * 100, h: (imgSprites[b.id].h1080 / 1500) * 100, label: `Text box ${i + 1}` }] : []))} />}
               </div>
               </div>
               </div>

@@ -4,9 +4,11 @@
  * invite page and in the downloadable personalised PNG. Logical size is 1080 x 1500; `width` scales it.
  */
 import { loadPrintFonts } from "./print-ad-render";
+import { drawLogo, logoBox } from "./overlay";
 import { pillFill } from "./text-anim";
+import { brightness, buildTextSprite, type TextSprite } from "./text-sprite";
 import { drawMotif, MOTIF_LAYOUT } from "./wedding-motifs";
-import { CUSTOM_TEMPLATE_ID, VIDEO_TEMPLATE_ID, eventConfig, EVENT_TITLE, fillName, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
+import { CUSTOM_TEMPLATE_ID, VIDEO_TEMPLATE_ID, eventConfig, EVENT_TITLE, fillName, FONT_CHOICES, FONT_STACKS, TEXT_SCALE_MAX, TEXT_SCALE_MIN, formatDate, greetingText, type BlockId, type BlockKey, type OverlayText, type CardLayer, type FontStyle, type TextId, type PhotoShape, type WeddingDetails, type WeddingTemplate, type Palette } from "./wedding";
 
 export const CARD_W = 1080;
 export const CARD_H = 1500;
@@ -166,6 +168,18 @@ function fontSpec(style: FontStyle, id: string | undefined, base: string): FontS
   }
   if (style === "royal") return { fam: base === SANS ? SANS : FONT_STACKS.royal, scale: 1, script: false }; // keep the small sans lines readable
   return { fam: FONT_STACKS[style], scale: 1, script: false };
+}
+
+/** One "+ Add Text Box" box as a sprite at `width` px frame width (null when it has no text). `{name}` is replaced by the guest's name. Shared by the card renderer, the video preview and the MP4 export. */
+export async function renderOverlayTextSprite(tb: OverlayText, d: Pick<WeddingDetails, "fontStyle">, width: number, guestName?: string): Promise<TextSprite | null> {
+  const text = fillName(tb.text, guestName);
+  if (!text.trim()) return null;
+  const style = (tb.font || d.fontStyle || "default") as FontStyle, spec = fontSpec(style, undefined, SANS);
+  await loadCardFonts(new Set<FontStyle>([style]), text);
+  const k = width / 1080, px = Math.max(12, tb.size) * spec.scale * k, weight = spec.weight ?? 600;
+  const fill = pillFill(tb.pill, tb.pillColor, "header"), light = tb.pill === "default" || tb.pill === "frost";
+  const color = tb.color ?? (light ? "#2B1A12" : "#FFFFFF");
+  return buildTextSprite({ text, fam: spec.fam, weight, px, k, padScale: px / (40 * k), color, fill: fill === "default" ? "rgba(255,250,240,0.93)" : fill, border: fill === "default" ? "#C9A24A" : null, shadow: brightness(color) > 150 });
 }
 
 /** Makes sure the chosen fonts are decoded before text is measured (same 4 s cap as the Malayalam faces). */
@@ -467,7 +481,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
       const wish = fillName(d.message.trim(), o.guest?.name);
       if (wish) text(wish, 36, 500, { id: "message", italic: true, color: p.ink });
       else both(fillName(f.wish.ml, o.guest?.name), fillName(f.wish.en, o.guest?.name), 36, 500, { id: "message", italic: true });
-      if (d.festivalPhoto) photoBlock();
+      if (d.festivalPhoto && d.logoX == null) photoBlock(); // a dragged logo is drawn on top instead (below)
       const from = d.groom.trim();
       if (from) { both("സ്നേഹപൂർവം", "With love from", 28, 600, { id: "names", color: p.sub, fam: SANS }); text(from, 64, 800, { id: "names" }); }
       if (d.verse.trim()) text(d.verse.trim(), 26, 500, { id: "verse", italic: true, color: p.sub });
@@ -577,6 +591,24 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
   // Custom layers (text boxes, images, decorations) sit on top of everything, in stacking order.
   const layerBoxes: LayerBox[] = [];
   layers.forEach((l, i) => { const bx = drawLayer(ctx, l, layerImgs[i], d); if (bx) layerBoxes.push(bx); });
+  // Free logo + text boxes (+ Add Text Box) sit above the layers. Drawn in output pixels so the text stays sharp at any export width.
+  if (!video) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const Wp = canvas.width, Hp = canvas.height;
+    if (d.festivalPhoto && d.logoX != null && o.photo && !custom) {
+      const spec = { x: d.logoX, y: d.logoY, size: d.logoSize, shape: d.logoShape };
+      drawLogo(ctx, o.photo, spec, Wp, Hp);
+      const bx = logoBox(o.photo, spec, Wp, Hp);
+      zones.push({ id: "photo", x: (bx.cx - bx.w / 2) / scale, y: (bx.cy - bx.h / 2) / scale, w: bx.w / scale, h: bx.h / scale });
+    }
+    for (const tb of d.overlayTexts ?? []) {
+      const sp = await renderOverlayTextSprite(tb, d, o.width, o.guest?.name);
+      if (!sp) continue;
+      const cx0 = Math.min(Wp - sp.canvas.width / 2, Math.max(sp.canvas.width / 2, (tb.x / 100) * Wp)), cy0 = Math.min(Hp - sp.canvas.height / 2, Math.max(sp.canvas.height / 2, (tb.y / 100) * Hp));
+      ctx.drawImage(sp.canvas, Math.round(cx0 - sp.canvas.width / 2), Math.round(cy0 - sp.canvas.height / 2));
+    }
+    ctx.restore();
+  }
   o.onZones?.(zones);
   o.onGroups?.(groups);
   o.onLayers?.(layerBoxes);

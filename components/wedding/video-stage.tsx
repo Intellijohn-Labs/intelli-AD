@@ -2,8 +2,10 @@
 
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { OverlayHitLayer, useTextSprites, type TextSpriteEntry } from "./overlay-layer";
+import { logoBox, LOGO_SIZE, type LogoSpec } from "@/lib/overlay";
 import { paintOverlay, renderQuoteSprite, type QuoteStyle, type VideoInfo } from "@/lib/greeting-video";
-import { plainReveal, type AnimConfig, type AnimSprite } from "@/lib/text-anim";
+import { buildAnimConfig, plainReveal, type AnimConfig, type AnimSprite } from "@/lib/text-anim";
 import { renderGreetingSprite } from "@/lib/wedding-render";
 import type { WeddingDetails, WeddingTemplate } from "@/lib/wedding";
 import { cn } from "@/lib/utils";
@@ -16,11 +18,15 @@ export interface SpritePreview { sp: AnimSprite; w1080: number; h1080: number }
  * overlay you can drag (a plain click selects it so its font, colour, size and box can be edited). The overlay is sized as a % of the stage width,
  * exactly how the rendered MP4 scales it, so what you see is where it lands on every frame.
  */
-export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, onMove, interactive = true, quote, qx = 50, qy = 92, quoteSelected, onSelectQuote, onMoveQuote, headerAnimConfig, footerAnimConfig, replayKey = 0 }: {
+export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, onMove, interactive = true, quote, qx = 50, qy = 92, quoteSelected, onSelectQuote, onMoveQuote, headerAnimConfig, footerAnimConfig, replayKey = 0, logoSpec, onMoveLogo, texts, onMoveText, overlaySel, onSelectOverlay }: {
   src: string; info: VideoInfo; sprite: SpritePreview | null; x: number; y: number; logo?: string | null;
   selected?: boolean; onSelect?: () => void; onMove?: (x: number, y: number) => void; interactive?: boolean;
   /** Text animations (header = the guest line, footer = the quote) and a counter that restarts the clip from 0 s whenever it changes. */
   headerAnimConfig?: AnimConfig; footerAnimConfig?: AnimConfig; replayKey?: number;
+  /** Logo placement + drag, and the "+ Add Text Box" boxes (sprite, centre %, own animation) + drag; `overlaySel` is the selected box id or "logo". */
+  logoSpec?: LogoSpec; onMoveLogo?: (x: number, y: number) => void;
+  texts?: { id: string; entry: TextSpriteEntry; x: number; y: number; cfg: AnimConfig; label: string }[]; onMoveText?: (id: string, x: number, y: number) => void;
+  overlaySel?: string | null; onSelectOverlay?: (id: string) => void;
   /** Footer quote overlay (draggable like the greeting). */
   quote?: SpritePreview | null; qx?: number; qy?: number; quoteSelected?: boolean; onSelectQuote?: () => void; onMoveQuote?: (x: number, y: number) => void;
 }) {
@@ -31,8 +37,10 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
   useEffect(() => { if (!replayKey) return; const v = vref.current; if (!v) return; v.currentTime = 0; void v.play().catch(() => undefined); }, [replayKey]);
   // The animated text is drawn on a canvas from the video's own clock, by the same function the MP4 renderer uses, so play, pause and scrubbing all match the export.
   const cv = useRef<HTMLCanvasElement>(null);
-  const live = useRef({ sprite, quote, x, y, qx, qy, headerAnimConfig, footerAnimConfig });
-  live.current = { sprite, quote, x, y, qx, qy, headerAnimConfig, footerAnimConfig };
+  const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => { if (!logo) { setLogoImg(null); return; } let on = true; const im = new Image(); im.onload = () => { if (on) setLogoImg(im); }; im.src = logo; return () => { on = false; }; }, [logo]);
+  const live = useRef({ sprite, quote, x, y, qx, qy, headerAnimConfig, footerAnimConfig, logoImg, logoSpec, texts });
+  live.current = { sprite, quote, x, y, qx, qy, headerAnimConfig, footerAnimConfig, logoImg, logoSpec, texts };
   useEffect(() => {
     let raf = 0;
     const loop = () => {
@@ -40,7 +48,7 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
       if (c && v) {
         const ctx = c.getContext("2d")!, L = live.current;
         ctx.clearRect(0, 0, c.width, c.height);
-        if (L.sprite) paintOverlay(ctx, c.width, c.height, { sprite: L.sprite.sp, x: L.x, y: L.y, quote: L.quote ? { sprite: L.quote.sp, x: L.qx, y: L.qy } : null, headerAnimConfig: L.headerAnimConfig, footerAnimConfig: L.footerAnimConfig, t: v.currentTime, skipLogo: true });
+        if (L.sprite) paintOverlay(ctx, c.width, c.height, { sprite: L.sprite.sp, x: L.x, y: L.y, quote: L.quote ? { sprite: L.quote.sp, x: L.qx, y: L.qy } : null, headerAnimConfig: L.headerAnimConfig, footerAnimConfig: L.footerAnimConfig, logo: L.logoImg, logoSpec: L.logoSpec, texts: (L.texts ?? []).map((q) => ({ sprite: q.entry.sp, x: q.x, y: q.y, cfg: q.cfg })), t: v.currentTime });
       }
       raf = requestAnimationFrame(loop);
     };
@@ -58,7 +66,6 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
     <div className={cn("mx-auto w-full", portrait ? "max-w-[420px]" : "max-w-full")}>
       <div ref={stage} className="relative overflow-hidden rounded-lg border border-slate-200 bg-black select-none dark:border-slate-700" style={{ aspectRatio: `${info.width} / ${info.height}` }} onContextMenu={(e) => e.preventDefault()}>
         <video ref={vref} src={src} muted loop playsInline preload="auto" aria-label="Greeting video preview" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={(e) => setT(e.currentTarget.currentTime)} className="pointer-events-none h-full w-full object-contain" />
-        {logo && /* eslint-disable-next-line @next/next/no-img-element */ <img src={logo} alt="" className="pointer-events-none absolute bottom-[3%] left-[3%] aspect-square w-[16%] rounded-full border-[3px] border-white object-cover shadow-lg" style={portrait ? undefined : { width: `${16 * (info.height / info.width)}%` }} />}
         <canvas ref={cv} width={1080} height={Math.max(2, Math.round((1080 * info.height) / info.width))} aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" />
         {sprite && (
           <div
@@ -82,6 +89,12 @@ export function VideoStage({ src, info, sprite, x, y, logo, selected, onSelect, 
             style={{ left: `${qx}%`, top: `${qy}%`, width: `${(quote.w1080 / 1080) * 100}%`, aspectRatio: `${quote.w1080} / ${quote.h1080}`, transform: "translate(-50%, -50%)" }}
           />
         )}
+        {interactive && (() => {
+          const H1080 = (1080 * info.height) / info.width, items = [];
+          if (logoImg && logoSpec) { const b = logoBox(logoImg, logoSpec, 1080, H1080); items.push({ id: "logo", x: (b.cx / 1080) * 100, y: (b.cy / H1080) * 100, w: (b.w / 1080) * 100, h: (b.h / H1080) * 100, label: "Logo" }); }
+          for (const t of texts ?? []) items.push({ id: t.id, x: t.x, y: t.y, w: (t.entry.w1080 / 1080) * 100, h: (t.entry.h1080 / H1080) * 100, label: t.label });
+          return <OverlayHitLayer items={items} selectedId={overlaySel ?? null} onSelect={(id) => onSelectOverlay?.(id)} onMove={(id, nx, ny) => (id === "logo" ? onMoveLogo?.(nx, ny) : onMoveText?.(id, nx, ny))} />;
+        })()}
       </div>
       <div className="mt-2 flex items-center gap-2" role="group" aria-label="Video controls">
         <button type="button" onClick={() => { const v = vref.current; if (!v) return; if (v.paused) void v.play(); else v.pause(); }} aria-label={playing ? "Pause video" : "Play video"} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0A0B0D] text-white hover:bg-[#17181C] dark:bg-[#D12014] dark:hover:bg-[#E83E32]">{playing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}</button>
@@ -115,5 +128,10 @@ export function GreetingVideoStage({ tpl, rd, guest, quoteStyle, ...rest }: Omit
     }, 60);
     return () => { live = false; clearTimeout(t); };
   }, [qs?.text, qs?.scale, qs?.color, qs?.font, qs?.pill, qs?.pillColor]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <VideoStage {...rest} sprite={sprite} quote={quote} />;
+  const boxes = rd.overlayTexts ?? [];
+  const sprites = useTextSprites(boxes, rd.fontStyle ?? "default", guest.name);
+  const dur = rest.info.duration;
+  const texts = boxes.flatMap((b, i) => (sprites[b.id] ? [{ id: b.id, entry: sprites[b.id], x: b.x, y: b.y, cfg: buildAnimConfig(b.anim ?? "none", b.timing, "header", dur), label: `Text box ${i + 1}` }] : []));
+  const logoSpec: LogoSpec = { x: rd.logoX ?? null, y: rd.logoY ?? null, size: rd.logoSize ?? LOGO_SIZE.def, shape: rd.logoShape ?? "circle" };
+  return <VideoStage {...rest} sprite={sprite} quote={quote} texts={texts} logoSpec={logoSpec} />;
 }

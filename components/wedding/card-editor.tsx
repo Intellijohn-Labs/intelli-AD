@@ -16,7 +16,7 @@ const pct = (v: number, total: number) => `${(v / total) * 100}%`;
  * Transparent hit-zones over the live preview image. Nothing is drawn until a section is hovered (dashed outline) or selected (solid ring);
  * a click selects the section (the studio then shows its toolbar), a drag moves it, arrow keys nudge it. DOM only: never part of the PNG.
  */
-export function CardEditOverlay({ zones, groups, details, selected, onSelect, onPickPhoto, onRemovePhoto, onMoveBadge, onMoveBlock, onScaleText, onEditText }: {
+export function CardEditOverlay({ zones, groups, details, selected, onSelect, onPickPhoto, onRemovePhoto, onMoveBadge, onMoveBlock, onScaleText, onEditText, onMoveLogo }: {
   zones: CardZone[]; groups: GroupBox[]; details: WeddingDetails;
   selected: CardZone["id"] | null; onSelect: (id: CardZone["id"]) => void;
   onPickPhoto: (index: number) => void; onRemovePhoto: (index: number) => void;
@@ -24,6 +24,8 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
   onScaleText: (id: TextId, scale: number) => void;
   /** Double-click on a text: move the keyboard into that text's editing field (a single click only selects, so arrow keys and Delete keep working). */
   onEditText?: (id: TextId) => void;
+  /** Greeting cards with a sender logo: dragging the photo zone moves the logo (centre as % of the card). */
+  onMoveLogo?: (x: number, y: number) => void;
 }) {
   // Every text section can be dragged (mouse / touch / pen) or nudged with the arrow keys; a press that barely moves is a click and selects
   // it instead. Dotted guides show while moving.
@@ -48,6 +50,10 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
   // Corner handle on the selected text: dragging it outward / inward resizes that text (synced with the toolbar slider).
   const resizeRef = useRef<{ sx: number; scale0: number } | null>(null);
   const scaleOfZone = (id: TextId) => details.blockScale?.[id] ?? 1;
+  const ldrag = useRef<{ dx: number; dy: number; sx: number; sy: number; moved: boolean } | null>(null);
+  const logoDown = (e: React.PointerEvent, z: CardZone) => { e.currentTarget.setPointerCapture(e.pointerId); const { px, py } = toCard(e); ldrag.current = { dx: px - (z.x + z.w / 2), dy: py - (z.y + z.h / 2), sx: e.clientX, sy: e.clientY, moved: false }; };
+  const logoMove = (e: React.PointerEvent) => { const d0 = ldrag.current; if (!d0) return; if (!d0.moved && Math.hypot(e.clientX - d0.sx, e.clientY - d0.sy) < 5) return; d0.moved = true; const { px, py } = toCard(e); onMoveLogo?.(Math.round(((px - d0.dx) / CARD_W) * 1000) / 10, Math.round(((py - d0.dy) / CARD_H) * 1000) / 10); };
+  const logoUp = () => { if (ldrag.current?.moved) { suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 0); } ldrag.current = null; };
   const toCard = (e: React.PointerEvent) => { const r = frame.current!.getBoundingClientRect(); return { px: ((e.clientX - r.left) / r.width) * CARD_W, py: ((e.clientY - r.top) / r.height) * CARD_H }; };
 
   return (
@@ -62,7 +68,7 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
         )}
       </div>
       {zones.map((z, i) => {
-        const mk = blockOfZone(z.id), on = selected === z.id;
+        const mk = blockOfZone(z.id), on = selected === z.id, isLogo = z.id === "photo" && details.festivalPhoto && !!onMoveLogo;
         return (
           <button
             key={`${z.id}-${i}`}
@@ -74,15 +80,15 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
               e.currentTarget.setPointerCapture(e.pointerId);
               const b = boxOf(mk, z), { px, py } = toCard(e);
               dragRef.current = { key: mk, dx: px - b.cx, dy: py - b.cy, sx: e.clientX, sy: e.clientY, moved: false, w: b.w, h: b.h };
-            } : undefined}
+            } : isLogo ? (e) => logoDown(e, z) : undefined}
             onPointerMove={mk ? (e) => {
               const d0 = dragRef.current; if (!d0) return;
               if (!d0.moved && Math.hypot(e.clientX - d0.sx, e.clientY - d0.sy) < 5) return; // a quick click selects, a real drag moves
               d0.moved = true;
               const { px, py } = toCard(e); moveTo(d0.key, d0.w, d0.h, px - d0.dx, py - d0.dy);
-            } : undefined}
-            onPointerUp={mk ? () => { if (dragRef.current?.moved) { suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 0); } dragRef.current = null; setGuide(null); } : undefined}
-            onPointerCancel={mk ? () => { dragRef.current = null; setGuide(null); } : undefined}
+            } : isLogo ? logoMove : undefined}
+            onPointerUp={mk ? () => { if (dragRef.current?.moved) { suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 0); } dragRef.current = null; setGuide(null); } : isLogo ? logoUp : undefined}
+            onPointerCancel={mk ? () => { dragRef.current = null; setGuide(null); } : isLogo ? () => { ldrag.current = null; } : undefined}
             onKeyDown={mk ? (e) => {
               const k = e.key; if (!k.startsWith("Arrow")) return;
               e.preventDefault(); const st = e.shiftKey ? 50 : 10, b = boxOf(mk, z);
@@ -95,7 +101,7 @@ export function CardEditOverlay({ zones, groups, details, selected, onSelect, on
               if (z.id === "photo") { const r = e.currentTarget.getBoundingClientRect(); onPickPhoto(z.dual && e.clientX - r.left > r.width / 2 ? 1 : 0); return; }
               onSelect(z.id);
             }}
-            className={`group absolute ${mk ? "touch-none" : ""} cursor-pointer rounded-sm outline-offset-2 transition ${on ? "outline-2 outline-solid outline-[#D12014] bg-[#D12014]/[0.06]" : "outline-1 outline-transparent hover:outline-dashed hover:outline-[#D12014]"} focus-visible:outline-dashed focus-visible:outline-[#D12014]`}
+            className={`group absolute ${mk || isLogo ? "touch-none" : ""} cursor-pointer rounded-sm outline-offset-2 transition ${on ? "outline-2 outline-solid outline-[#D12014] bg-[#D12014]/[0.06]" : "outline-1 outline-transparent hover:outline-dashed hover:outline-[#D12014]"} focus-visible:outline-dashed focus-visible:outline-[#D12014]`}
             style={{ left: pct(z.x, CARD_W), top: pct(z.y, CARD_H), width: pct(z.w, CARD_W), height: pct(z.h, CARD_H) }}
           >
             {on && mk && (

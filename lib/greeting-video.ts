@@ -1,4 +1,6 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
+import { drawLogo, LOGO_SIZE, type LogoSpec } from "@/lib/overlay";
+import { buildTextSprite, type TextSprite } from "@/lib/text-sprite";
 import { drawAnimated, graphemes, plainReveal, type AnimSprite, type RevealLine, type AnimConfig, NO_ANIM, pillFill, type PillStyle } from "@/lib/text-anim";
 
 /**
@@ -78,45 +80,12 @@ const QUOTE_FONT = { sans: '"Noto Sans Malayalam", "Noto Sans", Inter, system-ui
  * The footer quote as a transparent sprite, drawn at `width` px frame width (logical design is 1080 wide). Wraps to at most 3 lines in the chosen
  * Malayalam-capable web font, on a translucent dark pill (optional) with a text shadow so it stays legible over any footage. w1080 is its width in 1080 units.
  */
-export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<(AnimSprite & { w1080: number; h1080: number; canvas: HTMLCanvasElement }) | null> {
+export async function renderQuoteSprite(q: QuoteStyle, width: number): Promise<TextSprite | null> {
   const text = q.text.trim();
   if (!text) return null;
   const k = width / 1080, fam = QUOTE_FONT[q.font], px = 40 * q.scale * k, weight = q.font === "serif" ? 700 : 600;
-  const font = `${weight} ${px}px ${fam}`;
-  try { await Promise.race([document.fonts.load(font, text), new Promise((r) => setTimeout(r, 4000))]); } catch { /* fall back to system fonts */ }
-  const c = document.createElement("canvas"), cx = c.getContext("2d")!;
-  cx.font = font;
-  const maxW = 880 * k, padX = 34 * k * q.scale, padY = 22 * k * q.scale, lh = px * 1.38, lines: string[] = [];
-  let line = "";
-  for (const w of text.split(/\s+/)) { const t = line ? `${line} ${w}` : w; if (line && cx.measureText(t).width > maxW) { lines.push(line); line = w; } else line = t; }
-  if (line) lines.push(line);
-  const shown = lines.slice(0, 4), textW = Math.min(maxW, Math.max(...shown.map((l) => cx.measureText(l).width)));
-  const m = 12 * k, w = Math.ceil(textW + padX * 2 + m * 2), h = Math.ceil(shown.length * lh + padY * 2 + m * 2);
-  const mk = () => { const cv = document.createElement("canvas"); cv.width = w; cv.height = h; return cv; };
-  const bg = mk(), fg = mk(), whole = mk();
-  const gb = bg.getContext("2d")!;
-  const pf = pillFill(q.pill, q.pillColor, "footer");
-  if (pf) { gb.fillStyle = pf; gb.beginPath(); gb.roundRect(m, m, w - m * 2, h - m * 2, Math.min(h / 2, 36 * k)); gb.fill(); }
-  const gf = fg.getContext("2d")!; gf.font = font; gf.textAlign = "center"; gf.textBaseline = "middle";
-  gf.fillStyle = q.color; gf.shadowColor = "rgba(0,0,0,0.7)"; gf.shadowBlur = 8 * k; gf.shadowOffsetY = 2 * k;
-  const reveal: RevealLine[] = [];
-  shown.forEach((l, i) => {
-    const yc = m + padY + lh * (i + 0.5);
-    gf.fillText(l, w / 2, yc);
-    // Exact reveal geometry: right edge after each grapheme cluster, and each word's span, measured in this font.
-    const gs = graphemes(l), lw = cx.measureText(l).width, left = (w - lw) / 2;
-    let acc = "";
-    const g = gs.map((ch) => { acc += ch; return left + cx.measureText(acc).width; });
-    const words: RevealLine["words"] = []; let gi = 0, pre = "";
-    for (const part of l.split(/(\s+)/)) {
-      const n = graphemes(part).length;
-      if (part && !/^\s+$/.test(part)) words.push({ x0: left + cx.measureText(pre).width, x1: left + cx.measureText(pre + part).width, first: gi, last: gi + n - 1 });
-      pre += part; gi += n;
-    }
-    reveal.push({ y0: yc - lh / 2, y1: yc + lh / 2, g, words });
-  });
-  const gw = whole.getContext("2d")!; gw.drawImage(bg, 0, 0); gw.drawImage(fg, 0, 0);
-  return { canvas: whole, bg, fg, reveal, w1080: w / k, h1080: h / k };
+  try { await Promise.race([document.fonts.load(`${weight} ${px}px ${fam}`, text), new Promise((r) => setTimeout(r, 4000))]); } catch { /* fall back to system fonts */ }
+  return buildTextSprite({ text, fam, weight, px, k, padScale: q.scale, color: q.color, fill: pillFill(q.pill, q.pillColor, "footer") });
 }
 
 export interface RenderGuestVideoOptions {
@@ -131,25 +100,22 @@ export interface RenderGuestVideoOptions {
   quote?: { sprite: AnimSprite; x: number; y: number } | null;
   /** Text animations for the guest line (header) and the footer quote. */
   headerAnimConfig?: AnimConfig; footerAnimConfig?: AnimConfig;
-  /** Optional sender logo / photo, drawn as a circle in the bottom-left corner. */
-  logo?: HTMLImageElement | null;
+  /** Optional sender logo / photo with its saved placement (default: a circle in the bottom-left corner). */
+  logo?: HTMLImageElement | null; logoSpec?: LogoSpec;
+  /** "+ Add Text Box" boxes: sprite, centre as % of the frame, and its own animation. */
+  texts?: { sprite: AnimSprite; x: number; y: number; cfg: AnimConfig }[];
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
 }
 
 /** Draws the overlay layers (animated text at video time `t`, then the logo) on top of whatever frame is on the canvas. Shared by the live preview and the render. */
-export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote" | "headerAnimConfig" | "footerAnimConfig"> & { t: number; skipLogo?: boolean }) {
+export function paintOverlay(ctx: CanvasRenderingContext2D, w: number, h: number, o: Pick<RenderGuestVideoOptions, "sprite" | "x" | "y" | "logo" | "quote" | "headerAnimConfig" | "footerAnimConfig" | "texts" | "logoSpec"> & { t: number; skipLogo?: boolean }) {
   const k = w / 1080, place = (sp: AnimSprite, x: number, y: number) => ({ cx: Math.min(w - sp.canvas.width / 2, Math.max(sp.canvas.width / 2, (x / 100) * w)), cy: Math.min(h - sp.canvas.height / 2, Math.max(sp.canvas.height / 2, (y / 100) * h)) });
   const a = place(o.sprite, o.x, o.y);
   drawAnimated(ctx, o.sprite, a.cx, a.cy, o.t, o.headerAnimConfig ?? NO_ANIM, k);
   if (o.quote) { const q = place(o.quote.sprite, o.quote.x, o.quote.y); drawAnimated(ctx, o.quote.sprite, q.cx, q.cy, o.t, o.footerAnimConfig ?? NO_ANIM, k); }
-  if (o.logo && !o.skipLogo) {
-    const d = Math.round(Math.min(w, h) * 0.16), m = Math.round(d * 0.28), x = m, y = h - d - m;
-    ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 14;
-    ctx.beginPath(); ctx.arc(x + d / 2, y + d / 2, d / 2, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill(); ctx.restore();
-    ctx.save(); ctx.beginPath(); ctx.arc(x + d / 2, y + d / 2, d / 2 - 3, 0, Math.PI * 2); ctx.clip();
-    const sc = Math.max(d / o.logo.width, d / o.logo.height); ctx.drawImage(o.logo, x + (d - o.logo.width * sc) / 2, y + (d - o.logo.height * sc) / 2, o.logo.width * sc, o.logo.height * sc); ctx.restore();
-  }
+  for (const t of o.texts ?? []) { const p = place(t.sprite, t.x, t.y); drawAnimated(ctx, t.sprite, p.cx, p.cy, o.t, t.cfg, k); }
+  if (o.logo && !o.skipLogo) drawLogo(ctx, o.logo, o.logoSpec ?? { x: null, y: null, size: LOGO_SIZE.def, shape: "circle" }, w, h);
 }
 
 /** The clip's audio as 48 kHz stereo, exactly `seconds` long. A clip with no audio (or one this browser can't decode) gets silence, so the MP4 always has a valid AAC track. */
