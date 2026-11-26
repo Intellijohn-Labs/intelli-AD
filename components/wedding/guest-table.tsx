@@ -9,7 +9,9 @@ import { guestsFromCsv, newId, parseGuests, SAMPLE_GUESTS_CSV, validPhone, type 
 import { cn } from "@/lib/utils";
 
 /** Editable guest list: add / paste-import / edit / delete rows, per-row preview + Send via Waau Panel, and Pending / Queued / Sent status. */
-export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldownLeft, onReplied }: {
+export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldownLeft, onReplied, readyIds }: {
+  /** Guests whose card / video has already been generated (shown as "Ready to send"). */
+  readyIds?: ReadonlySet<string>;
   guests: Guest[];
   /** The studio's setGuests: always called with an updater so an edit never overwrites status updates (or other edits) that landed since the last render. */
   onChange: React.Dispatch<React.SetStateAction<Guest[]>>;
@@ -52,8 +54,9 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldo
     setPaste(""); setShowPaste(false);
   };
 
-  const statusCls = (st: Guest["status"]) => cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap", st === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : st === "queued" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" : st === "failed" ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200");
-  const statusText = (st: Guest["status"]) => (st === "sent" ? "Sent via Waau Panel" : st === "queued" ? "Queued in Waau Panel" : st === "failed" ? "Failed" : "Pending");
+  const view = (g: Guest): Guest["status"] | "ready" => (g.status === "pending" && readyIds?.has(g.id) ? "ready" : g.status);
+  const statusCls = (st: Guest["status"] | "ready") => cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap", st === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : st === "queued" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" : st === "failed" ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200" : st === "ready" ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200");
+  const statusText = (st: Guest["status"] | "ready") => (st === "ready" ? "Ready to send" : st === "sent" ? "Sent via Waau Panel" : st === "queued" ? "Queued in Waau Panel" : st === "failed" ? "Failed" : "Pending");
 
   return (
     <div>
@@ -85,7 +88,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldo
               <li key={g.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Guest {i + 1}</span>
-                  <span className={statusCls(g.status)}>{statusText(g.status)}</span>
+                  <span className={statusCls(view(g))}>{statusText(view(g))}</span>
                 </div>
                 {cd > 0 && <div className="mb-2"><CooldownPill leftMs={cd} onReplied={() => onReplied(g.phone)} /></div>}
                 <div className="space-y-2">
@@ -118,7 +121,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldo
                     <td className="px-1 py-1"><Input aria-label={`Guest ${i + 1} place`} className="py-1.5" value={g.place} onChange={(e) => patch(g.id, { place: e.target.value })} /></td>
                     <td className="px-1 py-1"><Input aria-label={`Guest ${i + 1} WhatsApp number`} inputMode="tel" className={cn("py-1.5", bad && "border-red-500")} value={g.phone} onChange={(e) => patch(g.id, { phone: e.target.value, status: "pending" })} placeholder="98470 12345" aria-invalid={bad || undefined} /></td>
                     <td className="px-2 py-1.5">
-                      <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap", g.status === "sent" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200" : g.status === "queued" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200" : g.status === "failed" ? "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200")}>{g.status === "sent" ? "Sent via Waau Panel" : g.status === "queued" ? "Queued in Waau Panel" : g.status === "failed" ? "Failed" : "Pending"}</span>
+                      <span className={statusCls(view(g))}>{statusText(view(g))}</span>
                     
                       {cd > 0 && <div className="mt-1"><CooldownPill leftMs={cd} onReplied={() => onReplied(g.phone)} /></div>}
                     </td>

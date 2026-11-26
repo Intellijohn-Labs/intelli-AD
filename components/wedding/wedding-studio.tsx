@@ -474,16 +474,39 @@ export function WeddingStudio() {
 
   const setStatus = (id: string, status: Guest["status"]) => setGuests((cur) => cur.map((x) => (x.id === id ? { ...x, status } : x)));
 
-  /** Renders one guest's card, uploads it and hands it to Waau Panel (or queues it). Returns false to stop a batch (not signed in, etc.). */
-  const dispatchOne = async (g: Guest, invId: string | null, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<boolean> => {
+  // ── Generate once, send later ──────────────────────────────────────────────────────────────────────────────────────────────
+  // A generated item is the guest's JPEG card (kept in memory) or MP4 (already uploaded to storage; only its path and poster are kept, so 100 videos don't sit in RAM).
+  // Entries are stamped with a hash of everything that changes the picture (template, text, colours, animations, video) plus the guest's own name / place, so a stale render is never sent.
+  type Gen = { sig: string; kind: "image" | "video"; blob: Blob; url: string; videoPath?: string };
+  const genHash = useMemo(() => { const k = JSON.stringify([cardHash, video?.url ?? null, video?.info.duration ?? null]); let h = 5381; for (let i = 0; i < k.length; i++) h = ((h << 5) + h + k.charCodeAt(i)) | 0; return `${h}:${k.length}`; }, [cardHash, video?.url, video?.info.duration]);
+  const sigOf = (g: Guest) => `${genHash}|${g.name.trim()}|${g.place.trim()}`;
+  const [gens, setGens] = useState<Record<string, Gen>>({});
+  const gensRef = useRef<Record<string, Gen>>({});
+  const [genRun, setGenRun] = useState<{ done: number; total: number } | null>(null);
+  const [genSummary, setGenSummary] = useState("");
+  const [autoRun, setAutoRun] = useState(false);
+  const genAbort = useRef(false);
+  const putGen = (id: string, gen: Gen) => { const old = gensRef.current[id]; if (old?.kind === "image") URL.revokeObjectURL(old.url); gensRef.current = { ...gensRef.current, [id]: gen }; setGens(gensRef.current); };
+  const dropGen = (id: string) => { const old = gensRef.current[id]; if (!old) return; if (old.kind === "image") URL.revokeObjectURL(old.url); const { [id]: _drop, ...rest } = gensRef.current; void _drop; gensRef.current = rest; setGens(rest); };
+  useEffect(() => { // template, text, colours, animations, video or photos changed: nothing generated so far matches any more
+    Object.values(gensRef.current).forEach((x) => { if (x.kind === "image") URL.revokeObjectURL(x.url); });
+    gensRef.current = {}; setGens({}); setGenSummary("");
+  }, [genHash]);
+  const isReady = (g: Guest) => gens[g.id]?.sig === sigOf(g);
+  const cachedGen = (g: Guest) => (gensRef.current[g.id]?.sig === sigOf(g) ? gensRef.current[g.id] : undefined);
+  const readyIds = useMemo(() => new Set(Object.keys(gens).filter((id) => { const g = guests.find((x) => x.id === id); return !!g && gens[id].sig === sigOf(g); })), [gens, guests, genHash]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Renders one guest's card or video (video: cooldown pre-flight, render, upload) and caches it. `stop` ends a batch (not signed in, etc.); `skip` leaves this guest for later. */
+  const generateOne = async (g: Guest, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<{ gen?: Gen; stop?: boolean }> => {
+    const sig = sigOf(g);
     try {
-      let blob: Blob, videoPath: string | undefined;
+      let gen: Gen;
       if (isVideoMode && video) {
         // Pre-flight first: it applies the 24-hour per-number cooldown BEFORE a minute of rendering is spent on this guest.
         const pre = await fetch("/api/invitations/video-upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), rendererVersion: VIDEO_RENDERER_VERSION }) });
         const pj = (await pre.json().catch(() => ({}))) as { path?: string; token?: string; error?: string; code?: string; cooldownUntil?: number };
-        if (pj.code === "cooldown") { if (pj.cooldownUntil) { const p = normalizePhone(g.phone); setServerTimes((cur) => ({ ...(cur ?? {}), [p]: [pj.cooldownUntil! - COOLDOWN_WINDOW_MS, pj.cooldownUntil! - COOLDOWN_WINDOW_MS + 1] })); } setLogTick((t) => t + 1); toast(`${g.name}: ${pj.error ?? "This number is in cooldown."}`); return true; }
-        if (!pre.ok || !pj.path || !pj.token) { setStatus(g.id, "failed"); toast(pj.error ?? "Couldn't prepare the video upload."); return pre.status !== 401 && pre.status !== 429 && pre.status !== 503; }
+        if (pj.code === "cooldown") { if (pj.cooldownUntil) { const p = normalizePhone(g.phone); setServerTimes((cur) => ({ ...(cur ?? {}), [p]: [pj.cooldownUntil! - COOLDOWN_WINDOW_MS, pj.cooldownUntil! - COOLDOWN_WINDOW_MS + 1] })); } setLogTick((t) => t + 1); toast(`${g.name}: ${pj.error ?? "This number is in cooldown."}`); return {}; }
+        if (!pre.ok || !pj.path || !pj.token) { setStatus(g.id, "failed"); toast(pj.error ?? "Couldn't prepare the video upload."); return { stop: pre.status === 401 || pre.status === 429 || pre.status === 503 }; }
         const { w } = outputSize(video.info);
         const sprite = await renderGreetingSprite({ template: tpl, details: rd, guest: { name: g.name, place: g.place }, width: w });
         if (!sprite) throw new Error("Couldn't draw the guest name on the video.");
@@ -495,18 +518,31 @@ export function WeddingStudio() {
         if (!sb) throw new Error("Storage isn't configured.");
         const up = await sb.storage.from("invitation-cards").uploadToSignedUrl(pj.path, pj.token, out.video, { contentType: "video/mp4" });
         if (up.error) throw new Error(`Couldn't upload the video: ${up.error.message}`);
-        blob = out.poster; videoPath = pj.path;
-      } else blob = await cardBlob(g, photos);
+        gen = { sig, kind: "video", blob: out.poster, url: sb.storage.from("invitation-cards").getPublicUrl(pj.path).data.publicUrl, videoPath: pj.path };
+      } else { const blob = await cardBlob(g, photos); gen = { sig, kind: "image", blob, url: URL.createObjectURL(blob) }; }
+      putGen(g.id, gen);
+      return { gen };
+    } catch (e) {
+      setStatus(g.id, "failed");
+      toast(e instanceof Error && e.message && !/failed to fetch|networkerror/i.test(e.message) ? `${g.name}: ${e.message}` : "Couldn't reach the server. Please try again.");
+      return { stop: true };
+    } finally { setVideoProgress(null); }
+  };
+
+  /** Hands one already-generated item to Waau Panel (no rendering). Returns false to stop a batch. */
+  const sendGen = async (g: Guest, invId: string | null, gen: Gen): Promise<boolean> => {
+    try {
       const fd = new FormData();
-      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), ...(videoPath ? { videoPath } : {}), message: whatsappMessage(rd, g, tpl.festival), eventTitle: isFestival ? fillName(d.customTitle.trim(), g.name) || tpl.festival?.title.en || EVENT_TITLE[rd.eventType].en : isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isFestival || isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
-      fd.append("card", blob, "card.jpg");
+      fd.append("meta", JSON.stringify({ invitationId: invId, name: g.name.trim(), place: g.place.trim(), phone: normalizePhone(g.phone), guestReplied: hasReplied(g.phone), ...(gen.videoPath ? { videoPath: gen.videoPath } : {}), message: whatsappMessage(rd, g, tpl.festival), eventTitle: isFestival ? fillName(d.customTitle.trim(), g.name) || tpl.festival?.title.en || EVENT_TITLE[rd.eventType].en : isCustomMode ? d.customTitle.trim() || EVENT_TITLE[rd.eventType].en : EVENT_TITLE[rd.eventType].en, senderName: isFestival || isCustomMode ? d.groom.trim() : (cfg.couple ? [rd.groom, rd.bride] : [rd.groom]).filter(Boolean).join(" & "), inviteUrl: invId ? inviteUrl(origin, invId, g) : "" }));
+      fd.append("card", gen.blob, "card.jpg");
       const res = await fetch("/api/invitations/waau-dispatch", { method: "POST", body: fd });
       const j = (await res.json().catch(() => ({}))) as { status?: "queued" | "sent" | "failed"; error?: string; code?: string; cooldownUntil?: number };
       if (j.code === "cooldown") { // the server's guard: leave the guest as-is (not failed) and start the countdown
         if (j.cooldownUntil) { const p = normalizePhone(g.phone); setServerTimes((cur) => ({ ...(cur ?? {}), [p]: [j.cooldownUntil! - COOLDOWN_WINDOW_MS, j.cooldownUntil! - COOLDOWN_WINDOW_MS + 1] })); }
         setLogTick((t) => t + 1); toast(`${g.name}: ${j.error ?? "This number is in cooldown."}`); return true;
       }
-      if (j.status) { if (j.status !== "failed") noteSend(g.phone); setStatus(g.id, j.status); if (j.status === "failed") toast(`${g.name}: ${j.error ?? "Waau Panel couldn't send this invitation."}`); return true; }
+      if (j.status) { if (j.status !== "failed") { noteSend(g.phone); dropGen(g.id); } setStatus(g.id, j.status); if (j.status === "failed") toast(`${g.name}: ${j.error ?? "Waau Panel couldn't send this invitation."}`); return true; }
+      if (gen.videoPath && (res.status === 413 || res.status === 422)) dropGen(g.id); // the server rejected / removed this file: it has to be generated again
       setStatus(g.id, "failed");
       toast(j.error ?? "Couldn't send this invitation.");
       return res.status !== 401 && res.status !== 429 && res.status !== 503;
@@ -514,11 +550,17 @@ export function WeddingStudio() {
       setStatus(g.id, "failed");
       toast(e instanceof Error && e.message && !/failed to fetch|networkerror/i.test(e.message) ? `${g.name}: ${e.message}` : "Couldn't reach the server. Please try again.");
       return false;
-    } finally { setVideoProgress(null); }
+    }
+  };
+
+  /** Sends one guest: uses the generated item when there is one, otherwise generates it first. */
+  const dispatchOne = async (g: Guest, invId: string | null, photos: readonly [HTMLImageElement | null, HTMLImageElement | null]): Promise<boolean> => {
+    const r = cachedGen(g) ? { gen: cachedGen(g) } : await generateOne(g, photos);
+    return r.gen ? sendGen(g, invId, r.gen) : !r.stop;
   };
 
   const sendOne = async (g: Guest) => {
-    if (busyId || batch || !g.name.trim() || !validPhone(g.phone)) return;
+    if (busyId || batch || genRun || !g.name.trim() || !validPhone(g.phone)) return;
     if (cooldownLeft(g.phone) > 0) { toast(`${g.name}: this number is in cooldown. You can send again in ${clock(cooldownLeft(g.phone))}.`); return; }
     setBusyId(g.id);
     try { await dispatchOne(g, await ensurePublished(), await loadPhotos()); } finally { setBusyId(null); setLogTick((t) => t + 1); }
@@ -528,21 +570,61 @@ export function WeddingStudio() {
   const sendable = candidates.filter((g) => cooldownLeft(g.phone) === 0);
   const cooling = candidates.filter((g) => cooldownLeft(g.phone) > 0);
   const shortestWait = cooling.length ? Math.min(...cooling.map((g) => cooldownLeft(g.phone))) : 0;
-  const sendAll = async () => {
-    if (busyId || batch) return;
-    const list = candidates.filter((g) => cooldownLeft(g.phone) === 0); // re-checked at click time, the countdown may have just ended
-    const skipped = candidates.length - list.length;
-    if (list.length === 0) { setSendNote(skipped ? `All ${skipped} selected guest${skipped === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.` : ""); return; }
-    setSendNote(skipped ? `Skipped ${skipped} guest${skipped === 1 ? "" : "s"} currently in cooldown timer.` : "");
+  const fmtMs = (ms: number) => (ms >= 60000 ? `${Math.floor(ms / 60000)}m ${((ms % 60000) / 1000).toFixed(1)}s` : `${(ms / 1000).toFixed(1)}s`);
+  const noun = isVideoMode ? "video" : "card";
+  const toGenerate = sendable.filter((g) => !isReady(g));
+  const readyToSend = sendable.filter((g) => isReady(g));
+  const busyAny = !!batch || !!genRun || busyId !== null;
+
+  /** Stage 1: renders every valid guest's card / video once (timed) and caches it. Returns the guests that are now ready. */
+  const generateAll = async (): Promise<Guest[]> => {
+    const list = candidates.filter((g) => cooldownLeft(g.phone) === 0 && !cachedGen(g));
+    if (list.length === 0) return [];
+    genAbort.current = false; setGenSummary(""); setGenRun({ done: 0, total: list.length });
+    const t0 = performance.now(), made: Guest[] = [];
+    try {
+      const photos = await loadPhotos();
+      for (let i = 0; i < list.length; i++) {
+        if (genAbort.current) break;
+        setGenRun({ done: i, total: list.length }); setBusyId(list[i].id);
+        const r = await generateOne(list[i], photos);
+        if (r.gen) made.push(list[i]);
+        if (r.stop) break;
+      }
+    } finally { setBusyId(null); setGenRun(null); }
+    const ms = performance.now() - t0, n = made.length, nn = (k: number) => `${k} ${noun}${k === 1 ? "" : "s"}`;
+    setGenSummary(n === list.length ? `All ${nn(n)} generated in ${fmtMs(ms)}` : `${n} of ${nn(list.length)} generated in ${fmtMs(ms)}${genAbort.current ? " (stopped)" : ""}`);
+    return made;
+  };
+
+  /** Stage 2: sends already-generated items (no rendering). */
+  const runSend = async (all: Guest[]) => {
+    const list = all.filter((g) => cooldownLeft(g.phone) === 0 && !!cachedGen(g));
+    const skipped = all.length - list.length;
+    if (list.length === 0) { setSendNote(skipped ? `All ${skipped} selected guest${skipped === 1 ? " is" : "s are"} in cooldown or need generating again.` : ""); return; }
+    setSendNote(skipped ? `Skipped ${skipped} guest${skipped === 1 ? "" : "s"} (cooldown timer, or generate again).` : "");
     setBatch({ done: 0, total: list.length });
     try {
-      const invId = await ensurePublished(), photos = await loadPhotos();
+      const invId = await ensurePublished();
       for (let i = 0; i < list.length; i++) {
         setBatch({ done: i, total: list.length });
         setBusyId(list[i].id);
-        if (!(await dispatchOne(list[i], invId, photos))) break;
+        const gen = cachedGen(list[i]);
+        if (!gen) continue;
+        if (!(await sendGen(list[i], invId, gen))) break;
       }
     } finally { setBusyId(null); setBatch(null); setLogTick((t) => t + 1); }
+  };
+  const generateOnly = async () => { if (busyAny) return; setSendNote(""); const made = await generateAll(); if (!made.length && toGenerate.length === 0) setSendNote(candidates.length && readyToSend.length === 0 ? `All ${candidates.length} guest${candidates.length === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.` : "Everything is already generated. Press Send All."); };
+  const sendAll = async () => { if (busyAny) return; await runSend(readyToSend); };
+  const autoAll = async () => {
+    if (busyAny) return;
+    setAutoRun(true); setSendNote("");
+    try {
+      const already = readyToSend, made = await generateAll();
+      if (genAbort.current) return;
+      await runSend([...already, ...made]);
+    } finally { setAutoRun(false); }
   };
   const counts = { queued: guests.filter((g) => g.status === "queued").length, sent: guests.filter((g) => g.status === "sent").length, failed: guests.filter((g) => g.status === "failed").length };
 
@@ -865,15 +947,24 @@ export function WeddingStudio() {
               <div>
                 <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">1. Add your guests</h2>
                 <p className="mb-3 text-xs text-slate-600 dark:text-slate-300">Add each recipient&apos;s name, place and WhatsApp number (one by one, or paste many from Excel / Sheets). Every guest gets their own card with “Dear Name, Place” on it, prepared automatically. Cards are never downloaded to your device.</p>
-                <GuestTable guests={guests} busyId={busyId} onChange={setGuests} onSend={(g) => void sendOne(g)} onPreview={setGuestPreview} cooldownLeft={cooldownLeft} onReplied={markReplied} />
+                <GuestTable guests={guests} busyId={busyId} onChange={setGuests} onSend={(g) => void sendOne(g)} onPreview={setGuestPreview} cooldownLeft={cooldownLeft} onReplied={markReplied} readyIds={readyIds} />
               </div>
               <div className="rounded-lg border border-[#25D366]/50 bg-[#25D366]/10 p-3">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">2. Dispatch via Waau Panel</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void sendAll()} disabled={candidates.length === 0 || !!batch || busyId !== null} className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({sendable.length} {sendable.length === 1 ? "guest" : "guests"})</button>
-                  {batch && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Preparing and sending {Math.min(batch.done + 1, batch.total)} of {batch.total}…</span>}
+                  <button type="button" onClick={() => void generateOnly()} disabled={toGenerate.length === 0 || busyAny} data-gen-all className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900">{genRun && !autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} Generate All ({toGenerate.length} {toGenerate.length === 1 ? "guest" : "guests"})</button>
+                  <button type="button" onClick={() => void sendAll()} disabled={readyToSend.length === 0 || busyAny} data-send-all className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch && !autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({readyToSend.length} ready)</button>
+                  <button type="button" onClick={() => void autoAll()} disabled={(toGenerate.length === 0 && readyToSend.length === 0) || busyAny} data-auto-all className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#25D366] px-4 py-2 text-sm font-extrabold text-slate-900 hover:bg-[#25D366]/15 disabled:opacity-40 dark:text-white">{autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <span aria-hidden="true">⚡</span>} Auto (Generate &amp; Send)</button>
+                  {genRun && <button type="button" onClick={() => { genAbort.current = true; }} className="text-xs font-bold text-red-700 underline dark:text-red-300">Stop</button>}
                   {videoProgress && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Rendering video for {videoProgress.name}: {Math.round(videoProgress.pct * 100)}%. Keep this tab open and visible.</span>}
                 </div>
+                {genRun && (
+                  <div className="mt-2" data-gen-progress>
+                    <p role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Generating {Math.min(genRun.done + 1, genRun.total)} / {genRun.total}…</p>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/70 dark:bg-slate-700" role="progressbar" aria-valuemin={0} aria-valuemax={genRun.total} aria-valuenow={genRun.done}><div className="h-full bg-[#25D366] transition-all" style={{ width: `${(100 * genRun.done) / Math.max(1, genRun.total)}%` }} /></div>
+                  </div>
+                )}
+                {genSummary && !genRun && <p role="status" data-gen-summary className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900 ring-1 ring-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-100">✓ {genSummary}</p>}
                 {(sendNote || (cooling.length > 0 && sendable.length === 0 && candidates.length > 0)) && (
                   <p role="status" className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                     <span>{sendNote || `All ${cooling.length} unsent guest${cooling.length === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.`}</span>
@@ -964,7 +1055,12 @@ export function WeddingStudio() {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-stone-950/75 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setGuestPreview(null); }}>
           <div role="dialog" aria-modal="true" aria-label="Personalised card" className="flex max-h-[94vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between"><h2 className="text-sm font-bold text-slate-900 dark:text-white">Card for {guestPreview.name || "this guest"}</h2><button type="button" aria-label="Close" onClick={() => setGuestPreview(null)} className="rounded-full p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button></div>
-            {isVideoMode && video ? <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={guestPreview} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} interactive={false} quoteStyle={quoteFor(guestPreview.name)} headerAnimConfig={animCfg("header")} footerAnimConfig={animCfg("footer")} qx={d.videoQuoteX ?? 50} qy={d.videoQuoteY ?? 92} /> : <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>}
+            {gens[guestPreview.id] && gens[guestPreview.id].sig === sigOf(guestPreview) ? (
+              <div className="space-y-1.5" data-generated-file>
+                {gens[guestPreview.id].kind === "video" ? <video src={gens[guestPreview.id].url} controls playsInline className="w-full rounded-lg bg-black" /> : /* eslint-disable-next-line @next/next/no-img-element */ <img src={gens[guestPreview.id].url} alt={`Generated card for ${guestPreview.name}`} className="w-full rounded-lg" />}
+                <p className="text-center text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">Ready to send: this is the exact generated file.</p>
+              </div>
+            ) : isVideoMode && video ? <GreetingVideoStage src={video.url} info={video.info} tpl={tpl} rd={rd} guest={guestPreview} x={d.guestBadgeX ?? 50} y={d.guestBadgeY ?? 84} logo={d.festivalPhoto ? d.photos[0] ?? null : null} interactive={false} quoteStyle={quoteFor(guestPreview.name)} headerAnimConfig={animCfg("header")} footerAnimConfig={animCfg("footer")} qx={d.videoQuoteX ?? 50} qy={d.videoQuoteY ?? 92} /> : <div onContextMenu={(e) => e.preventDefault()} className="w-full overflow-hidden rounded-lg bg-slate-100 select-none dark:bg-white/5" style={{ aspectRatio: "1080 / 1500" }}>{/* eslint-disable-next-line @next/next/no-img-element */}{guestImg ? <img src={guestImg} alt="Personalised card" draggable={false} className="pointer-events-none h-full w-full object-cover select-none" /> : <div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-hidden="true" /></div>}</div>}
             <button type="button" onClick={() => { void sendOne(guestPreview); }} disabled={!!busyId || !!batch || !guestPreview.name.trim() || !validPhone(guestPreview.phone)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-extrabold text-[#06371a] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /> Send via Waau Panel</button>
           </div>
         </div>
