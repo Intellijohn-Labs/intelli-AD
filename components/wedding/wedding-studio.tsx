@@ -39,6 +39,14 @@ export function WeddingStudio() {
   const mode: "invitation" | "greeting" | null = modeParam === "invitation" || modeParam === "greeting" ? modeParam : null;
   const lastInviteEvent = useRef<EventType>("wedding");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Template");
+  // Every step change (top pills, Next buttons) lands at the top of the page instead of wherever the previous step was scrolled to.
+  const tabSeen = useRef(tab);
+  useEffect(() => {
+    if (tabSeen.current === tab) return;
+    tabSeen.current = tab;
+    let calm = false; try { calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { /* default to smooth */ }
+    window.scrollTo({ top: 0, behavior: calm ? "auto" : "smooth" });
+  }, [tab]);
   // Greeting video (Greeting Cards mode): the clip lives in memory only (too big for the saved draft), so it must be re-uploaded after a reload.
   const [video, setVideo] = useState<{ file: File; url: string; info: VideoInfo } | null>(null);
   const [videoError, setVideoError] = useState("");
