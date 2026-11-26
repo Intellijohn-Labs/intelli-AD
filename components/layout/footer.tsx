@@ -71,14 +71,16 @@ export function Footer() {
         <div>
           <p className={headCls}>{t("Company & Support")}</p>
           <ul className="space-y-2.5">
-            <li><a href="mailto:help@intelliad.example" className={cn(linkCls, "inline-flex items-center gap-2")}><Mail className="h-4 w-4 text-slate-500" aria-hidden="true" /> {t("Contact")}</a></li>
+            <li><a href={`mailto:${COMPANY.email}`} className={cn(linkCls, "inline-flex items-center gap-2")}><Mail className="h-4 w-4 text-slate-500" aria-hidden="true" /> {t("Contact")}</a></li>
             {([["About", Info], ["Terms", ScrollText], ["Privacy", UserRoundCheck]] as const).map(([l, Icon]) => (
               <li key={l} title={t("Coming soon")} className="flex cursor-default items-center gap-2 text-sm text-slate-500"><Icon className="h-4 w-4" aria-hidden="true" /> {t(l)}</li>
             ))}
           </ul>
           <div className="mt-5 space-y-2 text-sm text-slate-300">
-            <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-500" aria-hidden="true" /> 1800-000-0000 (demo)</p>
-            <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-slate-500" aria-hidden="true" /> <a href="mailto:help@intelliad.example" className="transition-colors hover:text-white">help@intelliad.example</a></p>
+            <p className="flex items-start gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" /> <a href={`mailto:${COMPANY.email}`} className="min-w-0 break-all transition-colors hover:text-white">{COMPANY.email}</a></p>
+            {COMPANY.phones.map((p) => (
+              <p key={p.tel} className="flex items-start gap-2"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" /> <a href={`tel:${p.tel}`} className="whitespace-nowrap transition-colors hover:text-white">{p.display}</a></p>
+            ))}
           </div>
         </div>
       </div>

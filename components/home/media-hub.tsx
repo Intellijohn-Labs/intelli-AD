@@ -5,6 +5,7 @@ import { ArrowRight, Bus, Clapperboard, Heart, Mail, Megaphone, Newspaper, Radio
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useI18n } from "@/context/language-context";
+import { COMPANY } from "@/lib/company";
 import { cn } from "@/lib/utils";
 import { CinemaArt, DigitalArt, NewspaperArt, OutdoorArt, RadioArt, TvArt, WeddingArt } from "./media-art";
 
@@ -67,7 +68,7 @@ function ComingSoon({ media, onClose }: { media: Media; onClose: () => void }) {
         <h3 id="soon-title" className={cn(SANS, "mt-3 text-xl font-bold text-slate-900 dark:text-[#FFFFFF]")}>{tl(media.title, media.ml)}</h3>
         <p className="mx-auto mt-2 w-fit rounded-full border border-transparent bg-slate-100 px-3 py-0.5 text-xs font-semibold text-slate-500 dark:border-white/40 dark:bg-transparent dark:text-white">{t("Coming soon")}</p>
         <p className="mt-3 text-sm text-slate-600 dark:text-[#FAFAFA]">{t("We're building online booking for this media. Meanwhile our team can plan and book it for you.")}</p>
-        <a href={`mailto:help@intelliad.example?subject=${encodeURIComponent(`${media.title} enquiry`)}`} className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#111827] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black">
+        <a href={`mailto:${COMPANY.email}?subject=${encodeURIComponent(`${media.title} enquiry`)}`} className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#111827] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black">
           <Mail className="h-4 w-4" aria-hidden="true" /> {t("Contact Support")}
         </a>
       </motion.div>

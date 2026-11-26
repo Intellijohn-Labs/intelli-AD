@@ -9,6 +9,9 @@ export const COMPANY = {
   constitution: "Proprietorship",
   gstin: "32AFJPJ8048K3Z5",
   addressLines: ["Building No./Flat No. 1/57, Ground Floor,", "Kuthiyathodu, Kunnukara,", "Ernakulam District, Kerala - 683578"],
+  /** Public contact details (footer, enquiry links). */
+  email: "mail@leadsndeals.com",
+  phones: [{ display: "+91 99617 74455", tel: "+919961774455" }, { display: "+91 80864 95777", tel: "+918086495777" }],
 } as const;
 
 export const COMPANY_ADDRESS = COMPANY.addressLines.join(" ");
