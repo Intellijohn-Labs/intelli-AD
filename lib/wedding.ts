@@ -368,7 +368,7 @@ export const GREETING_FORMATS: { id: GreetingFormat; label: string }[] = [
 /** Shown on the live preview until a real guest is added. */
 /** Replaces {name} / {{name}} (any case, optional inner spaces) with the recipient's name ("Guest" when there is none). */
 export const fillName = (text: string, name?: string | null) => text.replace(/\{\{\s*name\s*\}\}|\{\s*name\s*\}/gi, () => (name ?? "").trim() || "Guest");
-export const SAMPLE_GUEST = { name: "Arun", place: "Kochi" };
+export const SAMPLE_GUEST = { name: "Your Guest Name", place: "Kochi" };
 
 const ML_SERIF = '"Noto Serif Malayalam", "Noto Serif", Georgia, serif';
 const ML_SANS = '"Noto Sans Malayalam", system-ui, sans-serif';
