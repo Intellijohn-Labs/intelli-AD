@@ -2,8 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/context/language-context";
+import { COMPANY } from "@/lib/company";
 
-const PHONE_NUMBER = "919645128949"; // Replace with your support phone number
+const PHONE_NUMBER = COMPANY.phones[0].tel.replace(/\D/g, ""); // official support number (lib/company.ts): wa.me wants digits only
 const DEFAULT_MESSAGE = encodeURIComponent("Hello AI admanager, I need assistance with booking an advertisement.");
 const WHATSAPP_URL = `https://wa.me/${PHONE_NUMBER}?text=${DEFAULT_MESSAGE}`;
 
