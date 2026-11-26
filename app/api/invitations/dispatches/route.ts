@@ -40,12 +40,18 @@ export async function GET(req: Request) {
   const { user, admin } = ctx;
   const status = new URL(req.url).searchParams.get("status");
 
-  let q = admin.from("invitation_dispatches")
-    .select("id, guest_name, phone, status, error, error_message, provider_response, created_at, sent_at, invitation_id, asset_type, asset_url, wedding_invitations(template_id)")
-    .eq("created_by", user.id).order("created_at", { ascending: false }).limit(300);
-  if (status && (STATUSES as readonly string[]).includes(status)) q = q.eq("status", status);
-  const count = (s?: string) => { let c = admin.from("invitation_dispatches").select("id", { count: "exact", head: true }).eq("created_by", user.id); if (s) c = c.eq("status", s); return c; };
-  const [rows, total, sent, queued, failed] = await Promise.all([q, count(), count("sent"), count("queued"), count("failed")]);
+  // Cleared / deleted entries are only hidden (hidden_at), because the 24-hour per-number cooldown is computed from these rows. Before the hidden_at column exists, nothing is hidden.
+  const run = (withHidden: boolean) => {
+    let q = admin.from("invitation_dispatches")
+      .select("id, guest_name, phone, status, error, error_message, provider_response, created_at, sent_at, invitation_id, asset_type, asset_url, wedding_invitations(template_id)")
+      .eq("created_by", user.id).order("created_at", { ascending: false }).limit(300);
+    if (withHidden) q = q.is("hidden_at", null);
+    if (status && (STATUSES as readonly string[]).includes(status)) q = q.eq("status", status);
+    const count = (s?: string) => { let c = admin.from("invitation_dispatches").select("id", { count: "exact", head: true }).eq("created_by", user.id); if (withHidden) c = c.is("hidden_at", null); if (s) c = c.eq("status", s); return c; };
+    return Promise.all([q, count(), count("sent"), count("queued"), count("failed")]);
+  };
+  let [rows, total, sent, queued, failed] = await run(true);
+  if (rows.error && /hidden_at/.test(rows.error.message)) [rows, total, sent, queued, failed] = await run(false);
   if (rows.error) {
     console.error("[invitations/dispatches] list failed:", rows.error.message);
     return NextResponse.json({ error: `Couldn't read the dispatch log. ${SETUP}` }, { status: 503, headers: NO_STORE });
@@ -94,4 +100,49 @@ export async function POST(req: Request) {
     results.push({ id: r.id, status: out.status, ...(out.error ? { error: out.error } : {}) });
   }
   return NextResponse.json({ results }, { headers: NO_STORE });
+}
+
+const BUCKET = "invitation-cards";
+const objectPath = (url: string | null) => { const m = url ? /\/object\/public\/invitation-cards\/(.+?)(?:\?|$)/.exec(url) : null; return m ? decodeURIComponent(m[1]) : null; };
+
+/**
+ * Removes entries from the signed-in user's dispatch log: ?id=<uuid> for one, ?status=sent|queued|failed for a status, ?all=true (or status=all) for everything.
+ * Rows are only HIDDEN (hidden_at), never deleted, so the 2-per-24-hours cooldown per WhatsApp number can't be reset by clearing the log. The rendered card / video
+ * files of entries that are no longer in flight (not "queued") are removed from Storage, best effort.
+ */
+export async function DELETE(req: Request) {
+  const ctx = await context();
+  if ("error" in ctx) return ctx.error;
+  const { user, admin } = ctx;
+  const sp = new URL(req.url).searchParams, id = sp.get("id"), status = sp.get("status"), all = sp.get("all") === "true" || status === "all";
+  const idOk = id && z.string().uuid().safeParse(id).success;
+  if (!idOk && !all && !(status && (STATUSES as readonly string[]).includes(status))) return NextResponse.json({ error: "Say what to delete: ?id=<id>, ?status=sent|queued|failed or ?all=true." }, { status: 400, headers: NO_STORE });
+
+  const pick = () => {
+    let q = admin.from("invitation_dispatches").select("id, status, asset_url, poster_url").eq("created_by", user.id).is("hidden_at", null);
+    if (idOk) q = q.eq("id", id!); else if (!all) q = q.eq("status", status!);
+    return q.limit(2000);
+  };
+  const { data, error } = await pick();
+  if (error) {
+    const missing = /hidden_at|poster_url/.test(error.message);
+    console.error("[invitations/dispatches] delete lookup failed:", error.message);
+    return NextResponse.json({ error: missing ? "Run the hidden_at column SQL from supabase/schema.sql (Dispatch Log cleanup), then try again." : `Couldn't read the dispatch log. ${SETUP}` }, { status: 503, headers: NO_STORE });
+  }
+  const rows = (data ?? []) as { id: string; status: string; asset_url: string | null; poster_url: string | null }[];
+  if (rows.length === 0) return NextResponse.json({ deleted: 0 }, { headers: NO_STORE });
+
+  const now = new Date().toISOString();
+  for (let i = 0; i < rows.length; i += 200) {
+    const ids = rows.slice(i, i + 200).map((r) => r.id);
+    const { error: ue } = await admin.from("invitation_dispatches").update({ hidden_at: now }).in("id", ids).eq("created_by", user.id);
+    if (ue) { console.error("[invitations/dispatches] hide failed:", ue.message); return NextResponse.json({ error: "Couldn't delete those entries." }, { status: 500, headers: NO_STORE }); }
+  }
+  // Best-effort storage cleanup (a queued entry may still be fetched by the provider, so its files stay).
+  const paths = [...new Set(rows.filter((r) => r.status !== "queued").flatMap((r) => [objectPath(r.asset_url), objectPath(r.poster_url)]).filter((x): x is string => !!x))];
+  for (let i = 0; i < paths.length; i += 100) {
+    const rm = await admin.storage.from(BUCKET).remove(paths.slice(i, i + 100));
+    if (rm.error) console.error("[invitations/dispatches] storage cleanup:", rm.error.message);
+  }
+  return NextResponse.json({ deleted: rows.length }, { headers: NO_STORE });
 }

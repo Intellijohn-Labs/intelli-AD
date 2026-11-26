@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Play, RefreshCw, RotateCcw, X } from "lucide-react";
+import { Loader2, Play, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clock } from "@/lib/invitation-cooldown";
 import { TEMPLATES } from "@/lib/wedding";
@@ -35,6 +35,7 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
   const [retrying, setRetrying] = useState<Set<string> | "all" | null>(null);
   const [note, setNote] = useState("");
   const [watching, setWatching] = useState<Row | null>(null); // rendered guest video open in the preview modal
+  const [confirmClear, setConfirmClear] = useState(false), [deleting, setDeleting] = useState<Set<string> | "all" | null>(null);
   const seq = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
@@ -83,6 +84,33 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
     setRetrying(null); await load(true);
   };
 
+  const drop = (r: Row) => { // keeps the cards and filter counts in step with what was just removed
+    setRows((cur) => (cur ?? []).filter((x) => x.id !== r.id));
+    setCounts((c) => ({ ...c, total: Math.max(0, c.total - 1), [r.status]: Math.max(0, c[r.status] - 1) }));
+  };
+  const deleteOne = async (r: Row) => {
+    setDeleting(new Set([r.id])); setNote("");
+    try {
+      const res = await fetch(`/api/invitations/dispatches?id=${encodeURIComponent(r.id)}`, { method: "DELETE" });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(j.error ?? "Couldn't delete that entry.");
+      drop(r); setNote(`Removed ${r.guestName}'s entry.`);
+    } catch (e) { setNote(e instanceof Error ? e.message : "Couldn't delete that entry."); }
+    setDeleting(null); await load(true);
+  };
+  const clearLog = async () => {
+    setDeleting("all"); setNote(""); setConfirmClear(false);
+    try {
+      const res = await fetch(`/api/invitations/dispatches?${tab === "all" ? "all=true" : `status=${tab}`}`, { method: "DELETE" });
+      const j = (await res.json().catch(() => ({}))) as { error?: string; deleted?: number };
+      if (!res.ok) throw new Error(j.error ?? "Couldn't clear the log.");
+      setNote(`Cleared ${j.deleted ?? 0} ${tab === "all" ? "" : `${LABEL[tab].toLowerCase()} `}entr${j.deleted === 1 ? "y" : "ies"}.`);
+    } catch (e) { setNote(e instanceof Error ? e.message : "Couldn't clear the log."); }
+    setDeleting(null); await load(true);
+  };
+  const inTab = tab === "all" ? counts.total : counts[tab];
+  useEffect(() => { setConfirmClear(false); }, [tab]);
+
   const card = (label: string, value: number, cls: string) => (
     <div className={cn("rounded-lg border px-3 py-2.5", cls)}><dt className="text-[11px] font-bold tracking-wide uppercase opacity-80">{label}</dt><dd className="text-2xl font-black tabular-nums">{value}</dd></div>
   );
@@ -100,6 +128,17 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
           <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" /> Refresh
           </button>
+          {confirmClear ? (
+            <span role="alertdialog" aria-label="Confirm clearing the log" className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-bold text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200">
+              Clear {inTab} {tab === "all" ? "" : `${LABEL[tab].toLowerCase()} `}entr{inTab === 1 ? "y" : "ies"}?
+              <button type="button" onClick={() => void clearLog()} data-clear-confirm className="rounded-md bg-red-700 px-2 py-0.5 text-white hover:bg-red-800">Yes, clear</button>
+              <button type="button" onClick={() => setConfirmClear(false)} className="rounded-md px-2 py-0.5 hover:bg-red-100 dark:hover:bg-red-500/20">Cancel</button>
+            </span>
+          ) : (
+            <button type="button" onClick={() => setConfirmClear(true)} disabled={inTab === 0 || deleting !== null || loading} data-clear-log className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/5">
+              {deleting === "all" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />} {tab === "all" ? "Clear Log" : `Clear ${LABEL[tab]}`}
+            </button>
+          )}
         </div>
       </div>
       <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">Every WhatsApp invitation you have sent through Waau Panel, newest first.{counts.queued > 0 ? " Checking again every few seconds while some are queued." : ""}</p>
@@ -149,6 +188,9 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
                         {retrying instanceof Set && retrying.has(r.id) ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <RotateCcw className="h-3 w-3" aria-hidden="true" />} Retry
                       </button>
                     )}
+                    <button type="button" onClick={() => void deleteOne(r)} disabled={deleting !== null} aria-label={`Delete log entry for ${r.guestName}`} title="Remove this entry" data-delete-row className="ml-1.5 inline-flex items-center rounded-md border border-slate-300 p-1.5 text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-red-500/10">
+                      {deleting instanceof Set && deleting.has(r.id) ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3 w-3" aria-hidden="true" />}
+                    </button>
                   </td>
                 </tr>
               ))}

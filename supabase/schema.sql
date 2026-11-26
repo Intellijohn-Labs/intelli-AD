@@ -341,3 +341,9 @@ values ('company-templates', 'company-templates', true, 16777216, array['image/p
 on conflict (id) do update
   set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Dispatch Log cleanup: "Clear Log" / row Delete only HIDE entries (the 24-hour per-number cooldown still counts them) ──────────
+alter table public.invitation_dispatches add column if not exists hidden_at timestamptz;
+create index if not exists invitation_dispatches_visible_idx on public.invitation_dispatches (created_by, created_at desc) where hidden_at is null;
+NOTIFY pgrst, 'reload schema';
