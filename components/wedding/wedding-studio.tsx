@@ -783,8 +783,7 @@ export function WeddingStudio() {
                 <div role="radiogroup" aria-label="Card font" className="grid gap-2 sm:grid-cols-2">
                   {(fontsOpen ? FONT_STYLES : FONT_STYLES.slice(0, FONTS_COLLAPSED)).map((f) => (
                     <button key={f.id} type="button" role="radio" aria-checked={(d.fontStyle ?? "default") === f.id} onClick={() => set({ fontStyle: f.id })} className={cn("rounded-lg border px-3 py-2 text-left transition-colors", (d.fontStyle ?? "default") === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
-                      <span className="block truncate text-lg leading-snug text-slate-900 dark:text-white" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id as Exclude<FontStyle, "default">] }}>Arjun &amp; Anjali · അർജുൻ</span>
-                      <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{f.label}</span>
+                      <span className="block truncate text-lg leading-snug text-slate-900 dark:text-white" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id as Exclude<FontStyle, "default">] }}>{f.label}</span>
                       <span className="block text-[11px] text-slate-600 dark:text-slate-300">{f.hint}</span>
                     </button>
                   ))}

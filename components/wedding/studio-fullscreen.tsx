@@ -361,8 +361,8 @@ export function StudioFullscreen(p: {
               <p className="text-[11px] text-slate-600 dark:text-slate-300">Applies to all card text. Select a text on the card to give just that text its own font.</p>
               {FONT_STYLES.map((f) => (
                 <button key={f.id} type="button" role="radio" aria-checked={(d.fontStyle ?? "default") === f.id} onClick={() => p.fontForAll(f.id)} className={cn("w-full rounded-lg border px-3 py-2 text-left", (d.fontStyle ?? "default") === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5")}>
-                  <span className="block truncate text-base" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id as Exclude<FontStyle, "default">] }}>Arjun &amp; Anjali · അർജുൻ</span>
-                  <span className="block text-[11px] font-bold">{f.label}</span></button>
+                  <span className="block truncate text-base" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id as Exclude<FontStyle, "default">] }}>{f.label}</span>
+                  <span className="block truncate text-[11px] text-slate-600 dark:text-slate-300">{f.hint}</span></button>
               ))}
             </div>
           )}
