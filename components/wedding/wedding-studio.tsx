@@ -801,6 +801,15 @@ export function WeddingStudio() {
                 </div>
                 {d.guestGreetingFormat === "custom" && <Field id="w-prefix" label="Custom greeting (use {Name} and {Place})" className="mt-2"><Input id="w-prefix" value={d.guestGreetingTemplate} maxLength={120} placeholder="e.g. With love to {Name}, {Place}" onChange={(e) => set({ guestGreetingTemplate: e.target.value })} /></Field>}
               </div>
+              {isVideoMode && (
+                <div className="mb-4 space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700" data-anim-controls="header">
+                  <AnimControls layer="header" id="w-hanim" label="Header animation" hint="The guest line at the top: choose how it appears, when and for how long." preset={d.videoHeaderAnim} timing={d.videoHeaderTiming} cfg={animCfg("header")} videoDuration={video?.info.duration ?? 60}
+                    onPreset={(p) => { set({ videoHeaderAnim: p }); setReplayKey((n) => n + 1); }} onTiming={(t) => { set({ videoHeaderTiming: t }); setReplayKey((n) => n + 1); }}>
+                    <ColorControls layer="header" label="Header" allowDefaultColor color={d.textStyle?.guest?.color ?? null} onColor={(c) => styleText("guest", { color: c })} pill={d.videoHeaderPill} pillColor={d.videoHeaderPillColor} onPill={(p) => set({ videoHeaderPill: p })} onPillColor={(c) => set({ videoHeaderPillColor: c })} />
+                  </AnimControls>
+                  <button type="button" onClick={() => setReplayKey((n) => n + 1)} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-white dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" aria-label="Replay animation from the start">↻ Replay</button>
+                </div>
+              )}
               <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Card font</h3>
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">13 curated English and Malayalam fonts for all the text on the card. Click any text on the card to give just that section its own font.</p>
@@ -864,13 +873,11 @@ export function WeddingStudio() {
                           {quoteError && <p role="alert" className="mt-2 text-xs font-semibold text-red-800 dark:text-red-200">{quoteError}</p>}
                         </Field>
                         <div className="space-y-3" data-anim-controls>
-                          {([["header", "w-hanim", "Header animation", "videoHeaderAnim", "videoHeaderTiming", "The guest line at the top / greeting"], ["footer", "w-fanim", "Footer animation", "videoFooterAnim", "videoFooterTiming", "The footer greeting quote"]] as const).map(([layer, id, label, key, tkey, hint]) => {
+                          {([["footer", "w-fanim", "Footer animation", "videoFooterAnim", "videoFooterTiming", "The footer greeting quote"]] as const).map(([layer, id, label, key, tkey, hint]) => {
                             return (
                               <AnimControls key={id} layer={layer} id={id} label={label} hint={hint} preset={d[key]} timing={d[tkey]} cfg={animCfg(layer)} videoDuration={video?.info.duration ?? 60}
                                 onPreset={(p) => { set({ [key]: p }); setReplayKey((n) => n + 1); }} onTiming={(t) => { set({ [tkey]: t }); setReplayKey((n) => n + 1); }}>
-                                {layer === "header"
-                                  ? <ColorControls layer="header" label="Header" allowDefaultColor color={d.textStyle?.guest?.color ?? null} onColor={(c) => styleText("guest", { color: c })} pill={d.videoHeaderPill} pillColor={d.videoHeaderPillColor} onPill={(p) => set({ videoHeaderPill: p })} onPillColor={(c) => set({ videoHeaderPillColor: c })} />
-                                  : <ColorControls layer="footer" label="Footer" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />}
+                                <ColorControls layer="footer" label="Footer" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />
                               </AnimControls>
                             );
                           })}
