@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FolderUp, Loader2, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
@@ -138,7 +139,7 @@ export function CompanyTemplates() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Company Templates</h1>
-        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">Designs you publish here appear straight away in the client Invitation &amp; Greeting studio (Step 1), under the matching category. Images work for both types; videos are Greeting templates.</p>
+        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">Designs you publish here appear straight away in the client Invitation &amp; Greeting studio (Step 1), under the matching category. Images work for both types; videos are Greeting templates. The built-in designs (shown or hidden, not uploaded) are managed on <Link href="/admin/invitations" className="font-bold text-[#D12014] underline">Built-in designs</Link>.</p>
       </div>
 
       <section className={card} aria-labelledby="single-h">
