@@ -15,37 +15,38 @@ interface Msg { id: number; from: "bot" | "me"; text: string; human?: boolean }
 function RoboMonkey({ mood, pose = "home", size = 56 }: { mood: Mood; pose?: Pose; size?: number }) {
   const happy = mood === "happy" || pose === "banana" || pose === "tea";
   return (
-    <svg viewBox="0 0 80 100" width={size} height={size * 1.25} role="img" aria-label="Robo, the AI Ad Manager helper" className={cn("mk overflow-visible", `robo-pose-${pose}`, mood === "happy" && pose === "home" && "robo-happy")}>
-      <ellipse cx="40" cy="97" rx="15" ry="2.4" fill="rgba(0,0,0,0.28)" className="robo-shadow" />
+    <svg viewBox="0 0 80 100" width={size} height={size * 1.25} role="img" aria-label="Robo, the AI Ad Manager helper" style={{ filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.45)) drop-shadow(0 0 1px rgba(255,255,255,0.9))" }} className={cn("mk overflow-visible", `robo-pose-${pose}`, mood === "happy" && pose === "home" && "robo-happy")}>
+      <defs><linearGradient id="mk-armor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FFFFFF" /><stop offset="1" stopColor="#D5DAE3" /></linearGradient></defs>
+      <ellipse cx="40" cy="97" rx="15" ry="2.4" fill="rgba(0,0,0,0.3)" className="robo-shadow" />
       {/* articulated tail: fur core with metal joints and a glowing tip */}
-      <g className="mk-tail"><path d="M52 80 C 72 84, 78 64, 66 57 C 60 54, 55 58, 59 63" fill="none" stroke="#7A4B2A" strokeWidth="5" strokeLinecap="round" /><path d="M52 80 C 72 84, 78 64, 66 57 C 60 54, 55 58, 59 63" fill="none" stroke="#8C95A8" strokeWidth="5.4" strokeLinecap="butt" strokeDasharray="1.6 7" /><circle cx="59" cy="63" r="3" fill="#5CF2FF" style={{ filter: "drop-shadow(0 0 3px #5CF2FF)" }} /></g>
-      <g className="mk-legL"><rect x="28" y="76" width="8" height="15" rx="4" fill="#7A4B2A" /><ellipse cx="32" cy="92" rx="7" ry="3.6" fill="#8C95A8" /></g>
-      <g className="mk-legR"><rect x="44" y="76" width="8" height="15" rx="4" fill="#7A4B2A" /><ellipse cx="48" cy="92" rx="7" ry="3.6" fill="#8C95A8" /></g>
-      <rect x="24" y="52" width="32" height="28" rx="11" fill="#7A4B2A" />
-      <ellipse cx="40" cy="68" rx="11" ry="9" fill="#F3D9B1" /><circle cx="40" cy="67" r="2.6" fill="#5CF2FF" style={{ filter: "drop-shadow(0 0 3px #5CF2FF)" }} />
-      <g className="mk-armL"><rect x="14" y="54" width="8" height="20" rx="4" fill="#7A4B2A" /><circle cx="18" cy="75" r="4.2" fill="#8C95A8" /></g>
+      <g className="mk-tail"><path d="M52 80 C 72 84, 78 64, 66 57 C 60 54, 55 58, 59 63" fill="none" stroke="#14161B" strokeWidth="5" strokeLinecap="round" /><path d="M52 80 C 72 84, 78 64, 66 57 C 60 54, 55 58, 59 63" fill="none" stroke="#F4F6FA" strokeWidth="5.4" strokeLinecap="butt" strokeDasharray="1.6 7" /><circle cx="59" cy="63" r="3" fill="#FFFFFF" stroke="#14161B" strokeWidth="0.8" style={{ filter: "drop-shadow(0 0 3px #FFFFFF)" }} /></g>
+      <g className="mk-legL"><rect x="28" y="76" width="8" height="15" rx="4" fill="#14161B" /><ellipse cx="32" cy="92" rx="7" ry="3.6" fill="#F4F6FA" stroke="#14161B" strokeWidth="1.2" /></g>
+      <g className="mk-legR"><rect x="44" y="76" width="8" height="15" rx="4" fill="#14161B" /><ellipse cx="48" cy="92" rx="7" ry="3.6" fill="#F4F6FA" stroke="#14161B" strokeWidth="1.2" /></g>
+      <rect x="24" y="52" width="32" height="28" rx="11" fill="url(#mk-armor)" stroke="#14161B" strokeWidth="1.6" />
+      <ellipse cx="40" cy="68" rx="11" ry="9" fill="#14161B" /><circle cx="40" cy="67" r="2.6" fill="#FFFFFF" style={{ filter: "drop-shadow(0 0 3px #FFFFFF)" }} />
+      <g className="mk-armL"><rect x="14" y="54" width="8" height="20" rx="4" fill="#14161B" /><circle cx="18" cy="75" r="4.2" fill="#F4F6FA" stroke="#14161B" strokeWidth="1.2" /></g>
       {/* ears */}
-      <circle cx="11" cy="36" r="7.5" fill="#CFD6E4" stroke="#8C95A8" strokeWidth="1.4" /><circle cx="11" cy="36" r="3.6" fill="#5CF2FF" opacity="0.85" />
-      <circle cx="69" cy="36" r="7.5" fill="#CFD6E4" stroke="#8C95A8" strokeWidth="1.4" /><circle cx="69" cy="36" r="3.6" fill="#5CF2FF" opacity="0.85" />
-      <g className="mk-antenna"><line x1="40" y1="14" x2="40" y2="6" stroke="#8C95A8" strokeWidth="2" strokeLinecap="round" /><circle cx="40" cy="4.5" r="3.3" fill="#FFD84D" className="robo-antenna" style={{ filter: "drop-shadow(0 0 4px #FFD84D)" }} /></g>
-      <rect x="14" y="14" width="52" height="40" rx="19" fill="#8A5A34" />
-      <rect x="20" y="24" width="40" height="28" rx="13" fill="#F3D9B1" />
-      <circle cx="31" cy="35" r="6.6" fill="#12161F" /><circle cx="49" cy="35" r="6.6" fill="#12161F" />
+      <circle cx="11" cy="36" r="7.5" fill="#1E2128" stroke="#F4F6FA" strokeWidth="1.4" /><circle cx="11" cy="36" r="3.4" fill="#FFFFFF" style={{ filter: "drop-shadow(0 0 2px #FFFFFF)" }} />
+      <circle cx="69" cy="36" r="7.5" fill="#1E2128" stroke="#F4F6FA" strokeWidth="1.4" /><circle cx="69" cy="36" r="3.4" fill="#FFFFFF" style={{ filter: "drop-shadow(0 0 2px #FFFFFF)" }} />
+      <g className="mk-antenna"><line x1="40" y1="14" x2="40" y2="6" stroke="#14161B" strokeWidth="2" strokeLinecap="round" /><circle cx="40" cy="4.5" r="3.3" fill="#FFFFFF" stroke="#14161B" strokeWidth="0.9" className="robo-antenna" style={{ filter: "drop-shadow(0 0 4px #FFFFFF)" }} /></g>
+      <rect x="14" y="14" width="52" height="40" rx="19" fill="url(#mk-armor)" stroke="#14161B" strokeWidth="1.8" />
+      <rect x="20" y="24" width="40" height="28" rx="13" fill="#E6EAF1" stroke="#14161B" strokeWidth="0.8" />
+      <circle cx="31" cy="35" r="6.6" fill="#0E1014" /><circle cx="49" cy="35" r="6.6" fill="#0E1014" />
       {happy ? (
-        <g fill="none" stroke="#5CF2FF" strokeWidth="2.6" strokeLinecap="round" style={{ filter: "drop-shadow(0 0 3px #5CF2FF)" }}><path d="M27 36 q4 -6 8 0" /><path d="M45 36 q4 -6 8 0" /></g>
+        <g fill="none" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" style={{ filter: "drop-shadow(0 0 3px #FFFFFF)" }}><path d="M27 36 q4 -6 8 0" /><path d="M45 36 q4 -6 8 0" /></g>
       ) : (
-        <g fill="#5CF2FF" style={{ filter: "drop-shadow(0 0 3px #5CF2FF)" }}>
+        <g fill="#FFFFFF" style={{ filter: "drop-shadow(0 0 3px #FFFFFF)" }}>
           <rect x={mood === "thinking" ? 30 : 28} y="31" width="6" height="8.5" rx="3" className="robo-eye" />
           <rect x={mood === "thinking" ? 48 : 46} y="31" width="6" height="8.5" rx="3" className="robo-eye r" />
         </g>
       )}
-      <circle cx="38" cy="43" r="1.1" fill="#7A4B2A" /><circle cx="42" cy="43" r="1.1" fill="#7A4B2A" />
-      <path className="mk-mouth" d={mood === "thinking" ? "M36 47 h8" : "M35 46 q5 5 10 0"} fill="none" stroke="#7A4B2A" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="23" cy="42" r="2.4" fill="#F472B6" opacity="0.55" /><circle cx="57" cy="42" r="2.4" fill="#F472B6" opacity="0.55" />
+      <circle cx="38" cy="43" r="1.1" fill="#14161B" /><circle cx="42" cy="43" r="1.1" fill="#14161B" />
+      <path className="mk-mouth" d={mood === "thinking" ? "M36 47 h8" : "M35 46 q5 5 10 0"} fill="none" stroke="#14161B" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="23" cy="42" r="2.4" fill="#B8C0CE" opacity="0.8" /><circle cx="57" cy="42" r="2.4" fill="#B8C0CE" opacity="0.8" />
       {/* snacks */}
       <g className="mk-banana"><path d="M41 47 C 47 38, 57 38, 62 43 C 56 41, 48 43, 41 47 Z" fill="#FFD84D" stroke="#C99A00" strokeWidth="1" strokeLinejoin="round" /><path d="M41 47 l-4 6 M41 47 l-1 7 M41 47 l3 6" stroke="#FFE680" strokeWidth="2.4" strokeLinecap="round" /></g>
       <g className="mk-cup"><rect x="43" y="42" width="13" height="11" rx="3" fill="#fff" stroke="#8C95A8" strokeWidth="1.2" /><rect x="44.5" y="43.5" width="10" height="3.2" rx="1.4" fill="#B5651D" /><path d="M56 45 q4 0 4 3.5 t-4 3" fill="none" stroke="#8C95A8" strokeWidth="1.3" /><g fill="none" stroke="#C9D2E3" strokeWidth="1.3" strokeLinecap="round"><path className="mk-steam" d="M46 40 q-2 -3 0 -6" /><path className="mk-steam s2" d="M50 40 q-2 -3 0 -6" /><path className="mk-steam s3" d="M54 40 q-2 -3 0 -6" /></g></g>
-      <g className="mk-armR"><rect x="58" y="54" width="8" height="20" rx="4" fill="#7A4B2A" /><circle cx="62" cy="75" r="4.2" fill="#8C95A8" /></g>
+      <g className="mk-armR"><rect x="58" y="54" width="8" height="20" rx="4" fill="#14161B" /><circle cx="62" cy="75" r="4.2" fill="#F4F6FA" stroke="#14161B" strokeWidth="1.2" /></g>
     </svg>
   );
 }
@@ -53,7 +54,7 @@ function RoboMonkey({ mood, pose = "home", size = 56 }: { mood: Mood; pose?: Pos
 /** Floating Robo helper on every customer page: stacked above the WhatsApp button (never over it), with an instant offline knowledge base. */
 export function AiRoboAssistant() {
   const path = usePathname();
-  const onBook = path.startsWith("/book"); // mirrors the WhatsApp widget, which moves on /book
+  const onBook = path.startsWith("/book"); // on /book phones the sticky proof bar needs clearance
   const hidden = path === "/admin" || path.startsWith("/admin/") || /^\/(invitation|wedding)-cards\/invite\//.test(path);
   const [open, setOpen] = useState(false), [hover, setHover] = useState(false), [thinking, setThinking] = useState(false);
   const [teaser, setTeaser] = useState(false), [teaserText, setTeaserText] = useState("Stuck? Ask Robo! 🤖"), [input, setInput] = useState("");
@@ -143,17 +144,18 @@ export function AiRoboAssistant() {
     <>
       {open && (
         <div role="dialog" aria-label="Chat with Robo" className={cn("robo-pop fixed z-[55] flex w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#131416]",
-          onBook ? "right-3 bottom-[15.5rem] h-[min(32rem,calc(100dvh-17.5rem))] lg:right-5 lg:bottom-[6.75rem] lg:h-[min(32rem,calc(100dvh-9.5rem))]" : "right-3 bottom-[11rem] h-[min(32rem,calc(100dvh-13rem))] sm:right-5")}>
+          onBook ? "right-3 bottom-[11.5rem] h-[min(32rem,calc(100dvh-13.5rem))] lg:right-5 lg:bottom-[6.75rem] lg:h-[min(32rem,calc(100dvh-9.5rem))]" : "right-3 bottom-[6.75rem] h-[min(32rem,calc(100dvh-9rem))] sm:right-5")}>
           <div className="flex items-center gap-2 bg-[#0A0B0D] px-3 py-2 text-white">
             <span className="flex h-10 w-9 shrink-0 items-center justify-center overflow-hidden"><RoboMonkey mood={mood} size={30} /></span>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">Robo · AI Ad Manager Helper</p><p className="truncate text-[11px] text-slate-300">{thinking ? "Thinking… beep-boop" : "Online · English, മലയാളം, Manglish"}</p></div>
+            <a href={waLink()} target="_blank" rel="noopener noreferrer" data-robo-wa-header className="no-touch inline-flex h-11 shrink-0 items-center gap-1 rounded-lg bg-[#25D366] px-2.5 text-xs font-extrabold text-[#06371a] hover:brightness-95"><MessageCircle className="h-4 w-4" aria-hidden="true" /> WhatsApp</a>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close chat" className="no-touch inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-200 hover:bg-white/10"><X className="h-5 w-5" aria-hidden="true" /></button>
           </div>
           <div ref={listRef} role="log" aria-live="polite" className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-3 text-sm">
             {msgs.map((m) => (
               <div key={m.id} className={cn("flex flex-col gap-1.5", m.from === "me" ? "items-end" : "items-start")}>
                 <p className={cn("max-w-[88%] rounded-2xl px-3 py-2 leading-relaxed whitespace-pre-line", m.from === "me" ? "rounded-br-sm bg-[#D12014] text-white" : "rounded-bl-sm bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-slate-100")}>{m.text}</p>
-                {m.human && <a href={waLink()} target="_blank" rel="noopener noreferrer" data-robo-human className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2 text-xs font-extrabold text-[#06371a] hover:brightness-95"><MessageCircle className="h-4 w-4" aria-hidden="true" /> Chat with Human on WhatsApp</a>}
+                {m.human && <a href={waLink()} target="_blank" rel="noopener noreferrer" data-robo-human className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2 text-xs font-extrabold text-[#06371a] hover:brightness-95"><MessageCircle className="h-4 w-4" aria-hidden="true" /> Chat on WhatsApp</a>}
               </div>
             ))}
             {thinking && <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-3 dark:bg-white/10" aria-label="Robo is typing" style={{ width: "fit-content" }}><span className="robo-dot h-1.5 w-1.5 rounded-full bg-slate-500" /><span className="robo-dot h-1.5 w-1.5 rounded-full bg-slate-500" /><span className="robo-dot h-1.5 w-1.5 rounded-full bg-slate-500" /></div>}
@@ -165,10 +167,13 @@ export function AiRoboAssistant() {
             <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} maxLength={200} aria-label="Ask Robo a question" placeholder="Ask in English, മലയാളം or Manglish…" className="h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
             <button type="submit" disabled={thinking || !input.trim()} aria-label="Send question" className="no-touch inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#D12014] text-white hover:bg-[#A91400] disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true" /></button>
           </form>
-          <p className="border-t border-slate-200 px-3 py-1.5 text-center text-[10.5px] text-slate-600 dark:border-slate-700 dark:text-slate-300">Human help: <a className="font-bold underline" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> · <a className="font-bold whitespace-nowrap underline" href={`tel:${COMPANY.phones[0].tel}`}>{COMPANY.phones[0].display}</a></p>
+          <div className="space-y-1 border-t border-slate-200 px-3 py-2 dark:border-slate-700">
+            <a href={waLink()} target="_blank" rel="noopener noreferrer" data-robo-wa-footer className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95"><MessageCircle className="h-4 w-4" aria-hidden="true" /> Chat on WhatsApp · +91 99617 74455</a>
+            <p className="text-center text-[10.5px] text-slate-600 dark:text-slate-300">Or email <a className="font-bold underline" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> · <a className="font-bold whitespace-nowrap underline" href={`tel:${COMPANY.phones[1].tel}`}>{COMPANY.phones[1].display}</a></p>
+          </div>
         </div>
       )}
-      <div ref={wrapRef} className={cn("pointer-events-none fixed z-50", onBook ? "right-4 bottom-[10rem] lg:right-5 lg:bottom-5" : "right-5 bottom-[5.5rem]")}>
+      <div ref={wrapRef} className={cn("pointer-events-none fixed z-40", onBook ? "right-4 bottom-24 lg:right-5 lg:bottom-5" : "right-5 bottom-5")}>
         {teaser && !open && !roaming && pose === "home" && (
           <div role="status" className="robo-pop pointer-events-auto absolute top-1/2 right-[4.5rem] w-max max-w-[min(16rem,calc(100vw-7.5rem))] -translate-y-1/2 rounded-xl bg-white px-3 py-2 pr-8 text-sm font-semibold text-slate-900 shadow-lg ring-1 ring-slate-200 dark:bg-[#1A1B1E] dark:text-white dark:ring-slate-700">
             {teaserText}
