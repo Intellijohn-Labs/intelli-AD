@@ -837,6 +837,22 @@ export function WeddingStudio() {
                 {mode !== "greeting" && <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => pickEvent(e.target.value as EventType)}>{EVENTS.filter((x) => x.group !== "festival").map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>}
                 <Field id="w-lang" label="Language"><Select id="w-lang" value={d.lang} onChange={(e) => set({ lang: e.target.value as WLang })}><option value="en">English</option><option value="ml">Malayalam (മലയാളം)</option><option value="both">Bilingual (ML + EN)</option></Select></Field>
                 <Field id="w-groom" label={isCustomMode ? "Host / Sender name" : cfg.labels.name1} className={isFestival ? "sm:col-span-2" : undefined} hint={isCustomMode ? "Sent to guests in the WhatsApp message (variable {{3}}). Printed on the card only if you turn on “Print event details” above." : undefined}><Input id="w-groom" value={d.groom} onChange={(e) => set({ groom: e.target.value })} placeholder={cfg.sample.groom} /></Field>
+                {isVideoMode && isFestival && (
+                  <div className="space-y-3 sm:col-span-2" data-footer-controls>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">Footer greeting quote: how it appears, when, its colours and its pill. The quote text itself is below, under the festival theme.</p>
+                      <div className="space-y-3" data-anim-controls>
+                        {([["footer", "w-fanim", "Footer animation", "videoFooterAnim", "videoFooterTiming", "The footer greeting quote"]] as const).map(([layer, id, label, key, tkey, hint]) => {
+                          return (
+                            <AnimControls key={id} layer={layer} id={id} label={label} hint={hint} preset={d[key]} timing={d[tkey]} cfg={animCfg(layer)} videoDuration={video?.info.duration ?? 60}
+                              onPreset={(p) => { set({ [key]: p }); setReplayKey((n) => n + 1); }} onTiming={(t) => { set({ [tkey]: t }); setReplayKey((n) => n + 1); }}>
+                              <ColorControls layer="footer" label="Footer" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />
+                            </AnimControls>
+                          );
+                        })}
+                        <button type="button" onClick={() => setReplayKey((n) => n + 1)} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-white dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" aria-label="Replay animation from the start">↻ Replay</button>
+                      </div>
+                  </div>
+                )}
                 {!isCustomMode && cfg.useName2 && <Field id="w-bride" label={cfg.labels.name2}><Input id="w-bride" value={d.bride} onChange={(e) => set({ bride: e.target.value })} placeholder={cfg.sample.bride || undefined} /></Field>}
                 {!isCustomMode && !isFestival && <Field id="w-gp" label={cfg.labels.host1}><Input id="w-gp" value={d.groomParents} onChange={(e) => set({ groomParents: e.target.value })} placeholder={cfg.sample.groomParents} /></Field>}
                 {!isCustomMode && cfg.useHost2 && <Field id="w-bp" label={cfg.labels.host2}><Input id="w-bp" value={d.brideParents} onChange={(e) => set({ brideParents: e.target.value })} placeholder="Mr. & Mrs. …" /></Field>}
@@ -872,17 +888,6 @@ export function WeddingStudio() {
                           <button type="button" onClick={() => void generateQuote()} disabled={quoteBusy} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60">{quoteBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} {quoteBusy ? "Generating quote…" : "AI: Write Footer Quote"}</button>
                           {quoteError && <p role="alert" className="mt-2 text-xs font-semibold text-red-800 dark:text-red-200">{quoteError}</p>}
                         </Field>
-                        <div className="space-y-3" data-anim-controls>
-                          {([["footer", "w-fanim", "Footer animation", "videoFooterAnim", "videoFooterTiming", "The footer greeting quote"]] as const).map(([layer, id, label, key, tkey, hint]) => {
-                            return (
-                              <AnimControls key={id} layer={layer} id={id} label={label} hint={hint} preset={d[key]} timing={d[tkey]} cfg={animCfg(layer)} videoDuration={video?.info.duration ?? 60}
-                                onPreset={(p) => { set({ [key]: p }); setReplayKey((n) => n + 1); }} onTiming={(t) => { set({ [tkey]: t }); setReplayKey((n) => n + 1); }}>
-                                <ColorControls layer="footer" label="Footer" color={d.videoQuoteColor} onColor={(c) => set({ videoQuoteColor: c ?? "#FFFFFF" })} pill={d.videoQuoteBackdrop === false ? "none" : d.videoQuotePill} pillColor={d.videoQuotePillColor} onPill={(p) => set({ videoQuotePill: p === "none" ? d.videoQuotePill : p, videoQuoteBackdrop: p !== "none" })} onPillColor={(c) => set({ videoQuotePillColor: c })} />
-                              </AnimControls>
-                            );
-                          })}
-                          <button type="button" onClick={() => setReplayKey((n) => n + 1)} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-white dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" aria-label="Replay animation from the start">↻ Replay</button>
-                        </div>
                       </div>
                     )}
                     {/* Greeting title and Wish message are intentionally not shown: the saved customTitle / message (and each festival's own wording) still feed the card and the WhatsApp payload. */}
