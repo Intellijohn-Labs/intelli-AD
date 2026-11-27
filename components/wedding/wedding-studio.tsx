@@ -42,6 +42,9 @@ export function WeddingStudio() {
   const mode: "invitation" | "greeting" | null = modeParam === "invitation" || modeParam === "greeting" ? modeParam : null;
   const lastInviteEvent = useRef<EventType>("wedding");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Template");
+  // Couple photos (Media) belong to invitations only: greeting cards add their logo / photo in Details, so that step is skipped there.
+  const steps = mode === "greeting" ? TABS.filter((t) => t !== "Media") : TABS;
+  useEffect(() => { if (mode === "greeting" && tab === "Media") setTab("Details"); }, [mode, tab]);
   // Every step change (top pills, Next buttons) lands at the top of the page instead of wherever the previous step was scrolled to.
   const tabSeen = useRef(tab);
   useEffect(() => {
@@ -653,8 +656,8 @@ export function WeddingStudio() {
   const counts = { queued: guests.filter((g) => g.status === "queued").length, sent: guests.filter((g) => g.status === "sent").length, failed: guests.filter((g) => g.status === "failed").length };
 
   const bar = (i: number) => (
-    <button key={TABS[i]} type="button" role="tab" aria-selected={tab === TABS[i]} onClick={() => setTab(TABS[i])} className={cn("flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors", tab === TABS[i] ? "bg-[#0A0B0D] text-white dark:bg-[#D12014]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10")}>
-      <span className="mr-1.5 text-xs opacity-70">{i + 1}</span>{TABS[i]}
+    <button key={steps[i]} type="button" role="tab" aria-selected={tab === steps[i]} onClick={() => setTab(steps[i])} className={cn("flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors", tab === steps[i] ? "bg-[#0A0B0D] text-white dark:bg-[#D12014]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10")}>
+      <span className="mr-1.5 text-xs opacity-70">{i + 1}</span>{steps[i]}
     </button>
   );
 
@@ -676,7 +679,7 @@ export function WeddingStudio() {
 
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 space-y-4">
-          <div role="tablist" aria-label="Steps" className={cn(panel, "grid grid-cols-2 gap-1 p-1.5 sm:flex sm:flex-nowrap")}>{TABS.map((_, i) => bar(i))}</div>
+          <div role="tablist" aria-label="Steps" className={cn(panel, "grid grid-cols-2 gap-1 p-1.5 sm:flex sm:flex-nowrap")}>{steps.map((_, i) => bar(i))}</div>
 
           {tab === "Template" && (
             <section className={panel} aria-label="Templates">
@@ -924,7 +927,7 @@ export function WeddingStudio() {
                 </div>
               </div>}
               <TextBoxEditor boxes={boxes} selectedId={ovSel} onSelect={(id) => (id ? pickOverlay(id) : setOvSel(null))} onAdd={addTextBox} onChange={patchBox} onDelete={delTextBox} isVideo={isVideoMode} videoDuration={video?.info.duration ?? 60} onReplay={() => setReplayKey((n) => n + 1)} />
-              <button type="button" onClick={() => setTab("Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: photos</button>
+              <button type="button" onClick={() => setTab(mode === "greeting" ? "Guests & share" : "Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">{mode === "greeting" ? "Next: guests & share" : "Next: photos"}</button>
             </section>
           )}
 
