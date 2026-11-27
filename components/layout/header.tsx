@@ -7,6 +7,7 @@ import { useState } from "react";
 import { AuthControl } from "@/components/auth/user-menu";
 import { useI18n } from "@/context/language-context";
 import { useAuth } from "@/lib/auth";
+import { isStudioPath } from "./chrome-only";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "./brand-logo";
 import { LanguageSwitcher } from "./language-switcher";
@@ -26,9 +27,10 @@ export function Header() {
   const { t } = useI18n();
   const pathname = usePathname();
   const { user, signOut } = useAuth();
-  const navLinks = links;
+  const studio = isStudioPath(pathname); // card studio: no rate cards, booking tracking or agency login
+  const navLinks = studio ? [] : links;
   // Partners (or anyone already inside the partner area) never see a link to the page they are on.
-  const inPartnerArea = !!user?.is_agency || pathname.startsWith("/agency") || pathname.startsWith("/partner");
+  const inPartnerArea = studio || !!user?.is_agency || pathname.startsWith("/agency") || pathname.startsWith("/partner");
   const logout = (
     <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10 hover:text-white dark:border-[#35363B] dark:text-white dark:hover:border-white">
       <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> Sign Out

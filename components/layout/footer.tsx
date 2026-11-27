@@ -6,7 +6,9 @@ import { useI18n } from "@/context/language-context";
 import { bookHref } from "@/lib/booking-params";
 import { usePublication } from "@/lib/publication";
 import { COMPANY } from "@/lib/company";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { isStudioPath } from "./chrome-only";
 import { BrandLogo } from "./brand-logo";
 
 const linkCls = "text-sm text-slate-400 transition-colors hover:text-white";
@@ -17,6 +19,7 @@ export function Footer() {
   const { t } = useI18n();
   const { setActive } = usePublication();
   const year = new Date().getFullYear();
+  const studio = isStudioPath(usePathname()); // invitation / greeting studio: no newspaper formats or publication links
 
   const formats = [
     { label: "Classifieds", href: bookHref({ type: "classified-text" }) },
@@ -33,7 +36,7 @@ export function Footer() {
 
   return (
     <footer className="mt-20 w-full border-t border-[#17181C] bg-[#0A0B0D] pt-16 pb-24 text-slate-400 md:pb-12">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <div className={cn("mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:grid-cols-2 sm:px-6 lg:px-8", !studio && "lg:grid-cols-4")}>
         {/* Brand */}
         <div>
           <BrandLogo onDark />
@@ -47,6 +50,8 @@ export function Footer() {
           </ul>
         </div>
 
+        {!studio && (
+          <>
         {/* Media formats */}
         <nav aria-label="Media formats">
           <p className={headCls}>{t("Media Formats")}</p>
@@ -66,6 +71,8 @@ export function Footer() {
             ))}
           </ul>
         </nav>
+          </>
+        )}
 
         {/* Company & support */}
         <div>

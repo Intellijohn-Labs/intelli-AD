@@ -1,8 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, LogOut, Newspaper, UserRound } from "lucide-react";
+import { FileText, Gift, Heart, LogOut, Newspaper, UserRound } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { isStudioPath } from "@/components/layout/chrome-only";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/context/language-context";
@@ -11,6 +13,7 @@ import { useAuth } from "@/lib/auth";
 /** Profile avatar + dropdown (name, bookings, drafts, Logout). */
 export function AuthControl({ className }: { className?: string }) {
   const { user, ready, signOut } = useAuth();
+  const studio = isStudioPath(usePathname());
   const { t } = useI18n();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -46,9 +49,16 @@ export function AuthControl({ className }: { className?: string }) {
               <p className="truncate text-sm font-bold text-zinc-900">{user.name}</p>
               <p className="truncate text-xs text-zinc-500">{user.identifier}</p>
             </div>
-            <Link role="menuitem" href="/account/bookings" onClick={() => setOpen(false)} className={item}><Newspaper className="h-4 w-4" /> {t("My Bookings")}</Link>
+            {studio ? (
+              <>
+                <Link role="menuitem" href="/invitation-cards?mode=invitation" onClick={() => setOpen(false)} className={item}><Heart className="h-4 w-4" /> Invitation Cards</Link>
+                <Link role="menuitem" href="/invitation-cards?mode=greeting" onClick={() => setOpen(false)} className={item}><Gift className="h-4 w-4" /> Greeting Cards</Link>
+              </>
+            ) : (
+              <Link role="menuitem" href="/account/bookings" onClick={() => setOpen(false)} className={item}><Newspaper className="h-4 w-4" /> {t("My Bookings")}</Link>
+            )}
             <Link role="menuitem" href="/account/profile" onClick={() => setOpen(false)} className={item}><UserRound className="h-4 w-4" /> Profile</Link>
-            <Link role="menuitem" href="/account/drafts" onClick={() => setOpen(false)} className={item}><FileText className="h-4 w-4" /> {t("Ad Drafts")}</Link>
+            {!studio && <Link role="menuitem" href="/account/drafts" onClick={() => setOpen(false)} className={item}><FileText className="h-4 w-4" /> {t("Ad Drafts")}</Link>}
             <button role="menuitem" type="button" className={`${item} border-t border-zinc-100 text-red-600 hover:bg-red-50`}
               onClick={() => { void signOut(); setOpen(false); toast("Signed out"); }}>
               <LogOut className="h-4 w-4" /> {t("Sign Out")}
