@@ -355,3 +355,45 @@ html.dark .proof-sheet .border-stone-800, html.dark .proof-sheet .border-slate-8
   .touch-comfort button:not([data-card-zone], .no-touch) { min-width: 44px; }
   .touch-comfort input[type="range"] { min-height: 44px; }
 }
+
+/* ── Motion polish (transform / opacity only, so it stays on the GPU at 60 fps) ─────────────────────────────────────────────── */
+:root { --ease-spring: cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes reveal-up { from { opacity: 0; transform: translate3d(0, 18px, 0); } to { opacity: 1; transform: none; } }
+@keyframes reveal-scale { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes step-in { from { opacity: 0; transform: translate3d(calc(var(--step-dir, 1) * 28px), 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes btn-sheen { 0%, 55% { transform: translateX(-130%) skewX(-18deg); } 100% { transform: translateX(260%) skewX(-18deg); } }
+@keyframes halo-breathe { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.95; transform: scale(1.03); } }
+@keyframes confetti-burst { 0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg) scale(1); } 100% { opacity: 0; transform: translate3d(var(--x), var(--y), 0) rotate(var(--r)) scale(0.6); } }
+@keyframes pulse-once { 0% { transform: scale(0.9); } 45% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+/* Staggered entrance reveals: set --i (0, 1, 2, ...) on each item. */
+.reveal-up { animation: reveal-up 0.6s var(--ease-spring) both; animation-delay: calc(var(--i, 0) * 55ms); }
+.reveal-scale { animation: reveal-scale 0.5s var(--ease-spring) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.step-anim { animation: step-in 0.4s var(--ease-spring) both; }
+.pulse-once { animation: pulse-once 0.6s var(--ease-spring) both; }
+
+/* Cards: lift, glow and a diagonal light sweep on hover. */
+.card-lift { position: relative; overflow: hidden; transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease, border-color 0.25s ease; }
+.card-lift:hover { transform: translate3d(0, -4px, 0); box-shadow: 0 14px 28px -12px rgba(209, 32, 20, 0.35), 0 0 0 1px rgba(209, 32, 20, 0.28); }
+.card-lift::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.38) 50%, transparent 62%); transform: translateX(-130%); transition: transform 0.75s var(--ease-spring); }
+.card-lift:hover::after { transform: translateX(130%); }
+
+/* Primary buttons: tactile press, glow on hover and a slow shimmer highlight. */
+.btn-fx { position: relative; overflow: hidden; isolation: isolate; transition: transform 0.15s var(--ease-spring), box-shadow 0.25s ease, filter 0.25s ease; }
+.btn-fx:not(:disabled):hover { box-shadow: 0 8px 22px -8px rgba(209, 32, 20, 0.55); filter: brightness(1.04); }
+.btn-fx:not(:disabled):active { transform: scale(0.97); }
+.btn-fx:not(:disabled)::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent); animation: btn-sheen 3.6s ease-in-out infinite; }
+
+/* Live preview: an ambient glow frame behind the stage. */
+.preview-halo { position: relative; isolation: isolate; }
+.preview-halo::before { content: ""; position: absolute; inset: -10px; z-index: -1; border-radius: 1.25rem; pointer-events: none; background: radial-gradient(60% 50% at 50% 40%, rgba(209, 32, 20, 0.22), rgba(227, 190, 92, 0.14) 55%, transparent 75%); filter: blur(14px); animation: halo-breathe 5s ease-in-out infinite; }
+
+/* Celebration confetti (see components/ui/confetti.tsx). */
+.confetti-piece { position: absolute; left: 50%; top: 40%; width: 9px; height: 14px; border-radius: 2px; background: var(--c); animation: confetti-burst 1.5s cubic-bezier(0.15, 0.7, 0.3, 1) both; animation-delay: var(--d); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-up, .reveal-scale, .step-anim, .pulse-once, .preview-halo::before, .btn-fx:not(:disabled)::after, .confetti-piece { animation: none !important; }
+  .card-lift, .card-lift::after, .btn-fx { transition: none !important; }
+  .card-lift:hover { transform: none; }
+  .card-lift::after { display: none; }
+}

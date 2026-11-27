@@ -18,6 +18,7 @@ import { clock, COOLDOWN_WINDOW_MS, cooldownUntil, REPLIED_CONFIRM } from "@/lib
 import type { PublicTemplate } from "@/lib/custom-templates";
 import { OverlayHitLayer, useTextSprites } from "./overlay-layer";
 import { LogoControls, newTextBox, TextBoxEditor } from "./text-box-editor";
+import { ConfettiBurst } from "@/components/ui/confetti";
 import { AnimControls } from "./anim-controls";
 import { ColorControls } from "./anim-colors";
 import { buildAnimConfig, defaultDuration, defaultTiming, DURATION_RANGE, EXIT_ANIMS, plainReveal, SPEED_RANGE, START_RANGE, TEXT_ANIMS, type AnimTiming, type ExitAnim, type TextAnim } from "@/lib/text-anim";
@@ -45,6 +46,8 @@ export function WeddingStudio() {
   // Couple photos (Media) belong to invitations only: greeting cards add their logo / photo in Details, so that step is skipped there.
   const steps = mode === "greeting" ? TABS.filter((t) => t !== "Media") : TABS;
   useEffect(() => { if (mode === "greeting" && tab === "Media") setTab("Details"); }, [mode, tab]);
+  const prevTab = useRef(tab); const [stepDir, setStepDir] = useState(1); // 1 = moving forward (slides in from the right), -1 = back
+  useEffect(() => { if (prevTab.current !== tab) { setStepDir(TABS.indexOf(tab) >= TABS.indexOf(prevTab.current) ? 1 : -1); prevTab.current = tab; } }, [tab]);
   // Every step change (top pills, Next buttons) lands at the top of the page instead of wherever the previous step was scrolled to.
   const tabSeen = useRef(tab);
   useEffect(() => {
@@ -512,6 +515,7 @@ export function WeddingStudio() {
   const [genSummary, setGenSummary] = useState("");
   const [autoRun, setAutoRun] = useState(false);
   const genAbort = useRef(false);
+  const [celebrate, setCelebrate] = useState(0); // bumps when a whole batch finishes generating or sending (confetti)
   const putGen = (id: string, gen: Gen) => { const old = gensRef.current[id]; if (old?.kind === "image") URL.revokeObjectURL(old.url); gensRef.current = { ...gensRef.current, [id]: gen }; setGens(gensRef.current); };
   const dropGen = (id: string) => { const old = gensRef.current[id]; if (!old) return; if (old.kind === "image") URL.revokeObjectURL(old.url); const { [id]: _drop, ...rest } = gensRef.current; void _drop; gensRef.current = rest; setGens(rest); };
   useEffect(() => { // template, text, colours, animations, video or photos changed: nothing generated so far matches any more
@@ -619,6 +623,7 @@ export function WeddingStudio() {
         if (r.stop) break;
       }
     } finally { setBusyId(null); setGenRun(null); }
+    if (made.length > 0 && !genAbort.current) setCelebrate((c) => c + 1);
     const ms = performance.now() - t0, n = made.length, nn = (k: number) => `${k} ${noun}${k === 1 ? "" : "s"}`;
     setGenSummary(n === list.length ? `All ${nn(n)} generated in ${fmtMs(ms)}` : `${n} of ${nn(list.length)} generated in ${fmtMs(ms)}${genAbort.current ? " (stopped)" : ""}`);
     return made;
@@ -641,6 +646,7 @@ export function WeddingStudio() {
         if (!(await sendGen(list[i], invId, gen))) break;
       }
     } finally { setBusyId(null); setBatch(null); setLogTick((t) => t + 1); }
+    setCelebrate((c) => c + 1);
   };
   const generateOnly = async () => { if (busyAny) return; setSendNote(""); const made = await generateAll(); if (!made.length && toGenerate.length === 0) setSendNote(candidates.length && readyToSend.length === 0 ? `All ${candidates.length} guest${candidates.length === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.` : "Everything is already generated. Press Send All."); };
   const sendAll = async () => { if (busyAny) return; await runSend(readyToSend); };
@@ -664,7 +670,8 @@ export function WeddingStudio() {
   if (!mode) return <ModeSelector pathname={pathname} />; // all hooks have run; the draft stays in state and storage while the selector is showing
 
   return (
-    <div className="touch-comfort mx-auto w-full max-w-[94rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+    <div className="touch-comfort mx-auto w-full max-w-[94rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8" style={{ "--step-dir": stepDir } as React.CSSProperties}>
+      <ConfettiBurst trigger={celebrate} />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <div role="tablist" aria-label="Card type" className="inline-flex rounded-full border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-[#131416]">
           {([["invitation", "Invitation Cards"], ["greeting", "Greeting Cards"]] as const).map(([m, label]) => (
@@ -673,8 +680,8 @@ export function WeddingStudio() {
         </div>
         <button type="button" onClick={() => router.push(pathname, { scroll: false })} className="text-xs font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] dark:text-slate-300">← Back to start</button>
       </div>
-      <p className="kicker mb-2">{mode === "greeting" ? "Greeting cards · ആശംസാ കാർഡുകൾ" : "Invitation cards · ക്ഷണക്കത്തുകൾ"}</p>
-      <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">{mode === "greeting" ? "Design a festival greeting and send it to everyone on WhatsApp" : "Design an invitation card and send it to every guest on WhatsApp"}</h1>
+      <p className="kicker reveal-up mb-2">{mode === "greeting" ? "Greeting cards · ആശംസാ കാർഡുകൾ" : "Invitation cards · ക്ഷണക്കത്തുകൾ"}</p>
+      <h1 className="reveal-up text-3xl leading-tight font-black tracking-tight text-slate-900 [--i:1] md:text-4xl dark:text-white">{mode === "greeting" ? "Design a festival greeting and send it to everyone on WhatsApp" : "Design an invitation card and send it to every guest on WhatsApp"}</h1>
       <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">{mode === "greeting" ? "Onam, Vishu, Christmas, New Year, Eid, Diwali and your own designs: choose a template, write your wish, add your name or logo, then send a personalised greeting to each contact on WhatsApp through Waau Panel." : "Weddings, birthdays, housewarming, inaugurations and more: choose a template, add your details, let AI write the wording, then send a personalised card to each guest on WhatsApp through Waau Panel."}</p>
 
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -682,7 +689,7 @@ export function WeddingStudio() {
           <div role="tablist" aria-label="Steps" className={cn(panel, "grid grid-cols-2 gap-1 p-1.5 sm:flex sm:flex-nowrap")}>{steps.map((_, i) => bar(i))}</div>
 
           {tab === "Template" && (
-            <section className={panel} aria-label="Templates">
+            <section className={cn(panel, "step-anim")} aria-label="Templates">
               {/* Step 1 order: Pick a template, then the greeting format, then the card font. */}
               <div className="mb-4">
               <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Pick a template</h2>
@@ -749,7 +756,7 @@ export function WeddingStudio() {
                   const on = companyId === c.id && (c.media_type === "video" ? templateId === VIDEO_TEMPLATE_ID && !!video : templateId === CUSTOM_TEMPLATE_ID && !!d.customCard), idx = baseLead + i;
                   return (
                     <li key={c.id} data-company-template={c.id} className={!expanded && idx >= 2 ? (idx >= 5 ? "hidden" : idx >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
-                      <button type="button" onClick={() => void pickCompany(c)} disabled={!!companyBusy || (c.media_type === "video" && !canMp4)} aria-pressed={on} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md disabled:opacity-60", on ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
+                      <button type="button" onClick={() => void pickCompany(c)} disabled={!!companyBusy || (c.media_type === "video" && !canMp4)} aria-pressed={on} className={cn("relative w-full rounded-lg border p-1.5 text-left card-lift disabled:opacity-60", on ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
                         <div className="relative aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
                           {c.media_type === "video" ? <video src={c.media_url} muted playsInline preload="metadata" className="pointer-events-none h-full w-full object-cover" /> : /* eslint-disable-next-line @next/next/no-img-element */ <img src={c.media_url} alt={`${c.title} template`} draggable={false} onContextMenu={(e) => e.preventDefault()} className="pointer-events-none h-full w-full object-cover select-none" />}
                           {companyBusy === c.id && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden="true" /></div>}
@@ -762,8 +769,8 @@ export function WeddingStudio() {
                 })}
                 {shown.map((x, i) => (
                   // Collapsed: only the first row shows at each width (2 / 3 / 5 cards, the upload tiles coming first); a selected template further down stays selected.
-                  <li key={x.id} className={!expanded && i + lead >= 2 ? (i + lead >= 5 ? "hidden" : i + lead >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined}>
-                    <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left transition-shadow hover:shadow-md", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
+                  <li key={x.id} style={{ "--i": Math.min(i + lead, 12) } as React.CSSProperties} className={cn("reveal-up", !expanded && i + lead >= 2 ? (i + lead >= 5 ? "hidden" : i + lead >= 3 ? "hidden xl:block" : "hidden sm:block") : undefined)}>
+                    <button type="button" onClick={() => pickTemplate(x)} aria-pressed={templateId === x.id} className={cn("relative w-full rounded-lg border p-1.5 text-left card-lift", templateId === x.id ? "border-[#D12014] ring-2 ring-[#D12014]" : "border-slate-200 dark:border-slate-700")}>
                       {x.premium && <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-gradient-to-r from-[#B8860B] to-[#E3BE5C] px-2 py-0.5 text-[9px] font-extrabold tracking-wide text-[#3B2A00] shadow">✨ PREMIUM</span>}
                       
                       <div className="aspect-[1080/1500] w-full overflow-hidden rounded bg-slate-100 dark:bg-white/5">
@@ -790,7 +797,7 @@ export function WeddingStudio() {
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">How each guest&apos;s name appears on their card. Shown live on the preview: click it there to edit the wording, drag it into any open spot.</p>
                 <div role="radiogroup" aria-label="Guest greeting format" className="grid gap-2 sm:grid-cols-2">
                   {GREETING_FORMATS.map((f) => (
-                    <button key={f.id} type="button" role="radio" aria-checked={d.guestGreetingFormat === f.id} onClick={() => set({ guestGreetingFormat: f.id as GreetingFormat })} className={cn("rounded-lg border px-3 py-2 text-left text-xs transition-colors", d.guestGreetingFormat === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
+                    <button key={f.id} type="button" role="radio" aria-checked={d.guestGreetingFormat === f.id} onClick={() => set({ guestGreetingFormat: f.id as GreetingFormat })} className={cn("card-lift rounded-lg border px-3 py-2 text-left text-xs transition-colors", d.guestGreetingFormat === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
                       <span className="block font-bold text-slate-900 dark:text-white">{f.label}</span>
                       <span className="block text-slate-600 dark:text-slate-300">{greetingText({ guestGreetingFormat: f.id, guestGreetingTemplate: d.guestGreetingTemplate || "With love to {Name}, {Place}", guestCustomPrefix: d.guestCustomPrefix }, SAMPLE_GUEST)}</span>
                     </button>
@@ -818,7 +825,7 @@ export function WeddingStudio() {
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">13 curated English and Malayalam fonts for all the text on the card. Click any text on the card to give just that section its own font.</p>
                 <div role="radiogroup" aria-label="Card font" className="grid gap-2 sm:grid-cols-2">
                   {(fontsOpen ? FONT_STYLES : FONT_STYLES.slice(0, FONTS_COLLAPSED)).map((f) => (
-                    <button key={f.id} type="button" role="radio" aria-checked={(d.fontStyle ?? "default") === f.id} onClick={() => set({ fontStyle: f.id })} className={cn("rounded-lg border px-3 py-2 text-left transition-colors", (d.fontStyle ?? "default") === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
+                    <button key={f.id} type="button" role="radio" aria-checked={(d.fontStyle ?? "default") === f.id} onClick={() => set({ fontStyle: f.id })} className={cn("rounded-lg border px-3 py-2 text-left transition-colors card-lift", (d.fontStyle ?? "default") === f.id ? "border-[#D12014] bg-[#D12014]/5 ring-1 ring-[#D12014]" : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-white/5")}>
                       <span className="block truncate text-lg leading-snug text-slate-900 dark:text-white" style={f.id === "default" ? undefined : { fontFamily: FONT_STACKS[f.id as Exclude<FontStyle, "default">] }}>{f.label}</span>
                       <span className="block text-[11px] text-slate-600 dark:text-slate-300">{f.hint}</span>
                     </button>
@@ -835,7 +842,7 @@ export function WeddingStudio() {
           )}
 
           {tab === "Details" && (
-            <section className={cn(panel, "space-y-4")} aria-label="Event details">
+            <section className={cn(panel, "space-y-4", "step-anim")} aria-label="Event details">
               <div className="grid gap-3 sm:grid-cols-2">
                 {mode !== "greeting" && <Field id="w-event" label="Event type"><Select id="w-event" value={d.eventType} onChange={(e) => pickEvent(e.target.value as EventType)}>{EVENTS.filter((x) => x.group !== "festival").map((x) => <option key={x.id} value={x.id}>{x.en} · {x.ml}</option>)}</Select></Field>}
                 <Field id="w-lang" label="Language"><Select id="w-lang" value={d.lang} onChange={(e) => set({ lang: e.target.value as WLang })}><option value="en">English</option><option value="ml">Malayalam (മലയാളം)</option><option value="both">Bilingual (ML + EN)</option></Select></Field>
@@ -927,12 +934,12 @@ export function WeddingStudio() {
                 </div>
               </div>}
               <TextBoxEditor boxes={boxes} selectedId={ovSel} onSelect={(id) => (id ? pickOverlay(id) : setOvSel(null))} onAdd={addTextBox} onChange={patchBox} onDelete={delTextBox} isVideo={isVideoMode} videoDuration={video?.info.duration ?? 60} onReplay={() => setReplayKey((n) => n + 1)} />
-              <button type="button" onClick={() => setTab(mode === "greeting" ? "Guests & share" : "Media")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">{mode === "greeting" ? "Next: guests & share" : "Next: photos"}</button>
+              <button type="button" onClick={() => setTab(mode === "greeting" ? "Guests & share" : "Media")} className="btn-fx rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">{mode === "greeting" ? "Next: guests & share" : "Next: photos"}</button>
             </section>
           )}
 
           {tab === "Media" && (
-            <section className={cn(panel, "space-y-5")} aria-label="Couple photos">
+            <section className={cn(panel, "space-y-5", "step-anim")} aria-label="Couple photos">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Couple photos</h2>
                 <p className="mb-2 text-xs text-slate-600 dark:text-slate-300">Upload 1 combined couple photo or 2 individual portraits (both appear side-by-side on the card; up to 4 appear on the guest invite page).</p>
@@ -951,12 +958,12 @@ export function WeddingStudio() {
                 </div>
                 {d.photos.length > 0 && <button type="button" onClick={clearPhotos} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Clear all photos</button>}
               </div>
-              <button type="button" onClick={() => setTab("Guests & share")} className="rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: guests &amp; share</button>
+              <button type="button" onClick={() => setTab("Guests & share")} className="btn-fx rounded-lg bg-[#D12014] px-4 py-2 text-sm font-bold text-white hover:bg-[#A91400]">Next: guests &amp; share</button>
             </section>
           )}
 
           {tab === "Guests & share" && (
-            <section className={cn(panel, "space-y-5")} aria-label="Guests and Waau Panel dispatch">
+            <section className={cn(panel, "space-y-5", "step-anim")} aria-label="Guests and Waau Panel dispatch">
               <div>
                 <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">1. Add your guests</h2>
                 <p className="mb-3 text-xs text-slate-600 dark:text-slate-300">Add each recipient&apos;s name, place and WhatsApp number (one by one, or paste many from Excel / Sheets). Every guest gets their own card with “Dear Name, Place” on it, prepared automatically. Cards are never downloaded to your device.</p>
@@ -965,9 +972,9 @@ export function WeddingStudio() {
               <div className="rounded-lg border border-[#25D366]/50 bg-[#25D366]/10 p-3">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">2. Dispatch via Waau Panel</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => void generateOnly()} disabled={toGenerate.length === 0 || busyAny} data-gen-all className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900">{genRun && !autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} Generate All ({toGenerate.length} {toGenerate.length === 1 ? "guest" : "guests"})</button>
-                  <button type="button" onClick={() => void sendAll()} disabled={readyToSend.length === 0 || busyAny} data-send-all className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch && !autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({readyToSend.length} ready)</button>
-                  <button type="button" onClick={() => void autoAll()} disabled={(toGenerate.length === 0 && readyToSend.length === 0) || busyAny} data-auto-all className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#25D366] px-4 py-2 text-sm font-extrabold text-slate-900 hover:bg-[#25D366]/15 disabled:opacity-40 dark:text-white">{autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <span aria-hidden="true">⚡</span>} Auto (Generate &amp; Send)</button>
+                  <button type="button" onClick={() => void generateOnly()} disabled={toGenerate.length === 0 || busyAny} data-gen-all className="btn-fx inline-flex items-center gap-1.5 rounded-lg bg-[#0A0B0D] px-4 py-2 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900">{genRun && !autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />} Generate All ({toGenerate.length} {toGenerate.length === 1 ? "guest" : "guests"})</button>
+                  <button type="button" onClick={() => void sendAll()} disabled={readyToSend.length === 0 || busyAny} data-send-all className="btn-fx inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-extrabold text-[#06371a] hover:brightness-95 disabled:opacity-40">{batch && !autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} Send All via Waau Panel ({readyToSend.length} ready)</button>
+                  <button type="button" onClick={() => void autoAll()} disabled={(toGenerate.length === 0 && readyToSend.length === 0) || busyAny} data-auto-all className="btn-fx inline-flex items-center gap-1.5 rounded-lg border-2 border-[#25D366] px-4 py-2 text-sm font-extrabold text-slate-900 hover:bg-[#25D366]/15 disabled:opacity-40 dark:text-white">{autoRun ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <span aria-hidden="true">⚡</span>} Auto (Generate &amp; Send)</button>
                   {genRun && <button type="button" onClick={() => { genAbort.current = true; }} className="text-xs font-bold text-red-700 underline dark:text-red-300">Stop</button>}
                   {videoProgress && <span role="status" className="text-xs font-semibold text-slate-900 dark:text-white">Rendering video for {videoProgress.name}: {Math.round(videoProgress.pct * 100)}%. Keep this tab open and visible.</span>}
                 </div>
@@ -977,7 +984,7 @@ export function WeddingStudio() {
                     <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/70 dark:bg-slate-700" role="progressbar" aria-valuemin={0} aria-valuemax={genRun.total} aria-valuenow={genRun.done}><div className="h-full bg-[#25D366] transition-all" style={{ width: `${(100 * genRun.done) / Math.max(1, genRun.total)}%` }} /></div>
                   </div>
                 )}
-                {genSummary && !genRun && <p role="status" data-gen-summary className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900 ring-1 ring-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-100">✓ {genSummary}</p>}
+                {genSummary && !genRun && <p role="status" data-gen-summary className="pulse-once mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900 ring-1 ring-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-100">✓ {genSummary}</p>}
                 {(sendNote || (cooling.length > 0 && sendable.length === 0 && candidates.length > 0)) && (
                   <p role="status" className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                     <span>{sendNote || `All ${cooling.length} unsent guest${cooling.length === 1 ? " is" : "s are"} in cooldown. The shortest wait is ${clock(shortestWait)}.`}</span>
@@ -996,7 +1003,7 @@ export function WeddingStudio() {
         </div>
 
         <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start" aria-label="Live card preview">
-          <div className={cn(panel, "space-y-3")}>
+          <div className={cn(panel, "preview-halo space-y-3")}>
             <div data-preview-bar className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 max-sm:basis-full dark:text-white">Live preview · {tpl.name}</h2>
               <div className="flex shrink-0 items-center gap-2">

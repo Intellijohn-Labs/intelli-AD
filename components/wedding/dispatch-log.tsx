@@ -111,8 +111,8 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
   const inTab = tab === "all" ? counts.total : counts[tab];
   useEffect(() => { setConfirmClear(false); }, [tab]);
 
-  const card = (label: string, value: number, cls: string) => (
-    <div className={cn("rounded-lg border px-3 py-2.5", cls)}><dt className="text-[11px] font-bold tracking-wide uppercase opacity-80">{label}</dt><dd className="text-2xl font-black tabular-nums">{value}</dd></div>
+  const card = (label: string, value: number, cls: string, i = 0) => (
+    <div className={cn("reveal-scale rounded-lg border px-3 py-2.5", cls)} style={{ "--i": i } as React.CSSProperties}><dt className="text-[11px] font-bold tracking-wide uppercase opacity-80">{label}</dt><dd className="text-2xl font-black tabular-nums">{value}</dd></div>
   );
 
   return (
@@ -144,10 +144,10 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
       <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">Every WhatsApp invitation you have sent through Waau Panel, newest first.{counts.queued > 0 ? " Checking again every few seconds while some are queued." : ""}</p>
 
       <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-live="polite">
-        {card("Total", counts.total, "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-white/5 dark:text-white")}
-        {card("Sent", counts.sent, "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200")}
-        {card("Queued", counts.queued, "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200")}
-        {card("Failed", counts.failed, "border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200")}
+        {card("Total", counts.total, "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-white/5 dark:text-white", 0)}
+        {card("Sent", counts.sent, "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200", 1)}
+        {card("Queued", counts.queued, "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200", 2)}
+        {card("Failed", counts.failed, "border-red-200 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200", 3)}
       </dl>
 
       <div role="tablist" aria-label="Filter dispatches" className="mt-3 flex flex-wrap gap-1.5">

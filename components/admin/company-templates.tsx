@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const card = "rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 const lbl = "mb-1 block text-sm font-semibold text-slate-800 dark:text-slate-100";
 const field = "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
-const btn = "inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#D12014] px-4 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60";
+const btn = "btn-fx inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#D12014] px-4 text-sm font-bold text-white hover:bg-[#A91400] disabled:opacity-60";
 
 interface Meta { kind: TemplateKind; category: TemplateCategory; greetingFormat: string; title: string; description?: string }
 

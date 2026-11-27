@@ -21,7 +21,7 @@ export function TextBoxEditor({ boxes, selectedId, onSelect, onAdd, onChange, on
     <div className="space-y-3 rounded-lg border border-slate-200 p-3 sm:col-span-2 dark:border-slate-700" data-text-boxes>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Text boxes</h3>
-        <button type="button" onClick={onAdd} data-add-text-box className="inline-flex items-center gap-1.5 rounded-lg bg-[#D12014] px-3 py-1.5 text-sm font-bold text-white hover:bg-[#A91400]"><Plus className="h-4 w-4" aria-hidden="true" /> Add Text Box</button>
+        <button type="button" onClick={onAdd} data-add-text-box className="btn-fx inline-flex items-center gap-1.5 rounded-lg bg-[#D12014] px-3 py-1.5 text-sm font-bold text-white hover:bg-[#A91400]"><Plus className="h-4 w-4" aria-hidden="true" /> Add Text Box</button>
       </div>
       <p className="text-xs text-slate-600 dark:text-slate-300">Add your own lines (English or Malayalam) anywhere on the {isVideo ? "video" : "card"}. Drag a box on the preview to place it; use {"{name}"} to insert each guest&apos;s name.</p>
       {boxes.length > 0 && (

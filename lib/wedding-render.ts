@@ -382,7 +382,7 @@ export async function renderWeddingCard(o: { template: WeddingTemplate; details:
             // Video greetings can restyle the pill (dark / frost / custom tint / none); anywhere else it keeps the card's own light pill.
             const pf = opt.id === "guest" && video ? pillFill(d.videoHeaderPill, d.videoHeaderPillColor, "header") : "default";
             if (pf) {
-              ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3; ctx.fillStyle = pf === "default" ? `${p.bg1}EE` : pf;
+              ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3; ctx.fillStyle = pf === "default" ? (video ? "rgba(20,16,24,0.62)" : `${p.bg1}EE`) : pf; // the video template's palette is white on white, so its default pill is dark
               ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.fill(); ctx.restore();
               if (pf === "default") { ctx.strokeStyle = p.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(x - bw / 2, y, bw, bh, Math.min(bh / 2, 40)); ctx.stroke(); }
             }
