@@ -43,7 +43,7 @@ export function Header() {
 
   return (
     <header className="dark sticky top-0 z-40 border-b border-white/10 bg-[#0A0B0D]/95 text-white backdrop-blur-md">
-      <div className="mx-auto grid h-16 max-w-[1500px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6 lg:px-10">
+      <div className="mx-auto grid h-16 max-w-[94rem] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-6 lg:px-10">
         <div className="flex shrink-0 items-center"><BrandLogo onDark /></div>
 
         <nav aria-label="Main" className="hidden min-w-0 items-center justify-center gap-1 min-[1120px]:flex">

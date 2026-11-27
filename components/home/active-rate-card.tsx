@@ -32,7 +32,7 @@ export function ActiveRateCard() {
   const available = hasRates(paper.name);
 
   return (
-    <section id="rates" className="mx-auto max-w-[1500px] scroll-mt-32 px-4 sm:px-6 lg:px-8">
+    <section id="rates" className="mx-auto max-w-[94rem] scroll-mt-32 px-4 sm:px-6 lg:px-8">
       <Card accent={brandFor(paper.id).primary} className="overflow-hidden p-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={paper.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22 }} className="grid gap-0 md:grid-cols-[260px_1fr]">

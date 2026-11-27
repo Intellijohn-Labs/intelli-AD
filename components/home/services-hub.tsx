@@ -64,7 +64,7 @@ export function ServicesHub() {
   const { paper } = usePublication(); // chosen in the publication chips above
   const eds = [flagshipEdition(paper).id];
   return (
-    <section aria-labelledby="services-h" className="mx-auto max-w-[1500px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+    <section aria-labelledby="services-h" className="mx-auto max-w-[94rem] px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
       <div className="mx-auto mb-10 max-w-3xl text-center">
         <p className="mb-4 inline-block rounded-full bg-slate-100 px-3 py-1 font-mono text-[11px] tracking-widest text-slate-700 uppercase dark:bg-[#1A1B1E] dark:text-[#FFFFFF]">{t("Newspaper advertising services")}</p>
         <h2 id="services-h" className="font-[family-name:var(--font-jakarta)] text-3xl font-black tracking-tight text-slate-900 md:text-5xl dark:text-white">{t("Newspaper Advertising Hub")}</h2>

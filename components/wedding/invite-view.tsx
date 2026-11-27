@@ -43,7 +43,7 @@ export function InviteView({ id }: { id: string }) {
   const festival = eventConfig(d.eventType).group === "festival" ? getTemplate(inv.template_id).festival : undefined;
   const title = festival ? (d.customTitle.trim() ? { en: d.customTitle.trim(), ml: festival.title.ml } : festival.title) : EVENT_TITLE[d.eventType];
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[94rem] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-xl text-center">
         <p className="kicker mb-2">{title.en}{title.ml && title.ml !== title.en ? ` · ${title.ml}` : ""}</p>
         <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl dark:text-white">{festival ? (guest ? `Dear ${guest}, a greeting for you` : "A greeting for you") : guest ? `Dear ${guest}, you are invited` : "You are invited"}</h1>

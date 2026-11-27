@@ -33,7 +33,7 @@ export function HomeTopBanner() {
 
   if (!slides.length) {
     return loading ? (
-      <div className="mx-auto max-w-[1500px] px-4 pt-4 sm:px-6 lg:px-8" aria-hidden="true">
+      <div className="mx-auto max-w-[94rem] px-4 pt-4 sm:px-6 lg:px-8" aria-hidden="true">
         <div className="h-[120px] w-full animate-pulse rounded-xl bg-slate-200/70 sm:h-[160px] lg:h-[220px] lg:rounded-2xl dark:bg-white/5" />
       </div>
     ) : null;
@@ -54,7 +54,7 @@ export function HomeTopBanner() {
   };
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 pt-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[94rem] px-4 pt-4 sm:px-6 lg:px-8">
       <div
         role="region"
         aria-label="Promotions"

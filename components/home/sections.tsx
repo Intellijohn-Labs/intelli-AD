@@ -17,7 +17,7 @@ import { usePublication } from "@/lib/publication";
 import { cn, formatINR } from "@/lib/utils";
 import { TemplateCard } from "./template-card";
 
-const SECTION = "mx-auto max-w-[1500px] px-4 py-12 sm:px-6 sm:py-16 md:py-20 lg:px-8";
+const SECTION = "mx-auto max-w-[94rem] px-4 py-12 sm:px-6 sm:py-16 md:py-20 lg:px-8";
 
 /** 3. Publications showcase: uniform tiles, equal heights. */
 export function Publications() {

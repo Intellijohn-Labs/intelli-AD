@@ -50,7 +50,7 @@ export function EditorialLanding() {
   const papers = FEATURED.map((id) => newspapers.find((n) => n.id === id)).filter((n): n is (typeof newspapers)[number] => !!n);
   return (
     <>
-      <section className="mx-auto grid max-w-[1500px] items-center gap-10 px-4 pt-12 pb-10 sm:px-6 sm:pt-16 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:px-8">
+      <section className="mx-auto grid max-w-[94rem] items-center gap-10 px-4 pt-12 pb-10 sm:px-6 sm:pt-16 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:px-8">
         <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-[0_2px_10px_-3px_rgba(15,23,42,0.06)]"><span className="h-1.5 w-1.5 rounded-full bg-[#D12014]" aria-hidden="true" />{t("Kerala's newspaper advertising desk")}</p>
           <h1 className="mt-4 text-[2.5rem] leading-[1.05] font-extrabold tracking-[-0.03em] text-[#0A0B0D] sm:text-6xl">
@@ -67,7 +67,7 @@ export function EditorialLanding() {
         <Clipping />
       </section>
 
-      <section aria-labelledby="pubs-h" className="mx-auto max-w-[1500px] px-4 pb-14 sm:px-6 lg:px-8">
+      <section aria-labelledby="pubs-h" className="mx-auto max-w-[94rem] px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between gap-4">
           <h2 id="pubs-h" className="text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">{t("The papers on our desk")}</h2>
           <Link href="/newspaper" className="text-sm font-semibold text-[#D12014] hover:underline">{t("All publications")} →</Link>
@@ -96,7 +96,7 @@ export function EditorialLanding() {
       </section>
 
       <section aria-labelledby="flow-h" className="border-y border-slate-200/70 bg-white">
-        <div className="mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[94rem] px-4 py-14 sm:px-6 lg:px-8">
           <p className="kicker">{t("How a booking works")}</p>
           <h2 id="flow-h" className="mt-2 max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">{t("From draft to Release Order in three steps")}</h2>
           <ol className="mt-8 grid gap-6 md:grid-cols-3">
@@ -112,7 +112,7 @@ export function EditorialLanding() {
         </div>
       </section>
 
-      <section aria-label="Agency details" className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+      <section aria-label="Agency details" className="mx-auto max-w-[94rem] px-4 py-8 sm:px-6 lg:px-8">
         <ul className="grid gap-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
           <li className="flex items-start gap-2.5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0A0B0D]">{t("Registered agency")}</b>{COMPANY.tradeName} · GSTIN {COMPANY.gstin}</span></li>
           <li className="flex items-start gap-2.5"><FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /><span><b className="block text-[#0A0B0D]">{t("Official tariffs")}</b>{t("Rates are read from each paper's own rate card")}</span></li>

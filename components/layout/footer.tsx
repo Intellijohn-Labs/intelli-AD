@@ -32,8 +32,8 @@ export function Footer() {
   ];
 
   return (
-    <footer className="mt-20 w-full border-t border-[#17181C] bg-[#0A0B0D] pt-16 pb-12 text-slate-400">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:px-6 md:grid-cols-4 lg:px-8">
+    <footer className="mt-20 w-full border-t border-[#17181C] bg-[#0A0B0D] pt-16 pb-24 text-slate-400 md:pb-12">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         {/* Brand */}
         <div>
           <BrandLogo onDark />

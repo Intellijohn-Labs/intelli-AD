@@ -40,7 +40,7 @@ export function NewspaperMastheadBar() {
 
   return (
     <div id="publication-bar" className="sticky top-[68px] z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-[#26272B] dark:bg-[#0A0B0D]/95">
-      <div className="mx-auto flex max-w-[1500px] items-center gap-4 px-6 py-3 md:px-12">
+      <div className="mx-auto flex max-w-[94rem] items-center gap-4 px-6 py-3 md:px-12">
         <span className="hidden shrink-0 font-mono text-[11px] font-semibold tracking-[0.18em] text-slate-500 uppercase lg:block">{t("Publication")}</span>
         {/* Tactile publication chips: white pills; the chosen paper becomes a solid ink pill with a sliding highlight. */}
         <div

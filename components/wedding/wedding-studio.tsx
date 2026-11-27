@@ -661,7 +661,7 @@ export function WeddingStudio() {
   if (!mode) return <ModeSelector pathname={pathname} />; // all hooks have run; the draft stays in state and storage while the selector is showing
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+    <div className="touch-comfort mx-auto w-full max-w-[94rem] px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <div role="tablist" aria-label="Card type" className="inline-flex rounded-full border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-[#131416]">
           {([["invitation", "Invitation Cards"], ["greeting", "Greeting Cards"]] as const).map(([m, label]) => (
@@ -674,9 +674,9 @@ export function WeddingStudio() {
       <h1 className="text-3xl leading-tight font-black tracking-tight text-slate-900 md:text-4xl dark:text-white">{mode === "greeting" ? "Design a festival greeting and send it to everyone on WhatsApp" : "Design an invitation card and send it to every guest on WhatsApp"}</h1>
       <p className="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300">{mode === "greeting" ? "Onam, Vishu, Christmas, New Year, Eid, Diwali and your own designs: choose a template, write your wish, add your name or logo, then send a personalised greeting to each contact on WhatsApp through Waau Panel." : "Weddings, birthdays, housewarming, inaugurations and more: choose a template, add your details, let AI write the wording, then send a personalised card to each guest on WhatsApp through Waau Panel."}</p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 space-y-4">
-          <div role="tablist" aria-label="Steps" className={cn(panel, "flex flex-wrap gap-1 p-1.5 sm:flex-nowrap")}>{TABS.map((_, i) => bar(i))}</div>
+          <div role="tablist" aria-label="Steps" className={cn(panel, "grid grid-cols-2 gap-1 p-1.5 sm:flex sm:flex-nowrap")}>{TABS.map((_, i) => bar(i))}</div>
 
           {tab === "Template" && (
             <section className={panel} aria-label="Templates">
@@ -980,10 +980,10 @@ export function WeddingStudio() {
           )}
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Live card preview">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start" aria-label="Live card preview">
           <div className={cn(panel, "space-y-3")}>
-            <div data-preview-bar className="flex items-center justify-between gap-2">
-              <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 dark:text-white">Live preview · {tpl.name}</h2>
+            <div data-preview-bar className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="min-w-0 truncate text-sm font-bold text-slate-900 max-sm:basis-full dark:text-white">Live preview · {tpl.name}</h2>
               <div className="flex shrink-0 items-center gap-2">
                 {!isVideoMode && <button ref={enlargeRef} type="button" onClick={() => { setSelected(null); scrollBeforeStudio.current = window.scrollY; setStudioOpen(true); }} className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-300 px-2.5 text-[11px] font-bold text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10" title="Open the fullscreen studio"><Maximize2 className="h-3.5 w-3.5" aria-hidden="true" /> Enlarge</button>}
                 <button type="button" onClick={resetLayout} disabled={!layoutCustom} className="text-[11px] font-semibold text-slate-600 underline underline-offset-2 hover:text-[#D12014] disabled:cursor-default disabled:opacity-40 disabled:no-underline disabled:hover:text-slate-600 dark:text-slate-300">Reset layout</button>

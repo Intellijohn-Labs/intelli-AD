@@ -166,7 +166,7 @@ export function DispatchLog({ refreshKey, cooldownLeft, onReplied, hasReplied }:
       ) : rows.length === 0 ? (
         !error && <p className="mt-4 rounded-lg border border-dashed border-slate-300 p-5 text-center text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300">{tab === "all" ? "No WhatsApp dispatches yet." : `No ${LABEL[tab].toLowerCase()} dispatches.`}</p>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="relative mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-slate-50 text-left text-[11px] font-bold tracking-wide text-slate-600 uppercase dark:bg-white/5 dark:text-slate-300">
               <tr><th className="px-3 py-2">Guest</th><th className="px-3 py-2">Template</th><th className="px-3 py-2">When</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right"><span className="sr-only">Actions</span></th></tr>

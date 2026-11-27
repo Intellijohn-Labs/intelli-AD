@@ -105,7 +105,7 @@ export function GuestTable({ guests, onChange, busyId, onSend, onPreview, cooldo
             );
           })}
         </ul>
-        <div className="hidden overflow-x-auto rounded-lg border border-slate-200 sm:block dark:border-slate-700">
+        <div className="relative hidden overflow-x-auto rounded-lg border border-slate-200 sm:block dark:border-slate-700">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-600 dark:bg-white/5 dark:text-slate-300">
               <tr><th className="px-2 py-2">#</th><th className="px-2 py-2">Guest name</th><th className="px-2 py-2">Address / place</th><th className="px-2 py-2">WhatsApp number</th><th className="px-2 py-2">Status</th><th className="px-2 py-2 text-right">Actions</th></tr>

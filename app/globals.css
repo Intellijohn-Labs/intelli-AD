@@ -30,6 +30,9 @@
 }
 
 html { scroll-behavior: smooth; }
+/* Large monitors / TVs: scale the rem-based type and spacing up a little so text stays readable at 1920 px and 4K widths (content is still centred in capped containers). */
+@media (min-width: 1920px) { html { font-size: 112.5%; } }
+@media (min-width: 2560px) { html { font-size: 125%; } }
 html { color-scheme: light; }
 body {
   /* Warm newsprint ivory canvas with deep editorial ink; ink buttons, terracotta accents. */
@@ -343,3 +346,12 @@ html.no-splash #aiadm-splash { display: none; }
 .proof-sheet, .proof-sheet *, html.dark .proof-sheet, html.dark .proof-sheet * { color: #18181B; }
 .proof-sheet .proof-muted, html.dark .proof-sheet .proof-muted { color: #3F3F46; }
 html.dark .proof-sheet .border-stone-800, html.dark .proof-sheet .border-slate-800, html.dark .proof-sheet .border-slate-900 { border-color: #292524; }
+
+/* Comfortable touch targets (>= 44px) for the invitation / greeting studio and the admin console on phones and tablets. Opt out of any element with .no-touch.
+   Excluded: the invisible drag zones over the live preview (their size is the element they cover), checkboxes (a stretched native checkbox looks broken) and the remove pill on photos. */
+@media (max-width: 1023px), (pointer: coarse) {
+  .touch-comfort :is(button, select, input:not([type="checkbox"], [type="radio"], [type="file"], [type="color"]), [role="tab"], [role="radio"], [role="switch"]):not([data-card-zone], [aria-label^="Remove photo"], .no-touch) { min-height: 44px; }
+  .touch-comfort input[type="color"] { min-height: 44px; min-width: 44px; }
+  .touch-comfort button:not([data-card-zone], .no-touch) { min-width: 44px; }
+  .touch-comfort input[type="range"] { min-height: 44px; }
+}
