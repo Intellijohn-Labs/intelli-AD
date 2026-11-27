@@ -9,6 +9,7 @@ import { Providers } from "@/components/providers";
 import { THEME_INIT_SCRIPT } from "@/components/theme-provider";
 import { SPLASH_INIT_SCRIPT } from "@/components/brand/splash-script";
 import { SplashLoader } from "@/components/brand/splash-loader";
+import { AiRoboAssistant } from "@/components/ai-robo-assistant";
 import { WhatsAppWidget } from "@/components/whatsapp-widget";
 import { T } from "@/context/language-context";
 import { COMPANY } from "@/lib/company";
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main id="main">{children}</main>
           <ChromeOnly><Footer /></ChromeOnly>
           <WhatsAppWidget />
+          <AiRoboAssistant />
         </Providers>
       </body>
     </html>

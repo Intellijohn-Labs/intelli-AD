@@ -397,3 +397,22 @@ html.dark .proof-sheet .border-stone-800, html.dark .proof-sheet .border-slate-8
   .card-lift:hover { transform: none; }
   .card-lift::after { display: none; }
 }
+
+/* ── Robo, the AI Ad Manager helper (components/ai-robo-assistant.tsx) ───────────────────────────────────────────────────────── */
+@keyframes robo-bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -5px, 0); } }
+@keyframes robo-blink { 0%, 92%, 100% { transform: scaleY(1); } 95%, 97% { transform: scaleY(0.1); } }
+@keyframes robo-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.35); } }
+@keyframes robo-wave { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-35deg); } 75% { transform: rotate(18deg); } }
+@keyframes robo-dots { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes robo-pop { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.96); } to { opacity: 1; transform: none; } }
+.robo-bob { animation: robo-bob 3.2s ease-in-out infinite; }
+.robo-eye { transform-box: fill-box; transform-origin: center; animation: robo-blink 4.6s infinite; }
+.robo-eye.r { animation-delay: 0.05s; }
+.robo-antenna { transform-box: fill-box; transform-origin: center; animation: robo-pulse 1.8s ease-in-out infinite; }
+.robo-arm { transform-box: fill-box; transform-origin: 20% 15%; }
+.robo-happy .robo-arm.wave { animation: robo-wave 0.7s ease-in-out infinite; }
+.robo-dot { animation: robo-dots 1s infinite; }
+.robo-dot:nth-child(2) { animation-delay: 0.15s; }
+.robo-dot:nth-child(3) { animation-delay: 0.3s; }
+.robo-pop { animation: robo-pop 0.28s var(--ease-spring, ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .robo-bob, .robo-eye, .robo-antenna, .robo-happy .robo-arm.wave, .robo-dot, .robo-pop { animation: none !important; } }
