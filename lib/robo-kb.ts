@@ -9,8 +9,36 @@ export const WA_NUMBER = COMPANY.phones[0].tel.replace(/\D/g, "");
 export const waLink = (text = "Hello AI admanager, I need help with the Invitation & Greeting Studio.") => `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
 
 const KB: Entry[] = [
-  { id: "hi", keys: ["hi", "hello", "hey", "hai", "namaskaram", "vanakkam", "hola", "നമസ്കാരം", "ഹലോ", "ഹായ്", "good morning", "good evening"],
-    a: { en: "Beep-boop! 🤖 I'm Robo, your AI Ad Manager buddy. Ask me anything about cards, videos, guests or sending on WhatsApp. I only bite bugs.", ml: "ബീപ്-ബൂപ്പ്! 🤖 ഞാൻ റോബോ, നിങ്ങളുടെ AI Ad Manager കൂട്ടുകാരൻ. കാർഡ്, വീഡിയോ, ഗസ്റ്റ്, വാട്സ്ആപ്പ് അയക്കൽ - എന്തും ചോദിച്ചോളൂ!", mg: "Beep-boop! 🤖 Njan Robo, ningalude AI Ad Manager koottukaaran. Card, video, guests, WhatsApp - entha venamengilum chodikko!" } },
+  { id: "hi", keys: ["hi", "hello", "hey", "hai", "namaskaram", "vanakkam", "hola", "നമസ്കാരം", "ഹലോ", "ഹായ്", "good morning", "good afternoon", "good evening", "good night", "gm", "suprabhatham", "സുപ്രഭാതം"],
+    a: { en: "{greet} I'm Robo, your AI Ad Manager buddy. Newspaper ads, wedding cards, greeting videos, WhatsApp sending: how can I help?", ml: "{greet} ഞാൻ റോബോ, നിങ്ങളുടെ AI Ad Manager കൂട്ടുകാരൻ. പത്രപ്പരസ്യം, വെഡിംഗ് കാർഡ്, ഗ്രീറ്റിംഗ് വീഡിയോ, വാട്സ്ആപ്പ് അയക്കൽ - എന്തും ചോദിക്കാം!", mg: "{greet} Njan Robo, ningalude AI Ad Manager koottukaaran. Newspaper ad, wedding card, greeting video, WhatsApp ayakkal - entha venamengilum chodikko!" } },
+  { id: "howare", keys: ["how are you", "how r u", "whats up", "what's up", "sughamano", "sukhamano", "sugham", "സുഖമാണോ", "സുഖം", "enthokkeya vishesham", "vishesham", "എന്തുണ്ട് വിശേഷം"],
+    a: { en: "I'm doing great, thanks for asking! 😊 How can I help you with your ads or cards today?", ml: "സുഖമാണ്, ചോദിച്ചതിന് നന്ദി! 😊 ഇന്ന് പരസ്യത്തിനോ കാർഡിനോ എങ്ങനെ സഹായിക്കാം?", mg: "Sughamaanu, chodichathinu nanni! 😊 Innu ad-inooo card-inooo engane sahayikkam?" } },
+  { id: "compliment", keys: ["you are good", "you're good", "you are smart", "awesome", "cool", "love you", "best", "amazing", "good robot", "cute", "sweet", "kollam", "adipoli", "polichu", "super robo", "കൊള്ളാം", "അടിപൊളി", "പൊളി", "സൂപ്പർ"],
+    a: { en: "Thank you, that's kind! 😊 Is there anything else I can help you with on AI Ad Manager?", ml: "നന്ദി, വളരെ സന്തോഷം! 😊 AI Ad Manager-ൽ വേറെ എന്തെങ്കിലും സഹായം വേണോ?", mg: "Nanni, valare santhosham! 😊 AI Ad Manager-il vere enthenkilum sahayam venoo?" } },
+  { id: "who", keys: ["who are you", "your name", "who r u", "what are you", "what is robo", "നീ ആരാണ്", "ആരാണ്", "nee aaraa", "ആരാ നീ"],
+    a: { en: "I'm Robo 🤖, the AI Ad Manager helper. I can guide you through newspaper ad booking, invitation & greeting cards, videos, sending on WhatsApp and support. What would you like to do?", ml: "ഞാൻ റോബോ 🤖, AI Ad Manager-ന്റെ സഹായി. പത്രപ്പരസ്യ ബുക്കിംഗ്, ക്ഷണക്കത്ത്/ആശംസാ കാർഡുകൾ, വീഡിയോകൾ, വാട്സ്ആപ്പ് അയക്കൽ, സപ്പോർട്ട് - എല്ലാത്തിനും വഴി കാണിക്കാം. എന്താണ് ചെയ്യേണ്ടത്?", mg: "Njan Robo 🤖, AI Ad Manager-inte sahaayi. Newspaper ad booking, invitation & greeting cards, videos, WhatsApp ayakkal, support - ellaathinum vazhi kaanikkaam. Enthaanu cheyyendathu?" } },
+  { id: "thanks", keys: ["thanks", "thank you", "thx", "ok thanks", "nanni", "നന്ദി", "tnx", "thank u", "great help"],
+    a: { en: "Beep-boop, you're welcome! 🎉 {signoff}", ml: "ബീപ്-ബൂപ്പ്, സന്തോഷം! 🎉 {signoff}", mg: "Beep-boop, santhosham! 🎉 {signoff}" } },
+  { id: "bye", keys: ["bye", "goodbye", "good bye", "see you", "see ya", "later", "cya", "poyi varam", "pinne kaanam", "ശരി പിന്നെ കാണാം", "പോയി വരാം", "ബൈ"],
+    a: { en: "Bye for now! 👋 {signoff}", ml: "തൽക്കാലം ബൈ! 👋 {signoff}", mg: "Thalkkaalam bye! 👋 {signoff}" } },
+  { id: "navigate", keys: ["where", "navigate", "find", "menu", "home page", "how to use", "how do i use", "what can you do", "features", "what is this", "about", "services", "evide", "എവിടെ", "ഈ സൈറ്റ്", "enthaanu ithu", "ഇത് എന്താണ്", "website"],
+    a: { en: "Around the site 🧭: Rate Cards (newspaper prices) and Track Booking sit in the top bar; Book places a newspaper ad; Invitation Cards and Greeting Cards are the WhatsApp card/video studio; your account menu (top right) has My Bookings, Ad Drafts, Profile and Sign Out.", ml: "സൈറ്റിലൂടെ 🧭: മുകളിലെ ബാറിൽ Rate Cards (പത്ര നിരക്കുകൾ), Track Booking; Book പത്രപ്പരസ്യം ബുക്ക് ചെയ്യാൻ; Invitation Cards / Greeting Cards വാട്സ്ആപ്പ് കാർഡ്/വീഡിയോ സ്റ്റുഡിയോ; അക്കൗണ്ട് മെനുവിൽ My Bookings, Ad Drafts, Profile, Sign Out.", mg: "Site-ilude 🧭: mukalile bar-il Rate Cards (newspaper nirakkukal), Track Booking; Book newspaper ad book cheyyaan; Invitation Cards / Greeting Cards WhatsApp card/video studio; account menu-il My Bookings, Ad Drafts, Profile, Sign Out." } },
+  { id: "book", keys: ["book a newspaper ad", "newspaper ad", "book newspaper", "book cheyyuka", "book cheyyam", "book cheyyaan", "book", "book ad", "book an ad", "booking", "how to book", "place ad", "advertise", "advertisement", "publish ad", "post ad", "ad booking", "ad book", "പരസ്യം ബുക്ക്", "പരസ്യം നൽകാം", "paraspaRam", "parasyam", "parasyam book", "ad kodukkam"],
+    a: { en: "Book a newspaper ad in 4 steps 📰: 1) Publication & Category (pick the paper, edition and ad type). 2) Compose & Preview (write or upload your ad and see it as it will print). 3) Schedule (choose the release date). 4) Review & Pay. Prices come from the Rate Cards, and you can save work as an Ad Draft.", ml: "പത്രപ്പരസ്യം 4 ഘട്ടത്തിൽ 📰: 1) Publication & Category (പത്രം, എഡിഷൻ, പരസ്യ തരം). 2) Compose & Preview (പരസ്യം എഴുതുക/അപ്‌ലോഡ് ചെയ്യുക, അച്ചടിക്കുന്ന പോലെ കാണാം). 3) Schedule (റിലീസ് തീയതി). 4) Review & Pay. വില Rate Cards-ൽ നിന്ന്; ജോലി Ad Draft ആയി സേവ് ചെയ്യാം.", mg: "Newspaper ad 4 ghattathil 📰: 1) Publication & Category (paper, edition, ad type). 2) Compose & Preview (ad ezhuthuka/upload cheyyuka, achadikkunna pole kaanam). 3) Schedule (release date). 4) Review & Pay. Vila Rate Cards-il ninnu; joli Ad Draft aayi save cheyyam." } },
+  { id: "adtypes", keys: ["classified", "classifieds", "display ad", "display", "commercial display", "ad type", "ad types", "rol", "text ad", "ക്ലാസിഫൈഡ്", "ഡിസ്പ്ലേ", "classified engane"],
+    a: { en: "Ad types 🧾: Classified Text (ROL) is the budget text-only ad, Classified Display adds boxes, photos and styling inside the classified section, and Commercial Display is the big promotional ad. You choose the type in step 1 of booking.", ml: "പരസ്യ തരങ്ങൾ 🧾: Classified Text (ROL) ടെക്സ്റ്റ് മാത്രമുള്ള ചെലവു കുറഞ്ഞ പരസ്യം, Classified Display ബോക്സും ഫോട്ടോയും സഹിതം, Commercial Display വലിയ പ്രമോഷണൽ പരസ്യം. ബുക്കിംഗിന്റെ ഒന്നാം ഘട്ടത്തിൽ തിരഞ്ഞെടുക്കാം.", mg: "Ad types 🧾: Classified Text (ROL) text mathramulla chelavu kuranja ad, Classified Display box-um photo-yum sahitham, Commercial Display valiya promotional ad. Booking-inte onnaam ghattathil select cheyyam." } },
+  { id: "categories", keys: ["matrimonial", "matrimony", "marriage ad", "real estate", "property", "recruitment", "job", "jobs", "vacancy", "public notice", "notice", "name change", "obituary", "remembrance", "memorial", "tender", "tenders", "business ad", "category", "categories", "വിവാഹം", "വരൻ", "വധു", "ചരമം", "ചരമ", "ടെൻഡർ", "ജോലി", "വസ്തു", "ആദരാഞ്ജലി"],
+    a: { en: "Categories 🗂️: Matrimonial, Property (real estate), Recruitment, Public Notice, Name Change, Obituary, Remembrance, Tender Notice and Business. Some need a document (for example tenders need the NIT copy, name change a notarised affidavit, public notices legal authority). The booking page tells you exactly which.", ml: "വിഭാഗങ്ങൾ 🗂️: Matrimonial, Property, Recruitment, Public Notice, Name Change, Obituary, Remembrance, Tender Notice, Business. ചിലതിന് രേഖ വേണം (ടെൻഡറിന് NIT കോപ്പി, പേര് മാറ്റത്തിന് നോട്ടറി സത്യവാങ്മൂലം, പബ്ലിക് നോട്ടീസിന് നിയമാനുമതി). ഏതൊക്കെ വേണമെന്ന് ബുക്കിംഗ് പേജ് പറയും.", mg: "Categories 🗂️: Matrimonial, Property, Recruitment, Public Notice, Name Change, Obituary, Remembrance, Tender Notice, Business. Chilathinu document venam (tender-inu NIT copy, name change-inu notarised affidavit, public notice-inu legal authority). Ethokke venam ennu booking page parayum." } },
+  { id: "papers", keys: ["publication", "publications", "newspaper", "newspapers", "paper", "manorama", "malayala manorama", "mathrubhumi", "deshabhimani", "madhyamam", "mangalam", "deepika", "kerala kaumudi", "the hindu", "times of india", "edition", "pathram", "patram", "പത്രം", "മനോരമ", "മാതൃഭൂമി", "ദേശാഭിമാനി", "മാധ്യമം", "patram"],
+    a: { en: "Papers 🗞️: Malayala Manorama, Mathrubhumi, Deshabhimani and Madhyamam, plus Mangalam, Deepika, Kerala Kaumudi, The Hindu and Times of India. Pick the paper and edition in step 1 (or compare prices first in Rate Cards).", ml: "പത്രങ്ങൾ 🗞️: മലയാള മനോരമ, മാതൃഭൂമി, ദേശാഭിമാനി, മാധ്യമം, കൂടാതെ മംഗളം, ദീപിക, കേരള കൗമുദി, ദി ഹിന്ദു, ടൈംസ് ഓഫ് ഇന്ത്യ. ഒന്നാം ഘട്ടത്തിൽ പത്രവും എഡിഷനും തിരഞ്ഞെടുക്കാം (വില ആദ്യം Rate Cards-ൽ താരതമ്യം ചെയ്യാം).", mg: "Papers 🗞️: Malayala Manorama, Mathrubhumi, Deshabhimani, Madhyamam, koode Mangalam, Deepika, Kerala Kaumudi, The Hindu, Times of India. Onnaam ghattathil paper-um edition-um select cheyyam (vila aadyam Rate Cards-il compare cheyyam)." } },
+  { id: "rates", keys: ["rate card", "rate cards", "rate", "rates", "price", "prices", "cost", "how much", "charges", "per line", "pricing", "tariff", "വില", "നിരക്ക്", "റേറ്റ്", "എത്രയാ", "ethra aayi", "ethra vila", "vila"],
+    a: { en: "Prices 💰: open Rate Cards in the top bar to see each paper's rates by edition and ad type. The booking page shows a live quote as you compose (classified text is billed per line), so there are no surprises at checkout.", ml: "വില 💰: മുകളിലെ Rate Cards തുറന്നാൽ ഓരോ പത്രത്തിന്റെയും എഡിഷൻ/പരസ്യ തരം അനുസരിച്ചുള്ള നിരക്കുകൾ കാണാം. ബുക്കിംഗ് പേജിൽ എഴുതുമ്പോൾ തന്നെ ക്വോട്ട് കാണിക്കും (ക്ലാസിഫൈഡ് ടെക്സ്റ്റ് വരി അനുസരിച്ച്).", mg: "Vila 💰: mukalile Rate Cards thurannal oro paperinteyum edition/ad type anusarichulla nirakkukal kaanam. Booking page-il ezhuthumbol thanne quote kaanikkum (classified text vari anusarichu)." } },
+  { id: "drafts", keys: ["draft", "drafts", "ad draft", "ad drafts", "save ad", "saved ad", "resume", "ഡ്രാഫ്റ്റ്", "draft engane", "save cheyyam"],
+    a: { en: "Ad Drafts 📝: while composing a newspaper ad you can save it as a draft and finish later. Find your drafts in the account menu (top right) under Ad Drafts, open one and carry on from where you stopped.", ml: "Ad Drafts 📝: പത്രപ്പരസ്യം എഴുതുമ്പോൾ ഡ്രാഫ്റ്റായി സേവ് ചെയ്ത് പിന്നീട് തുടരാം. അക്കൗണ്ട് മെനുവിൽ (മുകളിൽ വലത്) Ad Drafts-ൽ നിന്ന് തുറന്ന് നിർത്തിയിടത്തുനിന്ന് തുടരാം.", mg: "Ad Drafts 📝: newspaper ad ezhuthumbol draft aayi save cheythu pinne thudaraam. Account menu-il (mukalil valathu) Ad Drafts-il ninnu thurannu nirthiyidathu ninnu thudaraam." } },
+  { id: "track", keys: ["track booking", "track", "my bookings", "booking status", "order status", "receipt", "invoice", "booked ad", "status", "ബുക്കിംഗ് സ്റ്റാറ്റസ്", "ബുക്കിംഗ്", "track cheyyam", "booking evide", "my booking"],
+    a: { en: "Tracking 📦: use Track Booking in the top bar, or My Bookings in the account menu, to see every ad you booked with its status, release date and receipt. Tip: keep your booking ID handy.", ml: "ട്രാക്കിംഗ് 📦: മുകളിലെ Track Booking അല്ലെങ്കിൽ അക്കൗണ്ട് മെനുവിലെ My Bookings വഴി ബുക്ക് ചെയ്ത എല്ലാ പരസ്യങ്ങളുടെയും സ്റ്റാറ്റസ്, റിലീസ് തീയതി, രസീത് കാണാം.", mg: "Tracking 📦: mukalile Track Booking allenkil account menu-ile My Bookings vazhi book cheytha ellaa ad-inteyum status, release date, receipt kaanam." } },
+  { id: "agency", keys: ["agency", "akshaya", "agent", "partner", "agency login", "akshaya login", "center", "centre", "csc", "അക്ഷയ", "ഏജൻസി", "ഏജന്റ്", "agency login engane"],
+    a: { en: "Akshaya / Agency partners 🏢: approved partner centres have their own Akshaya / Agency Login (top bar) and a dashboard to manage customer bookings. New partners register on that page and wait for approval. Customers just sign in normally.", ml: "അക്ഷയ / ഏജൻസി പങ്കാളികൾ 🏢: അംഗീകൃത കേന്ദ്രങ്ങൾക്ക് സ്വന്തം Akshaya / Agency Login (മുകളിലെ ബാർ), ഉപഭോക്തൃ ബുക്കിംഗുകൾ നോക്കാൻ ഡാഷ്ബോർഡ്. പുതിയ പങ്കാളികൾ അവിടെ രജിസ്റ്റർ ചെയ്ത് അംഗീകാരത്തിനായി കാത്തിരിക്കണം.", mg: "Akshaya / Agency partners 🏢: approved centres-inu swantham Akshaya / Agency Login (mukalile bar), customer bookings nokkaan dashboard. Puthiya partners avide register cheythu approval-inayi kaathirikkanam." } },
   { id: "video", keys: ["video greeting", "greeting video", "create video", "make video", "video", "mp4", "mov", "വീഡിയോ", "വീഡിയോ ആശംസ", "video undaakkam", "video engane", "video cheyyam"],
     a: { en: "Video greeting in 4 beeps 🎬: 1) Pick Greeting Cards at the top. 2) In Template, tap Upload Greeting Video (MP4/MOV, up to 1 minute). 3) Set the guest greeting, footer quote and animations. 4) Add guests, then Generate All or ⚡ Auto. Each guest gets their own name burned in!", ml: "വീഡിയോ ആശംസ 4 ബീപ്പിൽ 🎬: 1) മുകളിൽ Greeting Cards തിരഞ്ഞെടുക്കുക. 2) Template-ൽ Upload Greeting Video (MP4/MOV, പരമാവധി 1 മിനിറ്റ്). 3) ഗസ്റ്റ് ഗ്രീറ്റിംഗ്, ഫൂട്ടർ ക്വോട്ട്, ആനിമേഷൻ സെറ്റ് ചെയ്യുക. 4) ഗസ്റ്റുകളെ ചേർത്ത് Generate All അല്ലെങ്കിൽ ⚡ Auto അമർത്തുക.", mg: "Video greeting 4 beep-il 🎬: 1) Mukalil Greeting Cards select cheyyuka. 2) Template-il Upload Greeting Video (MP4/MOV, max 1 minute). 3) Guest greeting, footer quote, animation set cheyyuka. 4) Guests add cheythittu Generate All allenkil ⚡ Auto amartuka. Oro guestinum avarude peru video-il varum!" } },
   { id: "templates", keys: ["template", "custom card", "upload card", "own card", "png", "jpg", "jpeg", "webp", "design", "ടെംപ്ലേറ്റ്", "സ്വന്തം കാർഡ്", "kaard", "card upload", "template engane", "own design"],
@@ -41,44 +69,61 @@ const KB: Entry[] = [
     a: { en: `Real humans 👩‍💻: email ${MAIL}, or call ${P1} / ${P2}. Or tap “Chat with Human on WhatsApp” below and we'll jump in.`, ml: `യഥാർത്ഥ മനുഷ്യർ 👩‍💻: ഇമെയിൽ ${MAIL}, അല്ലെങ്കിൽ ${P1} / ${P2} വിളിക്കുക. താഴെയുള്ള “Chat with Human on WhatsApp” അമർത്തിയാലും മതി.`, mg: `Real manushyar 👩‍💻: email ${MAIL}, allenkil ${P1} / ${P2} vilikkuka. Thazheyulla “Chat with Human on WhatsApp” amarthiyalum mathi.` }, human: true },
   { id: "login", keys: ["login", "sign in", "signin", "sign up", "register", "account", "password", "ലോഗിൻ", "login cheyyam"],
     a: { en: "You need to be signed in to send. Use Sign in (email or phone OTP) from the login page; your drafts and Dispatch Log are tied to your account. Forgot something? Support is a tap away below.", ml: "അയക്കാൻ സൈൻ ഇൻ ചെയ്യണം. ലോഗിൻ പേജിൽ ഇമെയിൽ അല്ലെങ്കിൽ ഫോൺ OTP ഉപയോഗിക്കാം. ഡ്രാഫ്റ്റുകളും Dispatch Log-ഉം അക്കൗണ്ടുമായി ബന്ധപ്പെട്ടിരിക്കും.", mg: "Ayakkan sign in cheyyanam. Login page-il email allenkil phone OTP upayogikkam. Drafts-um Dispatch Log-um account-umayi bandhappettirikkum." } },
-  { id: "newspaper", keys: ["newspaper", "rate card", "classified", "booking", "book ad", "advertisement", "ad booking", "manorama", "mathrubhumi", "പത്രം", "പരസ്യം"],
-    a: { en: "Newspaper ad booking lives on the main site: Rate Cards for prices, then Book to place a classified or display ad. Cards & greetings are this studio's job, and I'm happy to help with both!", ml: "പത്രപ്പരസ്യ ബുക്കിംഗ് പ്രധാന സൈറ്റിലാണ്: വിലയ്ക്ക് Rate Cards, പിന്നെ Book. കാർഡുകളും ആശംസകളും ഈ സ്റ്റുഡിയോയുടെ പണി!", mg: "Newspaper ad booking main site-il aanu: vilakku Rate Cards, pinne Book. Cards-um greetings-um ee studio-yude pani!" } },
-  { id: "who", keys: ["who are you", "your name", "robot", "robo", "joke", "funny", "നീ ആരാണ്", "ആരാണ്", "nee aaraa", "joke para"],
-    a: { en: "I'm Robo 🤖, powered by 3 cups of chai and zero salary. Why did the robot go to school? To improve its *byte* of knowledge. Ask me about the studio!", ml: "ഞാൻ റോബോ 🤖, 3 ചായയും ശമ്പളമില്ലാത്ത ജോലിയുമാണ് എന്റെ ഊർജ്ജം. ഇനി സ്റ്റുഡിയോയെക്കുറിച്ച് ചോദിക്കൂ!", mg: "Njan Robo 🤖, 3 chaya-yum sambalamillatha joliyum aanu ente energy. Ini studio-yekurichu chodikko!" } },
-  { id: "thanks", keys: ["thanks", "thank you", "thx", "ok thanks", "bye", "great", "nice", "നന്ദി", "നന്നായി", "nanni", "super"],
-    a: { en: "Beep-boop, you're welcome! 🎉 Go send some smiles. I'll be here, floating politely.", ml: "ബീപ്-ബൂപ്പ്, സന്തോഷം! 🎉 ഇനി ആശംസകൾ അയച്ചോളൂ. ഞാൻ ഇവിടെ പൊങ്ങിക്കിടപ്പുണ്ടാകും.", mg: "Beep-boop, santhosham! 🎉 Ini aashamsakal ayachholoo. Njan ivide pongikkidappundaakum." } },
 ];
 
 export const FALLBACK: Record<RoboLang, string> = {
-  en: "My circuits are puzzled 🤔. Try a quick question below, or tap the WhatsApp button and a human will take it from here.",
-  ml: "എന്റെ സർക്യൂട്ടുകൾ ഒന്ന് കുഴങ്ങി 🤔. താഴെയുള്ള ചോദ്യങ്ങളിൽ ഒന്ന് നോക്കൂ, അല്ലെങ്കിൽ WhatsApp ബട്ടൺ അമർത്തിയാൽ ഒരാൾ സഹായിക്കും.",
-  mg: "Ente circuits kuzhangi 🤔. Thazheyulla chodyangalil onnu nokkoo, allenkil WhatsApp button amarthiyal oraal sahayikkum.",
+  en: "I'm only trained on AI Ad Manager, so I can't help with that one 🙏. I'd love to help you create a greeting card, a video greeting or a newspaper ad. Tap a quick question below, or chat with our team on WhatsApp.",
+  ml: "ഞാൻ AI Ad Manager-നെക്കുറിച്ച് മാത്രം പരിശീലിച്ചതാണ്, അതുകൊണ്ട് ഇതിൽ സഹായിക്കാൻ പറ്റില്ല 🙏. ഒരു ആശംസാ കാർഡോ വീഡിയോയോ പത്രപ്പരസ്യമോ ഉണ്ടാക്കാൻ സഹായിക്കാം. താഴെയുള്ള ചോദ്യങ്ങളിൽ ഒന്ന് തിരഞ്ഞെടുക്കൂ, അല്ലെങ്കിൽ WhatsApp-ൽ ഞങ്ങളുടെ ടീമുമായി സംസാരിക്കൂ.",
+  mg: "Njan AI Ad Manager-ne kurichu mathram parisheelichathaanu, athukondu ithil sahayikkan pattilla 🙏. Oru greeting card, video, allenkil newspaper ad undaakkaan sahayikkam. Thazheyulla chodyangalil onnu select cheyyoo, allenkil WhatsApp-il njangalude teamumaayi samsaarikkoo.",
 };
-export const GREETING: Record<RoboLang, string> = {
+export const GREETING_BASE: Record<RoboLang, string> = {
   en: "Beep-boop! I'm Robo, your AI Ad Manager buddy 🤖 Ask me anything in English, Malayalam or Manglish.",
   ml: "ബീപ്-ബൂപ്പ്! ഞാൻ റോബോ, നിങ്ങളുടെ AI Ad Manager കൂട്ടുകാരൻ 🤖 ഇംഗ്ലീഷിലോ മലയാളത്തിലോ മംഗ്ലീഷിലോ ചോദിക്കാം.",
   mg: "Beep-boop! Njan Robo, ningalude AI Ad Manager koottukaaran 🤖 English, Malayalam, Manglish - ethilum chodikkaam.",
 };
 
+
+export type Daypart = "morning" | "afternoon" | "evening" | "night";
+/** Local hour -> part of the day: morning 5-12, afternoon 12-17, evening 17-21, otherwise night. */
+export const daypart = (hour: number): Daypart => (hour >= 5 && hour < 12 ? "morning" : hour >= 12 && hour < 17 ? "afternoon" : hour >= 17 && hour < 21 ? "evening" : "night");
+const GREET: Record<Daypart, Record<RoboLang, string>> = {
+  morning: { en: "Good morning! ☀️", ml: "സുപ്രഭാതം! ☀️", mg: "Suprabhaatham! ☀️" },
+  afternoon: { en: "Good afternoon! 🌤️", ml: "ശുഭ മധ്യാഹ്നം! 🌤️", mg: "Shubha madhyaahnam! 🌤️" },
+  evening: { en: "Good evening! 🌆", ml: "ശുഭ സായാഹ്നം! 🌆", mg: "Shubha saayaahnam! 🌆" },
+  night: { en: "Hello, night owl! 🦉", ml: "ഹലോ, രാത്രി പക്ഷീ! 🦉", mg: "Hello, raathri pakshi! 🦉" },
+};
+export const timeGreeting = (hour: number, lang: RoboLang) => GREET[daypart(hour)][lang];
+/** Short proactive line for the speech bubble (English with a Malayalam touch). */
+export const teaserFor = (hour: number) => ({ morning: "Good morning ☀️ സുപ്രഭാതം! Stuck? Ask Robo 🤖", afternoon: "Good afternoon 🌤️ Need a hand? Ask Robo 🤖", evening: "Good evening 🌆 ശുഭ സായാഹ്നം! Ask Robo 🤖", night: "Still up? 🦉 Robo is awake: ask away 🤖" })[daypart(hour)];
+export const openingGreeting = (hour: number, lang: RoboLang) => `${timeGreeting(hour, lang)} ${GREETING_BASE[lang]}`;
+const SIGNOFFS: Record<RoboLang, string[]> = {
+  en: ["Have a nice day! 😊", "Happy designing! 🎨", "Happy advertising! 🚀", "Robo is always one tap away. 🤖"],
+  ml: ["നല്ല ഒരു ദിവസം ആശംസിക്കുന്നു! 😊", "ഹാപ്പി ഡിസൈനിംഗ്! 🎨", "ഹാപ്പി അഡ്വർടൈസിംഗ്! 🚀", "റോബോ എപ്പോഴും ഒരു ടാപ്പ് അകലെയുണ്ട്. 🤖"],
+  mg: ["Nalla oru divasam aashamsikkunnu! 😊", "Happy designing! 🎨", "Happy advertising! 🚀", "Robo eppozhum oru tap akale undu. 🤖"],
+};
+const NIGHT_BYE: Record<RoboLang, string> = { en: "Good night, sleep tight! 🌙", ml: "ശുഭ രാത്രി! 🌙", mg: "Shubha raathri! 🌙" };
 const MANGLISH = /\b(engane|enganeya|enthu|enthanu|entha|evide|ente|njan|ningal|cheyya?m|cheyyuka|cheyyaan|venam|venda|ayakk\w*|ayakka\w*|kanikk\w*|sahayam|undo|illa|aanu|aayi|nokku\w*|kittiyilla|varunnilla|ethra|samayam|allenkil|veendum|thazhe|mukalil|cherkk\w*|vilikk\w*|chodikk\w*|paranju|parayo|nanni|chaya|peru|oru|onnu)\b/i;
 export const detectLang = (q: string): RoboLang => (/[ഀ-ൿ]/.test(q) ? "ml" : MANGLISH.test(q) ? "mg" : "en");
 
-/** Best-matching answer for a question (longest keyword hits win), or null. */
-export function answer(q: string): { text: string; human: boolean; id: string; lang: RoboLang } {
-  const lang = detectLang(q), n = q.toLowerCase().replace(/[^\p{L}\p{M}\p{N}{}\s]/gu, " ").replace(/\s+/g, " ").trim();
-  const padded = ` ${n} `;
+/** Best-matching answer (longest keyword hits win). `now` drives the time-of-day greeting / sign-off; `n` rotates sign-offs so replies feel varied. */
+export function answer(q: string, now: Date = new Date(), n = 0): { text: string; human: boolean; id: string; lang: RoboLang } {
+  const lang = detectLang(q), hour = now.getHours(), norm = q.toLowerCase().replace(/[^\p{L}\p{M}\p{N}{}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  const padded = ` ${norm} `;
   let best: { e: Entry; score: number } | null = null;
   for (const e of KB) {
     let score = 0;
     for (const k of e.keys) {
       const kk = k.toLowerCase();
-      const hit = /[ഀ-ൿ]/.test(kk) || kk.includes(" ") || kk.includes("{") ? n.includes(kk) : padded.includes(` ${kk} `) || (kk.length > 4 && n.includes(kk));
+      const hit = /[\u0D00-\u0D7F]/.test(kk) || kk.includes(" ") || kk.includes("{") ? norm.includes(kk) : padded.includes(` ${kk} `) || (kk.length > 4 && norm.includes(kk));
       if (hit) score += kk.length >= 8 ? 3 : kk.length >= 5 ? 2 : 1;
     }
     if (score > 0 && (!best || score > best.score)) best = { e, score };
   }
   if (!best) return { text: FALLBACK[lang], human: true, id: "fallback", lang };
-  return { text: best.e.a[lang], human: !!best.e.human, id: best.e.id, lang };
+  const so = daypart(hour) === "night" && best.e.id === "bye" ? NIGHT_BYE[lang] : SIGNOFFS[lang][n % SIGNOFFS[lang].length];
+  let text = best.e.a[lang].replace("{greet}", timeGreeting(hour, lang)).replace("{signoff}", so);
+  if (!text.includes(so) && best.e.id !== "fallback" && n % 3 === 0) text += `\n${so}`; // an occasional warm sign-off on regular answers
+  return { text, human: !!best.e.human, id: best.e.id, lang };
 }
 
 export const CHIPS: { label: string; q: string }[] = [
@@ -86,5 +131,6 @@ export const CHIPS: { label: string; q: string }[] = [
   { label: "How to send to 100 guests?", q: "How to send to 100 guests?" },
   { label: "How to move logo & add custom text?", q: "How to move logo and add custom text box?" },
   { label: "Generate All vs Auto?", q: "Generate All vs Auto?" },
+  { label: "How do I book a newspaper ad?", q: "How do I book a newspaper ad?" },
   { label: "Contact support", q: "Contact support" },
 ];

@@ -398,21 +398,62 @@ html.dark .proof-sheet .border-stone-800, html.dark .proof-sheet .border-slate-8
   .card-lift::after { display: none; }
 }
 
-/* ── Robo, the AI Ad Manager helper (components/ai-robo-assistant.tsx) ───────────────────────────────────────────────────────── */
+/* ── Robo-Monkey, the AI Ad Manager helper (components/ai-robo-assistant.tsx). Transform / opacity only. ───────────────────────────────── */
 @keyframes robo-bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -5px, 0); } }
 @keyframes robo-blink { 0%, 92%, 100% { transform: scaleY(1); } 95%, 97% { transform: scaleY(0.1); } }
 @keyframes robo-pulse { 0%, 100% { opacity: 0.45; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.35); } }
-@keyframes robo-wave { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-35deg); } 75% { transform: rotate(18deg); } }
+@keyframes robo-sway { 0%, 100% { transform: rotate(5deg); } 50% { transform: rotate(-5deg); } }
+@keyframes robo-wave { 0%, 100% { transform: rotate(150deg); } 50% { transform: rotate(205deg); } }
+@keyframes robo-wave-l { 0%, 100% { transform: rotate(-150deg); } 50% { transform: rotate(-205deg); } }
+@keyframes robo-tail { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(11deg); } }
+@keyframes robo-tail-fast { 0%, 100% { transform: rotate(-16deg); } 50% { transform: rotate(18deg); } }
+@keyframes robo-swing { 0%, 100% { transform: rotate(11deg); } 50% { transform: rotate(-11deg); } }
+@keyframes robo-run-leg { 0%, 100% { transform: rotate(38deg); } 50% { transform: rotate(-38deg); } }
+@keyframes robo-run-arm { 0%, 100% { transform: rotate(-42deg); } 50% { transform: rotate(42deg); } }
+@keyframes robo-run-bounce { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -5px, 0); } }
+@keyframes robo-eat { 0% { transform: scaleX(1); } 30% { transform: scaleX(1); } 38% { transform: scaleX(0.72); } 62% { transform: scaleX(0.72); } 70% { transform: scaleX(0.4); } 92% { transform: scaleX(0.4); } 100% { transform: scaleX(1); } }
+@keyframes robo-chew { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.9); } }
+@keyframes robo-steam { 0% { opacity: 0; transform: translate3d(0, 3px, 0); } 40% { opacity: 0.9; } 100% { opacity: 0; transform: translate3d(0, -6px, 0); } }
 @keyframes robo-dots { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @keyframes robo-pop { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes robo-shadow { 0%, 100% { transform: scaleX(1); opacity: 0.9; } 50% { transform: scaleX(0.82); opacity: 0.55; } }
 .robo-bob { animation: robo-bob 3.2s ease-in-out infinite; }
+.robo-swing { transform-origin: 50% 8%; animation: robo-swing 1.5s ease-in-out infinite; }
+.mk .mk-armL, .mk .mk-armR, .mk .mk-legL, .mk .mk-legR, .mk .mk-tail, .mk .mk-banana, .mk .mk-mouth, .mk .mk-steam { transform-box: view-box; }
+.mk .mk-armL { transform-origin: 18px 56px; animation: robo-sway 3.4s ease-in-out infinite; }
+.mk .mk-armR { transform-origin: 62px 56px; animation: robo-sway 3.4s ease-in-out infinite 0.5s; }
+.mk .mk-legL { transform-origin: 32px 76px; } .mk .mk-legR { transform-origin: 48px 76px; }
+.mk .mk-tail { transform-origin: 52px 80px; animation: robo-tail 2.6s ease-in-out infinite; }
+.mk .mk-banana, .mk .mk-cup { display: none; }
+.mk .mk-banana { transform-origin: 62px 43px; }
+.mk .mk-mouth { transform-origin: 40px 46px; }
+.mk .mk-steam { animation: robo-steam 1.8s ease-in-out infinite; } .mk .mk-steam.s2 { animation-delay: 0.45s; } .mk .mk-steam.s3 { animation-delay: 0.9s; }
 .robo-eye { transform-box: fill-box; transform-origin: center; animation: robo-blink 4.6s infinite; }
 .robo-eye.r { animation-delay: 0.05s; }
 .robo-antenna { transform-box: fill-box; transform-origin: center; animation: robo-pulse 1.8s ease-in-out infinite; }
-.robo-arm { transform-box: fill-box; transform-origin: 20% 15%; }
-.robo-happy .robo-arm.wave { animation: robo-wave 0.7s ease-in-out infinite; }
+.robo-shadow { transform-box: fill-box; transform-origin: center; animation: robo-shadow 3.2s ease-in-out infinite; }
+/* hover: both arms wave, tail wags faster */
+.robo-happy .mk-armR { animation: robo-wave 0.7s ease-in-out infinite !important; }
+.robo-happy .mk-armL { animation: robo-wave-l 0.7s ease-in-out infinite 0.15s !important; }
+.robo-happy .mk-tail { animation: robo-tail-fast 0.6s ease-in-out infinite; }
+/* snack poses: right arm raised to the mouth */
+.robo-pose-banana .mk-armR, .robo-pose-tea .mk-armR { transform: rotate(125deg); animation: none; }
+.robo-pose-banana .mk-banana { display: block; animation: robo-eat 5s steps(1, end) infinite; animation-timing-function: ease-in-out; }
+.robo-pose-banana .mk-mouth { animation: robo-chew 0.35s ease-in-out infinite; }
+.robo-pose-tea .mk-cup { display: block; }
+/* hanging: arms stretched overhead, legs dangling, antenna tucked away */
+.robo-pose-hang .mk-armL { transform: rotate(160deg) scaleY(2.3); animation: none; }
+.robo-pose-hang .mk-armR { transform: rotate(-160deg) scaleY(2.3); animation: none; }
+.robo-pose-hang .mk-antenna { display: none; }
+.robo-pose-hang .mk-legL { animation: robo-sway 1.5s ease-in-out infinite 0.2s; } .robo-pose-hang .mk-legR { animation: robo-sway 1.5s ease-in-out infinite; }
+.robo-pose-hang .mk-tail { animation: robo-tail 1.5s ease-in-out infinite; }
+/* running: bouncy legs and arms, wagging tail */
+.robo-pose-run { animation: robo-run-bounce 0.3s ease-in-out infinite; }
+.robo-pose-run .mk-legL { animation: robo-run-leg 0.3s ease-in-out infinite; } .robo-pose-run .mk-legR { animation: robo-run-leg 0.3s ease-in-out infinite reverse; }
+.robo-pose-run .mk-armL { animation: robo-run-arm 0.3s ease-in-out infinite reverse; } .robo-pose-run .mk-armR { animation: robo-run-arm 0.3s ease-in-out infinite; }
+.robo-pose-run .mk-tail { animation: robo-tail-fast 0.3s ease-in-out infinite; }
 .robo-dot { animation: robo-dots 1s infinite; }
 .robo-dot:nth-child(2) { animation-delay: 0.15s; }
 .robo-dot:nth-child(3) { animation-delay: 0.3s; }
 .robo-pop { animation: robo-pop 0.28s var(--ease-spring, ease-out) both; }
-@media (prefers-reduced-motion: reduce) { .robo-bob, .robo-eye, .robo-antenna, .robo-happy .robo-arm.wave, .robo-dot, .robo-pop { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .robo-bob, .robo-swing, .mk *, .mk, .robo-eye, .robo-antenna, .robo-shadow, .robo-dot, .robo-pop { animation: none !important; } }
