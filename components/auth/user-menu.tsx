@@ -41,7 +41,7 @@ export function AuthControl({ className }: { className?: string }) {
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-            className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-[#35363B]">
+            className="fixed top-[4.25rem] right-3 z-50 w-60 max-w-[calc(100vw-1.5rem)] overflow-hidden min-[1120px]:absolute min-[1120px]:top-auto min-[1120px]:right-0 min-[1120px]:mt-2 rounded-xl border border-slate-200 bg-white shadow-lg dark:border-[#35363B]">
             <div className="border-b border-zinc-100 px-4 py-3">
               <p className="truncate text-sm font-bold text-zinc-900">{user.name}</p>
               <p className="truncate text-xs text-zinc-500">{user.identifier}</p>
